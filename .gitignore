@@ -1,0 +1,35 @@
+# Build outputs
+/build/
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.d
+*.pdb
+*.dSYM/
+
+# Generated compilation database and tooling caches
+/compile_commands.json
+/.cache/
+/.clangd/
+
+# Coverage and profiling output
+*.gcda
+*.gcno
+*.gcov
+*.profraw
+*.profdata
+gmon.out
+
+# Editor temporary files
+*.swp
+*.swo
+*~
+
+# OS metadata
+.DS_Store
+Thumbs.db
