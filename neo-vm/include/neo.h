@@ -19,7 +19,15 @@ typedef enum neo_status {
     NEO_CYCLE,
     NEO_WRONG_IMAGE,
     NEO_WRONG_KIND,
-    NEO_LIMIT
+    NEO_LIMIT,
+    NEO_BUSY,
+    NEO_BAD_STATE,
+    NEO_UNSUPPORTED,
+    NEO_PARSE_ERROR,
+    NEO_OVERFLOW,
+    NEO_DIVIDE_BY_ZERO,
+    NEO_RAISED,
+    NEO_IO_ERROR
 } neo_status;
 
 typedef enum neo_kind {
@@ -37,7 +45,9 @@ typedef enum neo_right {
     NEO_COPY = 1u << 3,
     NEO_DELETE = 1u << 4,
     NEO_DELEGATE = 1u << 5,
-    NEO_ALL = (1u << 6) - 1u
+    NEO_ACT = 1u << 6,
+    NEO_SEND = 1u << 7,
+    NEO_ALL = (1u << 8) - 1u
 } neo_right;
 
 /* These are C substrate payloads, not non-object values in the neo language.
@@ -68,7 +78,8 @@ const char *neo_status_name(neo_status status);
 
 /* Host management API, not exposed directly to image code. Empty construction
  * is not file loading. Unload never deletes a file. Duplicate handles quiescent
- * graphs only: this milestone has no execution state or external resources. */
+ * graphs only: images containing ETHER/message state are explicitly rejected
+ * by duplication until lifecycle-preserving duplication is implemented. */
 neo_status neo_image_create(neo_vm *vm, const char *name,
                             const neo_capability **out_root);
 neo_status neo_image_duplicate(neo_vm *vm, const neo_capability *root,
@@ -112,5 +123,11 @@ neo_status neo_object_move(neo_vm *vm, const neo_capability *source,
                            const neo_capability *destination, const char *name,
                            const neo_capability **out_copy);
 neo_status neo_object_delete(neo_vm *vm, const neo_capability *object);
+
+/* Name is borrowed until deletion. Indexed enumeration follows creation order,
+ * preserved by copying and image serialization. */
+neo_status neo_object_name(neo_vm *vm, const neo_capability *object, const char **out_name);
+neo_status neo_object_child_at(neo_vm *vm, const neo_capability *object,
+                               size_t index, const neo_capability **out_child);
 
 #endif

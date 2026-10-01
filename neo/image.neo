@@ -1,0 +1,41 @@
+> neo reference image, format v0. Loading this graph does not execute it.
+> Every parenthesized form is an object. :primitive marks executable behavior.
+(image #world :object
+  (counter #counter :object
+    (count :integer 0)
+    (handlers :object
+      (increment :object
+        (body :primitive "do"
+          (update :primitive "write"
+            (slot :text "count")
+            (value :primitive "add"
+              (left :primitive "read" (slot :text "count"))
+              (right :integer 1)))
+          (result :primitive "return"
+            (value :primitive "read" (slot :text "count")))))
+      (tick :object
+        (body :primitive "if"
+          (condition :primitive "lt"
+            (left :primitive "read" (slot :text "count"))
+            (right :integer 3))
+          (then :primitive "write"
+            (slot :text "count")
+            (value :primitive "add"
+              (left :primitive "read" (slot :text "count"))
+              (right :integer 1)))
+          (else :object)))))
+  (sender :object @counter #counter 128
+    (sent :boolean false)
+    (handlers :object
+      (tick :object
+        (body :primitive "if"
+          (condition :primitive "not"
+            (value :primitive "read" (slot :text "sent")))
+          (then :primitive "do"
+            (request :primitive "send"
+              (target :text "counter")
+              (value :text "increment"))
+            (remember :primitive "write"
+              (slot :text "sent") (value :boolean true)))
+          (else :object)))))
+)

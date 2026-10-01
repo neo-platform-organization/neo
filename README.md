@@ -1,59 +1,80 @@
 # neo
 
-neo is a language and runtime project built around a live world of objects. Everything in the language including behavior and primitives is an object. Objects own their internal behavior; prototypes provide examples to duplicate, rather than shared behavior through delegation.
+neo is an experimental language and runtime built around a live world of objects. Objects own their internal behavior; prototypes are examples to duplicate, rather than sources of shared behavior through delegation. The long-term goal is a consistent spatial computing environment.
 
-The initial runtime is written in C17. The intended `image.neo` format describes a plain object graph that a separate VM can load and execute. The broader vision is described in [the whitepaper](../whitepaper.md).
+The implementation is **C17**. A separate VM loads `neo/image.neo` as an object graph. Loading is inert; behavior runs only when invoked or scheduled.
 
-## Status
+## Try it
 
-The first milestone is a working in-memory object store. It supports:
+Requirements: a C17 compiler, Make, `ar`, and a POSIX shell for the integration tests. No external runtime libraries.
 
-- Independent image instances, image duplication, and unloading.
-- Named containment and limited-authority connections.
-- Integer, boolean, text, and inert primitive-binding objects.
-- Deep copies with internal connections remapped to the copies.
-- Moves implemented as duplication followed by deletion of the original.
-- Safe detection of deleted targets and rollback on allocation failure.
-
-This is not yet an executable language. ETHER messaging, acceptance queues, the evaluator, scheduling, and the `image.neo` reader/writer are still to be implemented. The current demo constructs objects through the C API.
-
-## Build and run
-
-Requirements: a C17 compiler and Make. No external runtime libraries are required for this milestone.
-
-From the `neo/` directory:
+From this directory:
 
 ```sh
 make
 make test
-make demo
+./build/neo check neo/image.neo
+./build/neo run neo/image.neo counter increment
+./build/neo tick neo/image.neo 4
 ```
 
-The demo moves food into a cell, checks that the original identity is unavailable, duplicates the image, and unloads the original.
+The direct call returns `1`. The tick example ends with `counter.count = 3` and `sender.sent = true`: a sender creates a message, the counter accepts it on the next tick, and its own behavior handles the request.
 
-To run AddressSanitizer and UndefinedBehaviorSanitizer checks with a supported compiler:
+Additional commands:
 
 ```sh
+./build/neo format neo/image.neo
+./build/neo clone neo/image.neo
+make demo
 make sanitize
 ```
 
-Build outputs go into `build/`. Remove them with `make clean`. See [development.md](../development.md) for validation details and current limitations.
+`format` and `clone` print a graph to stdout; neither overwrites the input. Each invocation loads a fresh image. `check` accepts multiple files. Use `make clean` to remove `build/`.
 
-## Project layout
+## Current scope
+
+- Independent images, checked object identities, and limited-authority connections.
+- Containment, deep copying, and duplicate-then-delete movement.
+- ETHER message objects with maker-defined policy and atomic acceptance.
+- Ordered per-receiver queues and a sequential scheduler.
+- Graph parsing/serialization, explicit primitive objects, conditions, loops, arithmetic, state access, and message submission.
+- Failure reports and explicit host-controlled repair/retry or discard.
+- Unit, CLI, allocation-failure, and sanitizer tests.
+
+This is a small runnable interpreter, not yet the complete language or a spatial OS. Geometry, dimensional transformations, rendering, parallel execution, fully reflective activations, and persistence of running/message-bearing images remain unimplemented. Unsupported runtime-state duplication is rejected explicitly.
+
+## Code map
 
 ```text
+build/               Generated binaries, library, and object files
+neo-vm/
+  include/           Public C embedding APIs
+  source/            VM, object store, messaging, codec, and execution
+  examples/          C embedding example
+  tests/             Semantic, failure-path, and CLI tests
 neo/
-  include/neo.h        Public C embedding API
-  src/object.c         Object store and image management
-  examples/demo.c      Runnable substrate demonstration
-  tests/test_objects.c Semantic and allocation-failure tests
-  Makefile             Build, test, and sanitizer targets
+  image.neo          Executable object graph
+.gitignore
+LICENSE
+Makefile
+README.md
 ```
 
-Implementation files, this README, and the license live in `neo/`. Architecture notes and agent instructions live in the parent directory.
+The build also produces `build/libneo.a` for C embedding.
 
-Design proposals are identified separately from agreed semantics. C is the initial implementation language; a future port or a self-hosted compiled subset of neo remains possible.
+## Reading and design guides
+
+The implementation lives here; project guides live in the parent workspace:
+
+- [Code tour](../code-tour.md): start here to learn how the system works.
+- [Implemented format](../runtime-format.md): exact syntax and primitive subset.
+- [Development](../development.md): build commands, policies, tests, and limitations.
+- [Architecture](../architecture.md): requirements, rationale, and open decisions.
+- [Language proposals](../language-design.md), [implementation plan](../implementation-plan.md), and [C conventions](../c-conventions.md).
+- [Whitepaper](../whitepaper.md): broader vision; some details have since been refined.
+
+C is the initial host language. A future Odin/Zig port or compiled self-hosted subset remains possible; image semantics are kept separate from native memory layouts.
 
 ## License
 
-neo is licensed under the GNU General Public License, version 3.0 only (`GPL-3.0-only`). See [LICENSE](LICENSE) for the full terms.
+GNU General Public License, version 3.0 only (`GPL-3.0-only`). See [LICENSE](LICENSE).

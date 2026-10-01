@@ -1,38 +1,7 @@
-#include "neo.h"
+#include "internal.h"
 
 #include <stdlib.h>
 #include <string.h>
-
-typedef struct neo_edge {
-    char *name;
-    neo_object_id target;
-    unsigned rights;
-    struct neo_edge *next;
-} neo_edge;
-
-typedef struct neo_object {
-    neo_object_id id;
-    neo_object_id image;
-    neo_object_id parent;
-    char *name;
-    neo_value value;
-    neo_edge *edges;
-    bool deleting;
-    struct neo_object *next;
-} neo_object;
-
-struct neo_capability {
-    neo_object_id target;
-    unsigned rights;
-    struct neo_capability *next;
-};
-
-struct neo_vm {
-    neo_allocator allocator;
-    neo_object_id next_id;
-    neo_object *objects;
-    neo_capability *capabilities;
-};
 
 typedef struct neo_mapping {
     neo_object *source;
@@ -49,7 +18,7 @@ static void neo_default_release(void *context, void *memory) {
     free(memory);
 }
 
-static void *neo_alloc(neo_vm *vm, size_t size) {
+void *neo_alloc(neo_vm *vm, size_t size) {
     void *memory = vm->allocator.allocate(vm->allocator.context, size);
     if (memory != NULL) {
         memset(memory, 0, size);
@@ -57,13 +26,13 @@ static void *neo_alloc(neo_vm *vm, size_t size) {
     return memory;
 }
 
-static void neo_free(neo_vm *vm, void *memory) {
+void neo_free(neo_vm *vm, void *memory) {
     if (memory != NULL) {
         vm->allocator.release(vm->allocator.context, memory);
     }
 }
 
-static char *neo_string(neo_vm *vm, const char *source) {
+char *neo_string(neo_vm *vm, const char *source) {
     size_t size = strlen(source);
     if (size == SIZE_MAX) {
         return NULL;
@@ -75,7 +44,7 @@ static char *neo_string(neo_vm *vm, const char *source) {
     return copy;
 }
 
-static bool neo_valid_value(neo_value value) {
+bool neo_valid_value(neo_value value) {
     switch (value.kind) {
         case NEO_OBJECT:
         case NEO_INTEGER:
@@ -88,7 +57,7 @@ static bool neo_valid_value(neo_value value) {
     return false;
 }
 
-static neo_status neo_value_copy(neo_vm *vm, neo_value source, neo_value *out) {
+neo_status neo_value_copy(neo_vm *vm, neo_value source, neo_value *out) {
     *out = (neo_value){.kind = source.kind};
     switch (source.kind) {
         case NEO_INTEGER:
@@ -110,13 +79,13 @@ static neo_status neo_value_copy(neo_vm *vm, neo_value source, neo_value *out) {
     return NEO_OK;
 }
 
-static void neo_value_free(neo_vm *vm, neo_value value) {
+void neo_value_free(neo_vm *vm, neo_value value) {
     if (value.kind == NEO_TEXT || value.kind == NEO_PRIMITIVE) {
         neo_free(vm, (void *)value.text);
     }
 }
 
-static neo_object *neo_lookup(neo_vm *vm, neo_object_id id) {
+neo_object *neo_lookup(neo_vm *vm, neo_object_id id) {
     for (neo_object *object = vm->objects; object != NULL; object = object->next) {
         if (object->id == id) {
             return object;
@@ -125,7 +94,7 @@ static neo_object *neo_lookup(neo_vm *vm, neo_object_id id) {
     return NULL;
 }
 
-static neo_status neo_resolve(neo_vm *vm, const neo_capability *cap,
+neo_status neo_resolve(neo_vm *vm, const neo_capability *cap,
                                unsigned rights, neo_object **out) {
     if (vm == NULL || cap == NULL) {
         return NEO_INVALID;
@@ -142,7 +111,18 @@ static neo_status neo_resolve(neo_vm *vm, const neo_capability *cap,
         return NEO_DENIED;
     }
     *out = neo_lookup(vm, known->target);
-    return *out == NULL ? NEO_UNAVAILABLE : NEO_OK;
+    if (*out == NULL) {
+        return NEO_UNAVAILABLE;
+    }
+    for (neo_object *node = *out; node != NULL; node = neo_lookup(vm, node->parent)) {
+        if (node->message != NULL) {
+            return NEO_DENIED; /* All payload access needs authenticated message policy. */
+        }
+    }
+    if ((*out)->ether && (rights & ~((unsigned)(NEO_READ | NEO_DELEGATE))) != 0) {
+        return NEO_DENIED;
+    }
+    return NEO_OK;
 }
 
 static neo_capability *neo_cap_new(neo_vm *vm, neo_object_id target, unsigned rights) {
@@ -159,7 +139,7 @@ static void neo_cap_publish(neo_vm *vm, neo_capability *cap) {
     vm->capabilities = cap;
 }
 
-static neo_status neo_issue(neo_vm *vm, neo_object_id id, unsigned rights,
+neo_status neo_issue(neo_vm *vm, neo_object_id id, unsigned rights,
                             const neo_capability **out) {
     neo_capability *cap = neo_cap_new(vm, id, rights);
     if (cap == NULL) {
@@ -170,7 +150,7 @@ static neo_status neo_issue(neo_vm *vm, neo_object_id id, unsigned rights,
     return NEO_OK;
 }
 
-static void neo_object_free(neo_vm *vm, neo_object *object) {
+void neo_object_free(neo_vm *vm, neo_object *object) {
     neo_edge *edge = object->edges;
     while (edge != NULL) {
         neo_edge *next = edge->next;
@@ -183,7 +163,7 @@ static void neo_object_free(neo_vm *vm, neo_object *object) {
     neo_free(vm, object);
 }
 
-static neo_status neo_node_new(neo_vm *vm, const char *name, neo_value value,
+neo_status neo_node_new(neo_vm *vm, const char *name, neo_value value,
                                neo_object **out) {
     if (vm->next_id == UINT64_MAX) {
         return NEO_LIMIT;
@@ -199,6 +179,7 @@ static neo_status neo_node_new(neo_vm *vm, const char *name, neo_value value,
         return NEO_OUT_OF_MEMORY;
     }
     object->id = vm->next_id++;
+    object->order = object->id;
     *out = object;
     return NEO_OK;
 }
@@ -212,7 +193,7 @@ static bool neo_name_exists(neo_vm *vm, neo_object_id parent, const char *name) 
     return false;
 }
 
-static bool neo_inside(neo_vm *vm, neo_object *node, neo_object_id ancestor) {
+bool neo_inside(neo_vm *vm, neo_object *node, neo_object_id ancestor) {
     while (node != NULL) {
         if (node->id == ancestor) {
             return true;
@@ -272,6 +253,8 @@ void neo_vm_destroy(neo_vm *vm) {
     if (vm == NULL) {
         return;
     }
+    neo_scheduler_destroy(vm);
+    neo_messages_destroy(vm);
     while (vm->objects != NULL) {
         neo_object *next = vm->objects->next;
         neo_object_free(vm, vm->objects);
@@ -297,7 +280,15 @@ const char *neo_status_name(neo_status status) {
         case NEO_CYCLE: return "destination inside source";
         case NEO_WRONG_IMAGE: return "wrong image";
         case NEO_WRONG_KIND: return "wrong kind";
-        case NEO_LIMIT: return "identity limit";
+        case NEO_LIMIT: return "resource or execution limit";
+        case NEO_BUSY: return "work pending or out of order";
+        case NEO_BAD_STATE: return "invalid lifecycle state";
+        case NEO_UNSUPPORTED: return "unsupported runtime state";
+        case NEO_PARSE_ERROR: return "invalid image syntax";
+        case NEO_OVERFLOW: return "integer overflow";
+        case NEO_DIVIDE_BY_ZERO: return "division by zero";
+        case NEO_RAISED: return "explicit failure";
+        case NEO_IO_ERROR: return "I/O error";
     }
     return "unknown status";
 }
@@ -551,6 +542,14 @@ static neo_object_id neo_remap(neo_mapping *map, size_t count, neo_object_id id)
 static neo_status neo_duplicate(neo_vm *vm, neo_object *source,
                                  neo_object *destination, const char *name,
                                  unsigned rights, const neo_capability **out) {
+    for (neo_object *node = vm->objects; node != NULL; node = node->next) {
+        if (neo_inside(vm, node, source->id) &&
+            (node->message != NULL || node->ether || node->inbox_first != NULL ||
+             node->active_message != NULL || neo_actor_has_messages(vm, node->id) ||
+             neo_scheduler_contains(vm, node->id))) {
+            return NEO_UNSUPPORTED;
+        }
+    }
     size_t count = 0;
     for (neo_object *node = vm->objects; node != NULL; node = node->next) {
         if (neo_inside(vm, node, source->id)) {
@@ -585,6 +584,7 @@ static neo_status neo_duplicate(neo_vm *vm, neo_object *source,
     for (size_t i = 0; i < count; ++i) {
         neo_object *copy = map[i].copy;
         neo_object *original = map[i].source;
+        copy->order = original == source ? copy->id : original->order;
         copy->image = destination == NULL ? root->id : destination->image;
         copy->parent = original == source
             ? (destination == NULL ? 0 : destination->id)
@@ -690,6 +690,11 @@ neo_status neo_object_delete(neo_vm *vm, const neo_capability *object) {
     if (node->parent == 0) {
         return NEO_DENIED;
     }
+    for (neo_object *child = vm->objects; child != NULL; child = child->next) {
+        if (neo_inside(vm, child, node->id) && (child->message != NULL || child->ether)) {
+            return NEO_DENIED;
+        }
+    }
     neo_delete_region(vm, node->id);
     return NEO_OK;
 }
@@ -725,4 +730,63 @@ neo_status neo_image_unload(neo_vm *vm, const neo_capability *root) {
     }
     neo_delete_region(vm, node->id);
     return NEO_OK;
+}
+
+/* Ordered traversal uses an ordinal, not storage-list order. Duplication may
+ * rearrange allocation links without changing the order of behavior steps. */
+neo_object *neo_child_named(neo_vm *vm, neo_object_id parent, const char *name) {
+    for (neo_object *node = vm->objects; node != NULL; node = node->next) {
+        if (node->parent == parent && strcmp(node->name, name) == 0) {
+            return node;
+        }
+    }
+    return NULL;
+}
+
+neo_object *neo_child_after(neo_vm *vm, neo_object_id parent, uint64_t order) {
+    neo_object *found = NULL;
+    for (neo_object *node = vm->objects; node != NULL; node = node->next) {
+        if (node->parent == parent && node->order > order &&
+            (found == NULL || node->order < found->order)) {
+            found = node;
+        }
+    }
+    return found;
+}
+
+neo_status neo_object_name(neo_vm *vm, const neo_capability *object, const char **out_name) {
+    if (out_name == NULL) {
+        return NEO_INVALID;
+    }
+    *out_name = NULL;
+    neo_object *node = NULL;
+    neo_status status = neo_resolve(vm, object, NEO_READ, &node);
+    if (status == NEO_OK) {
+        *out_name = node->name;
+    }
+    return status;
+}
+
+neo_status neo_object_child_at(neo_vm *vm, const neo_capability *object,
+                               size_t index, const neo_capability **out_child) {
+    if (out_child == NULL) {
+        return NEO_INVALID;
+    }
+    *out_child = NULL;
+    neo_object *node = NULL;
+    neo_status status = neo_resolve(vm, object, NEO_READ, &node);
+    if (status != NEO_OK) {
+        return status;
+    }
+    uint64_t order = 0;
+    for (size_t i = 0;; ++i) {
+        neo_object *child = neo_child_after(vm, node->id, order);
+        if (child == NULL) {
+            return NEO_UNAVAILABLE;
+        }
+        if (i == index) {
+            return neo_issue(vm, child->id, object->rights, out_child);
+        }
+        order = child->order;
+    }
 }
