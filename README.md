@@ -47,6 +47,7 @@ This is a small runnable interpreter, not yet the complete language or a spatial
 
 ```text
 build/               Generated binaries, library, and object files
+documentation/       Learning, reference, development, design, and plans
 neo-vm/
   include/           Public C embedding APIs
   source/            VM, object store, messaging, codec, and execution
@@ -64,14 +65,14 @@ The build also produces `build/libneo.a` for C embedding.
 
 ## Reading and design guides
 
-The implementation lives here; project guides live in the parent workspace:
+Start at the [documentation index](documentation/README.md). The guides are grouped by purpose:
 
-- [Code tour](../code-tour.md): start here to learn how the system works.
-- [Implemented format](../runtime-format.md): exact syntax and primitive subset.
-- [Development](../development.md): build commands, policies, tests, and limitations.
-- [Architecture](../architecture.md): requirements, rationale, and open decisions.
-- [Language proposals](../language-design.md), [implementation plan](../implementation-plan.md), and [C conventions](../c-conventions.md).
-- [Whitepaper](../whitepaper.md): broader vision; some details have since been refined.
+- [Code tour](documentation/learning/code-tour.md): start here to learn how the system works.
+- [Implemented format](documentation/reference/runtime-format.md): exact syntax and primitive subset.
+- [Development](documentation/development/build-and-test.md): build commands, policies, tests, and limitations.
+- [Architecture](documentation/design/architecture.md): requirements, rationale, and open decisions.
+- [Language proposals](documentation/design/language-design.md), [implementation plan](documentation/planning/implementation-plan.md), and [C conventions](documentation/development/c-conventions.md).
+- [Whitepaper](documentation/design/whitepaper.md): broader vision; some details have since been refined.
 
 C is the initial host language. A future Odin/Zig port or compiled self-hosted subset remains possible; image semantics are kept separate from native memory layouts.
 
