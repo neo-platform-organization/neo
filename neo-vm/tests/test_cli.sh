@@ -39,3 +39,10 @@ if "$vm" check "$workspace/nul.neo" > /dev/null 2>&1; then
     exit 1
 fi
 echo 'PASS: CLI loading, execution, tick delivery, formatting, duplication, failure exits'
+
+# Application output is a byte stream, with no CLI result/state banners.
+"$2" neo/terminal.neo terminal greet > "$workspace/greeting" 2> "$workspace/diagnostics"
+printf 'hello from neo\n' > "$workspace/expected"
+cmp "$workspace/expected" "$workspace/greeting"
+test ! -s "$workspace/diagnostics"
+echo 'PASS: terminal stream output and diagnostic separation'

@@ -83,3 +83,7 @@ C is the initial host language. A future Odin/Zig port or compiled self-hosted s
 GNU General Public License, version 3.0 only (`GPL-3.0-only`). See [LICENSE](LICENSE).
 
 The optional [X11 window interface](documentation/reference/window-interface.md) presents a pixel buffer filled by neo. Build it with `make window`, then run `./build/neo-window neo/window.neo display`. The supplied image is a blank presentation surface, not a renderer.
+
+The [stream and input interface](documentation/reference/io-interface.md) keeps native platform details behind granted objects. Run `make io` and `./build/neo-io neo/terminal.neo terminal greet` for the terminal example.
+
+For the [neo software renderer and rotating wireframe cube](documentation/reference/software-renderer.md), run `./build/neo-window neo/cube.neo cube neo/software-renderer.neo` after `make window`. All geometry, projection, and line rasterization are written in neo.

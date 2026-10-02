@@ -37,7 +37,7 @@ int main(void) {
     OK(neo_object_child(vm, root, "triangle", &actor));
     OK(neo_buffer_create(vm, root, "pixels", 640, 480, &buffer));
     unsigned frames = 0;
-    const neo_window_backend backend = {neo_triangle_present, neo_triangle_poll, neo_triangle_destroy};
+    const neo_window_backend backend = {neo_triangle_present, neo_triangle_poll, neo_triangle_destroy, NULL};
     OK(neo_window_create(vm, root, "screen", &backend, &frames, &window));
     OK(neo_object_connect(vm, actor, "buffer", buffer, NEO_READ | NEO_WRITE));
     OK(neo_object_connect(vm, actor, "window", window, NEO_READ | NEO_WRITE));

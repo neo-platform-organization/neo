@@ -1,0 +1,7 @@
+(image
+  (greeter
+    (handlers
+      (hello
+        (body (return (value "Hello, World!"))))))
+  (return (value2 "The Second Value"))
+)

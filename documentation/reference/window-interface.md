@@ -62,7 +62,7 @@ These low-level operations provide byte access and presentation only. For exampl
 (buffer-write (target "buffer") (index 0) (value 255))
 ```
 
-No drawing algorithm is implied. Byte-at-a-time interpreted writes are a correctness baseline, not a fast rendering API. Bulk buffer operations, resizing, and additional event objects can be added when their language-level contracts are defined.
+Buffer dimensions and event consumption are documented in the [I/O interface](io-interface.md). No drawing algorithm is implied. Byte-at-a-time interpreted writes are a correctness baseline, not a fast rendering API. Bulk buffer operations, resizing, and additional event objects can be added when their language-level contracts are defined.
 
 ## C embedding and backend boundary
 
@@ -87,7 +87,7 @@ Deleting the resource, unloading its image, or destroying its VM releases the st
 
 The adapter uses Xlib's [image-transfer API](https://www.x.org/releases/X11R7.6/doc/libX11/specs/libX11/libX11.html) to convert RGBA bytes to the display's TrueColor channel layout and transfer them. It uses the [window-manager protocol](https://xorg.freedesktop.org/archive/X11R6.8.1/doc/XSetWMProtocols.3.html) for close requests.
 
-The first version supports TrueColor displays, close/resize/expose events, and ordinary opaque windows. It does not expose keyboard, mouse, clipboard, compositing, vsync, GPU commands, or a general event queue. X11 dimensions are limited to 32767 per axis. Pixel conversion uses the native image masks and XPutPixel rather than assuming a particular byte order. Re-present after expose or resize; the launcher does this every frame.
+The backend supports TrueColor displays and ordinary opaque windows. The [I/O interface](io-interface.md) adds a bounded normalized queue for close, resize, expose, focus, pointer, button, and basic symbolic key events. Composed text input, clipboard, compositing, vsync, and GPU commands remain unimplemented. X11 dimensions are limited to 32767 per axis. Pixel conversion uses the native image masks and XPutPixel rather than assuming a particular byte order. Re-present after expose or resize; the launcher does this every frame.
 
 Presentation flushes requests; success means submission, not a guarantee that a compositor has displayed the frame. Xlib retains its default fatal handling for a broken X connection and certain asynchronous protocol errors. This initial standalone backend does not promise recovery from display-server loss or concurrent calls. Window resource creation is a trusted host operation, not ambient language authority.
 
@@ -100,3 +100,7 @@ make test-window           # Opens and closes a temporary window on DISPLAY
 ```
 
 Headless tests cover buffer bounds, initialization, capability denial, stale references, primitive calls, nested return, backend failure propagation, unsupported persistence/copy/move, and allocator-failure cleanup. The X11 test checks red/green pixel readback, resize reporting, close handling, and cleanup on a real display. Sanitizer targets include the headless display tests.
+
+## Reusable software renderer
+
+Run `./build/neo-window neo/cube.neo cube neo/software-renderer.neo` for the rotating wireframe cube. Optional trailing template paths are copied into the selected actor before execution; the actor owns its fields and behavior. See [software renderer](software-renderer.md) for the line-rendering contract, local calls, and bootstrap limitations. `buffer-fill` provides bounded byte clearing without putting rendering logic into the kernel.

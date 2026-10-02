@@ -42,6 +42,7 @@ Payloads are dynamically typed: writing text into an integer field changes its k
 
 | Primitive | Source example | Behavior |
 | --- | --- | --- |
+| `call` | `(call (selector "r-line"))` | Invoke a local handler; same receiver/authority, shared execution budget, separate return boundary. |
 | `do` | `(do (first (write (slot "n") (value 1))) (second (read (slot "n"))))` | Evaluate children in order; return the last result, or unit if empty. Named wrappers allow repeated operations without duplicate sibling names. |
 | `if` | `(if (condition true) (then 1) (else 0))` | Evaluate the boolean condition and only the selected branch. Use `(else)` for a unit branch. |
 | `while` | `(while (condition false) (body))` | Reevaluate the boolean condition before each iteration; evaluate `body` while true. Normal result is unit. |
@@ -57,14 +58,28 @@ Payloads are dynamically typed: writing text into an integer field changes its k
 | `message` | `(message (path ""))` | Read the current message's root payload. A nonempty path selects a message field; unavailable without a current message. |
 | `send` | `(send (target "counter") (value "increment"))` | Create and submit a message through the receiver's named connection and its `ether` connection. Returns unit. |
 
+## Stream primitives
+
+Endpoints must be granted by the host. See the [I/O interface](io-interface.md) for partial-transfer handling and the terminal launcher.
+
+| Primitive | Example | Result |
+| --- | --- | --- |
+| `stream-read` | `(stream-read (target "stdin"))` | Byte integer, `"eof"`, or `"would-block"`; READ. |
+| `stream-write` | `(stream-write (target "stdout") (value "hello") (offset 0))` | Transferred byte count or `"would-block"`; WRITE. Value may also be a byte integer; offset is optional. |
+
 ## Window and buffer primitives
 
-These require host-granted connections; see the [window interface](window-interface.md) for setup and limits. The host provides windowing and byte storage; rendering algorithms belong in neo.
+The [software renderer and cube](software-renderer.md) demonstrate these operations. These require host-granted connections; see the [window interface](window-interface.md) for setup and limits. The host provides windowing and byte storage; rendering algorithms belong in neo.
 
 | Primitive | Example | Behavior |
 | --- | --- | --- |
+| `buffer-fill` | `(buffer-fill (target "buffer") (value 0))` | Fill every buffer byte with a value from 0–255; WRITE; returns unit. |
 | `buffer-write` | `(buffer-write (target "buffer") (index 0) (value 255))` | Store a byte, return that byte; WRITE. |
 | `buffer-read` | `(buffer-read (target "buffer") (index 0))` | Read a byte; READ. |
+| `buffer-width` | `(buffer-width (target "buffer"))` | Fixed pixel width; READ. |
+| `buffer-height` | `(buffer-height (target "buffer"))` | Fixed pixel height; READ. |
+| `window-next-event` | `(window-next-event (target "window"))` | Consume one collected event, return type text or `"none"`; READ + WRITE. |
+| `window-event` | `(window-event (target "window") (field "key"))` | Inspect last event snapshot; READ. See [event fields](io-interface.md). |
 | `buffer-size` | `(buffer-size (target "buffer"))` | Buffer size in bytes; READ. |
 | `window-present` | `(window-present (target "window") (buffer "buffer"))` | Present pixels; WRITE on window, READ on buffer. |
 | `window-poll` | `(window-poll (target "window"))` | Poll events, return close-requested boolean; WRITE. |
@@ -158,7 +173,7 @@ An explicit unknown primitive binding can load but fails when evaluated. Unknown
 | Rich values | No first-class closures or composite evaluation results; temporary values use private C storage. |
 | Spatial objects | No built-in spatial operations or dimensional types yet. |
 | Recovery | No language-level failure handlers yet; the host can retry or discard failed activity. |
-| Persistence | Ordinary quiescent graphs only; active messages, ETHER, scheduler state, windows, and pixel buffers cannot yet be serialized. |
+| Persistence | Ordinary quiescent graphs only; active messages, ETHER, scheduler state, streams, windows, and pixel buffers cannot yet be serialized. |
 | Format limits | 1 MiB source/output, 4096 objects, 128 containment levels, 4096 decoded bytes per token. |
 
 See the [runtime reference](runtime-format.md) for authority restrictions, failure behavior, scheduler details, and persistence guarantees.

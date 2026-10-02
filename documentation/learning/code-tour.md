@@ -174,3 +174,17 @@ Run `make window`, then `./build/neo-window neo/triangle.neo triangle` from the 
 The triangle has a top vertex and a horizontal bottom edge. Each row widens the filled span: its half-width is `(y - 80) / 2`, centered at x = 320. neo computes the first and last pixel addresses, loops over that span, and writes four channel bytes per pixel. Eight rows are drawn per invocation so each frame stays within the launcher's execution budget. The `y` field remembers progress between invocations. Once y passes 400, the loops stop and subsequent frames only present the completed buffer (plus updating the batch boundary).
 
 This is a deliberately simple scanline renderer for one fixed triangle, not yet a general triangle rasterizer with arbitrary vertices. `test_triangle.c` executes the actual image against a headless backend and checks every pixel against independent triangle half-plane inequalities, including the untouched background. It also writes `build/triangle.ppm` from the resulting buffer.
+
+## Following terminal I/O
+
+[terminal.neo](../../neo/terminal.neo) knows only the connection name `stdout`. Its write returns a byte count, and the image advances its offset by that count. [io.c](../../neo-vm/source/io.c) checks authority and calls a backend; [io_posix.c](../../neo-vm/source/io_posix.c) owns the OS-specific descriptor operations. [terminal.c](../../neo-vm/examples/terminal.c) grants the standard streams before invoking the image. This is the same boundary used for windows: neo names capabilities, and the kernel adapter knows the platform.
+
+See the [I/O reference](../reference/io-interface.md) for input bytes, partial writes, event snapshots, and limitations. The snapshot/queue implementation is still native scaffolding; this is not yet the fully graph-resident execution model.
+
+## From one triangle to reusable drawing behavior
+
+[software-renderer.neo](../../neo/software-renderer.neo) contains the first reusable software renderer. Read `r-point` first: it checks the coordinate bounds, computes a byte address, and stores RGBA channels. `r-line` interpolates a sequence of positions and calls `r-point`. Both operate through a granted buffer connection.
+
+[cube.neo](../../neo/cube.neo) supplies eight vertices, fixed-point sine/cosine, two-axis rotation, and perspective projection. Its frame handler clears the old image, projects the vertices, asks `r-line` to draw twelve edges, presents the buffer, and advances the angles. The renderer never needs to understand a cube; the cube never needs to understand X11.
+
+The launcher copies the renderer's fields and handlers into the cube at startup. `(call (selector "r-line"))` then invokes that owned behavior. This initial API uses receiver fields for inputs and scratch storage, so it is sequential rather than reentrant. See the [renderer reference](../reference/software-renderer.md) for commands and limits.

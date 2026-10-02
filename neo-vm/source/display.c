@@ -16,6 +16,7 @@ struct neo_display_resource {
     neo_window_backend backend;
     void *context;
     neo_window_state state;
+    neo_input_event event;
 };
 
 void neo_display_release(neo_vm *vm, neo_object *object) {
@@ -98,6 +99,13 @@ neo_status neo_buffer_read(neo_vm *vm, const neo_capability *buffer, size_t offs
     return status;
 }
 
+neo_status neo_buffer_fill(neo_vm *vm, const neo_capability *buffer, uint8_t value) {
+    neo_display_resource *resource = NULL;
+    neo_status status = neo_display_resolve(vm, buffer, NEO_WRITE, NEO_BUFFER_RESOURCE, &resource);
+    if (status == NEO_OK) { memset(resource->pixels, value, resource->size); }
+    return status;
+}
+
 neo_status neo_buffer_size(neo_vm *vm, const neo_capability *buffer, size_t *out_size) {
     if (out_size == NULL) { return NEO_INVALID; }
     *out_size = 0;
@@ -156,4 +164,47 @@ neo_status neo_window_present(neo_vm *vm, const neo_capability *window,
     if (status != NEO_OK) { return status; }
     if (destination->state.closed) { return NEO_UNAVAILABLE; }
     return destination->backend.present(destination->context, source->pixels, source->width, source->height);
+}
+
+const char *neo_input_kind_name(neo_input_kind kind) {
+    static const char *const names[] = {"none", "close", "resize", "expose", "focus",
+        "pointer", "button", "key", "overflow"};
+    if (kind < NEO_INPUT_NONE || kind > NEO_INPUT_OVERFLOW) { return "unknown"; }
+    return names[(size_t)kind];
+}
+
+neo_status neo_window_next_event(neo_vm *vm, const neo_capability *window, neo_input_event *out) {
+    if (out == NULL) { return NEO_INVALID; }
+    *out = (neo_input_event){0};
+    neo_display_resource *resource = NULL;
+    neo_status status = neo_display_resolve(vm, window, NEO_READ | NEO_WRITE, NEO_WINDOW_RESOURCE, &resource);
+    if (status != NEO_OK) { return status; }
+    if (resource->backend.next_event == NULL) { return NEO_UNSUPPORTED; }
+    neo_input_event event = {0};
+    status = resource->backend.next_event(resource->context, &event);
+    if (status != NEO_OK) { return status; }
+    if (event.kind < NEO_INPUT_NONE || event.kind > NEO_INPUT_OVERFLOW ||
+        memchr(event.key, '\0', sizeof(event.key)) == NULL) { return NEO_BAD_STATE; }
+    resource->event = event;
+    *out = event;
+    return NEO_OK;
+}
+
+neo_status neo_window_get_event(neo_vm *vm, const neo_capability *window, neo_input_event *out) {
+    if (out == NULL) { return NEO_INVALID; }
+    *out = (neo_input_event){0};
+    neo_display_resource *resource = NULL;
+    neo_status status = neo_display_resolve(vm, window, NEO_READ, NEO_WINDOW_RESOURCE, &resource);
+    if (status == NEO_OK) { *out = resource->event; }
+    return status;
+}
+
+neo_status neo_buffer_dimensions(neo_vm *vm, const neo_capability *buffer,
+                                 size_t *out_width, size_t *out_height) {
+    if (out_width == NULL || out_height == NULL) { return NEO_INVALID; }
+    *out_width = 0; *out_height = 0;
+    neo_display_resource *resource = NULL;
+    neo_status status = neo_display_resolve(vm, buffer, NEO_READ, NEO_BUFFER_RESOURCE, &resource);
+    if (status == NEO_OK) { *out_width = resource->width; *out_height = resource->height; }
+    return status;
 }

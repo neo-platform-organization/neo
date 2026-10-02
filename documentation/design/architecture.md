@@ -237,3 +237,15 @@ Resumption of arbitrary running images, spatial protocols, rendering, native cod
 **Implemented first interface.** A backend-independent RGBA byte buffer and window callback interface are attached to capability-protected objects by the trusted host. An optional X11 adapter transfers completed pixels and reports close/resize/expose state. The evaluator accesses resources through granted connections only. No scene renderer is added. Private resource storage is not a new scalar payload kind and never exposes native pointers to neo.
 
 **Provisional scope.** Fixed host-created buffer dimensions, byte-at-a-time language writes, 1:1 opaque presentation, and unsupported resource copy/move/persistence keep this initial boundary small. Bulk writes, input-event objects, buffer resizing, and external-resource persistence remain future work. See the [interface reference](../reference/window-interface.md).
+
+## Portable I/O and display direction
+
+**Agreed direction.** External I/O and display access should have object-facing abstractions that permit different OS/hardware backends. Rendering and maths remain in neo, with GUI and higher-dimensional views built above these boundaries. Scheduling and I/O policy ultimately belong in the live graph; native external bindings remain in the kernel.
+
+**Proposed contracts and open choice.** See [I/O and display](io-and-display.md). A presentation backend and a rendering backend have different responsibilities. GPU/software rendering equivalence requires a defined rendering contract; the existing RGBA/X11 interface alone does not provide it. The first polling stream and normalized event interfaces are implemented; message-based completions, full terminal behavior, and fallback policy remain future work. See [I/O interface](../reference/io-interface.md).
+
+The platform-independent capability boundary is now explicitly accepted by the user: image objects use windows, buffers, streams, and supported graphics operations; the kernel contains POSIX/X11/Win32/GPU bindings. Rendering and maths remain in neo. The current scalar stream results and native event snapshots are provisional implementation details, not a replacement for the intended graph-resident system. See [decision 0001](decisions/0001-platform-capabilities.md).
+
+## Initial software rendering implementation
+
+The user requested software rendering first and deferred GPU work. The first reusable implementation lives in neo, with a rotating wireframe cube as its test program. A local `call` invokes receiver-owned handlers using the same authority and a shared execution budget. Native `buffer-fill` only fills storage bytes. Explicit host startup composition copies inert template fields/handlers; this is provisional bootstrap machinery, not agreed language import syntax. See [software renderer](../reference/software-renderer.md).

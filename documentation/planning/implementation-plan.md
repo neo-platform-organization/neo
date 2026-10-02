@@ -43,3 +43,11 @@ Read [code-tour.md](../learning/code-tour.md) before extending the runtime. Prio
 ## External presentation interface
 
 The first window/buffer boundary is implemented with a generic RGBA buffer and an optional X11 backend. No renderer or maths library was added. neo code can write bytes through granted connections and request presentation. See [window interface](../reference/window-interface.md). Higher-level rendering belongs in neo; general input, bulk buffer operations, resource persistence, and resizing buffer storage remain future work.
+
+## Next priority: portable I/O and display contracts
+
+The user prioritizes abstracting terminal/general I/O and display access before GUI or higher-dimensional presentation. The [I/O and display design](../design/io-and-display.md) records the proposed interfaces, current gaps, and unresolved choice between portable pixel presentation and portable GPU/software rendering commands. Design these contracts before adding more backend-specific primitives. The initial polling byte streams, terminal runner, buffer-dimension queries, and normalized window events are implemented. Resumable I/O, graph-resident completion queues, full text input, a production headless surface, and GPU/software rendering fallback remain pending. See the [I/O reference](../reference/io-interface.md).
+
+## First software rendering option
+
+A sequential neo pixel/line renderer and rotating wireframe cube now exercise the platform-independent buffer interface. Local handler calls, byte-buffer clearing, and explicit host template composition support reuse. This is the initial software path, not a completed GUI renderer or automatic fallback selector. Filled triangles, depth, text, and GPU work remain deferred. See [software renderer](../reference/software-renderer.md).

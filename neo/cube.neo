@@ -1,0 +1,350 @@
+// Rotating wireframe cube. Geometry, rotation, projection, and rasterization are neo.
+// Run: ./build/neo-window neo/cube.neo cube neo/software-renderer.neo
+// The host copies the renderer prototype into this actor before execution.
+// Fixed-point trig scale: 10000. Angles are degrees; no accumulated matrix drift.
+// Camera: distance 400, focal length 300. Cube half-size 80 stays ahead of camera.
+// Three edge groups use orange, cyan, and green. Hidden edges stay visible.
+(image
+  (cube
+    (c-yaw 0)
+    (c-pitch 20)
+    (c-angle 0)
+    (c-t 0)
+    (c-sign 0)
+    (c-product 0)
+    (c-trig 0)
+    (c-sin-yaw 0)
+    (c-cos-yaw 0)
+    (c-sin-pitch 0)
+    (c-cos-pitch 0)
+    (c-vx 0)
+    (c-vy 0)
+    (c-vz 0)
+    (c-rx 0)
+    (c-ry 0)
+    (c-rz 0)
+    (c-depth 0)
+    (c-px 0)
+    (c-py 0)
+    (c-x0 0)
+    (c-y0 0)
+    (c-x1 0)
+    (c-y1 0)
+    (c-x2 0)
+    (c-y2 0)
+    (c-x3 0)
+    (c-y3 0)
+    (c-x4 0)
+    (c-y4 0)
+    (c-x5 0)
+    (c-y5 0)
+    (c-x6 0)
+    (c-y6 0)
+    (c-x7 0)
+    (c-y7 0)
+    (handlers
+      (c-sine
+        (body
+          (do
+            (reduce (write (slot "c-t") (value (rem (left (read (slot "c-angle"))) (right 360)))))
+            (positive
+              (if (condition (lt (left (read (slot "c-t"))) (right 0)))
+                (then (write (slot "c-t") (value (add (left (read (slot "c-t"))) (right 360)))))
+                (else)))
+            (sign (write (slot "c-sign") (value 1)))
+            (half-turn
+              (if (condition (ge (left (read (slot "c-t"))) (right 180)))
+                (then
+                  (do
+                    (angle (write (slot "c-t") (value (sub (left (read (slot "c-t"))) (right 180)))))
+                    (sign (write (slot "c-sign") (value -1)))))
+                (else)))
+            (product
+              (write (slot "c-product")
+                (value
+                  (mul (left (read (slot "c-t"))) (right (sub (left 180) (right (read (slot "c-t")))))))))
+            (result
+              (write (slot "c-trig")
+                (value
+                  (mul
+                    (left (read (slot "c-sign")))
+                    (right
+                      (div
+                        (left (mul (left 40000) (right (read (slot "c-product")))))
+                        (right (sub (left 40500) (right (read (slot "c-product"))))))))))))))
+      (c-project
+        (body
+          (do
+            (yaw-x
+              (write (slot "c-rx")
+                (value
+                  (div
+                    (left
+                      (add
+                        (left (mul (left (read (slot "c-vx"))) (right (read (slot "c-cos-yaw")))))
+                        (right (mul (left (read (slot "c-vz"))) (right (read (slot "c-sin-yaw")))))))
+                    (right 10000)))))
+            (yaw-z
+              (write (slot "c-rz")
+                (value
+                  (div
+                    (left
+                      (sub
+                        (left (mul (left (read (slot "c-vz"))) (right (read (slot "c-cos-yaw")))))
+                        (right (mul (left (read (slot "c-vx"))) (right (read (slot "c-sin-yaw")))))))
+                    (right 10000)))))
+            (pitch-y
+              (write (slot "c-ry")
+                (value
+                  (div
+                    (left
+                      (sub
+                        (left (mul (left (read (slot "c-vy"))) (right (read (slot "c-cos-pitch")))))
+                        (right (mul (left (read (slot "c-rz"))) (right (read (slot "c-sin-pitch")))))))
+                    (right 10000)))))
+            (depth
+              (write (slot "c-depth")
+                (value
+                  (add
+                    (left 400)
+                    (right
+                      (div
+                        (left
+                          (add
+                            (left (mul (left (read (slot "c-vy"))) (right (read (slot "c-sin-pitch")))))
+                            (right (mul (left (read (slot "c-rz"))) (right (read (slot "c-cos-pitch")))))))
+                        (right 10000)))))))
+            (screen-x
+              (write (slot "c-px")
+                (value
+                  (add
+                    (left (div (left (read (slot "r-width"))) (right 2)))
+                    (right
+                      (div
+                        (left (mul (left (read (slot "c-rx"))) (right 300)))
+                        (right (read (slot "c-depth")))))))))
+            (screen-y
+              (write (slot "c-py")
+                (value
+                  (sub
+                    (left (div (left (read (slot "r-height"))) (right 2)))
+                    (right
+                      (div
+                        (left (mul (left (read (slot "c-ry"))) (right 300)))
+                        (right (read (slot "c-depth"))))))))))))
+      (frame
+        (body
+          (do
+            (configure (call (selector "r-init")))
+            (clear (call (selector "r-clear")))
+            (sin-yaw
+              (do
+                (angle (write (slot "c-angle") (value (read (slot "c-yaw")))))
+                (evaluate (call (selector "c-sine")))
+                (save (write (slot "c-sin-yaw") (value (read (slot "c-trig")))))))
+            (cos-yaw
+              (do
+                (angle (write (slot "c-angle") (value (add (left (read (slot "c-yaw"))) (right 90)))))
+                (evaluate (call (selector "c-sine")))
+                (save (write (slot "c-cos-yaw") (value (read (slot "c-trig")))))))
+            (sin-pitch
+              (do
+                (angle (write (slot "c-angle") (value (read (slot "c-pitch")))))
+                (evaluate (call (selector "c-sine")))
+                (save (write (slot "c-sin-pitch") (value (read (slot "c-trig")))))))
+            (cos-pitch
+              (do
+                (angle (write (slot "c-angle") (value (add (left (read (slot "c-pitch"))) (right 90)))))
+                (evaluate (call (selector "c-sine")))
+                (save (write (slot "c-cos-pitch") (value (read (slot "c-trig")))))))
+            (vertex-0
+              (do
+                (x (write (slot "c-vx") (value -80)))
+                (y (write (slot "c-vy") (value -80)))
+                (z (write (slot "c-vz") (value -80)))
+                (project (call (selector "c-project")))
+                (save-x (write (slot "c-x0") (value (read (slot "c-px")))))
+                (save-y (write (slot "c-y0") (value (read (slot "c-py")))))))
+            (vertex-1
+              (do
+                (x (write (slot "c-vx") (value 80)))
+                (y (write (slot "c-vy") (value -80)))
+                (z (write (slot "c-vz") (value -80)))
+                (project (call (selector "c-project")))
+                (save-x (write (slot "c-x1") (value (read (slot "c-px")))))
+                (save-y (write (slot "c-y1") (value (read (slot "c-py")))))))
+            (vertex-2
+              (do
+                (x (write (slot "c-vx") (value 80)))
+                (y (write (slot "c-vy") (value 80)))
+                (z (write (slot "c-vz") (value -80)))
+                (project (call (selector "c-project")))
+                (save-x (write (slot "c-x2") (value (read (slot "c-px")))))
+                (save-y (write (slot "c-y2") (value (read (slot "c-py")))))))
+            (vertex-3
+              (do
+                (x (write (slot "c-vx") (value -80)))
+                (y (write (slot "c-vy") (value 80)))
+                (z (write (slot "c-vz") (value -80)))
+                (project (call (selector "c-project")))
+                (save-x (write (slot "c-x3") (value (read (slot "c-px")))))
+                (save-y (write (slot "c-y3") (value (read (slot "c-py")))))))
+            (vertex-4
+              (do
+                (x (write (slot "c-vx") (value -80)))
+                (y (write (slot "c-vy") (value -80)))
+                (z (write (slot "c-vz") (value 80)))
+                (project (call (selector "c-project")))
+                (save-x (write (slot "c-x4") (value (read (slot "c-px")))))
+                (save-y (write (slot "c-y4") (value (read (slot "c-py")))))))
+            (vertex-5
+              (do
+                (x (write (slot "c-vx") (value 80)))
+                (y (write (slot "c-vy") (value -80)))
+                (z (write (slot "c-vz") (value 80)))
+                (project (call (selector "c-project")))
+                (save-x (write (slot "c-x5") (value (read (slot "c-px")))))
+                (save-y (write (slot "c-y5") (value (read (slot "c-py")))))))
+            (vertex-6
+              (do
+                (x (write (slot "c-vx") (value 80)))
+                (y (write (slot "c-vy") (value 80)))
+                (z (write (slot "c-vz") (value 80)))
+                (project (call (selector "c-project")))
+                (save-x (write (slot "c-x6") (value (read (slot "c-px")))))
+                (save-y (write (slot "c-y6") (value (read (slot "c-py")))))))
+            (vertex-7
+              (do
+                (x (write (slot "c-vx") (value -80)))
+                (y (write (slot "c-vy") (value 80)))
+                (z (write (slot "c-vz") (value 80)))
+                (project (call (selector "c-project")))
+                (save-x (write (slot "c-x7") (value (read (slot "c-px")))))
+                (save-y (write (slot "c-y7") (value (read (slot "c-py")))))))
+            (edge-0
+              (do
+                (x0 (write (slot "r-x0") (value (read (slot "c-x0")))))
+                (y0 (write (slot "r-y0") (value (read (slot "c-y0")))))
+                (x1 (write (slot "r-x1") (value (read (slot "c-x1")))))
+                (y1 (write (slot "r-y1") (value (read (slot "c-y1")))))
+                (red (write (slot "r-red") (value 255)))
+                (green (write (slot "r-green") (value 150)))
+                (blue (write (slot "r-blue") (value 75)))
+                (rasterize (call (selector "r-line")))))
+            (edge-1
+              (do
+                (x0 (write (slot "r-x0") (value (read (slot "c-x1")))))
+                (y0 (write (slot "r-y0") (value (read (slot "c-y1")))))
+                (x1 (write (slot "r-x1") (value (read (slot "c-x2")))))
+                (y1 (write (slot "r-y1") (value (read (slot "c-y2")))))
+                (red (write (slot "r-red") (value 255)))
+                (green (write (slot "r-green") (value 150)))
+                (blue (write (slot "r-blue") (value 75)))
+                (rasterize (call (selector "r-line")))))
+            (edge-2
+              (do
+                (x0 (write (slot "r-x0") (value (read (slot "c-x2")))))
+                (y0 (write (slot "r-y0") (value (read (slot "c-y2")))))
+                (x1 (write (slot "r-x1") (value (read (slot "c-x3")))))
+                (y1 (write (slot "r-y1") (value (read (slot "c-y3")))))
+                (red (write (slot "r-red") (value 255)))
+                (green (write (slot "r-green") (value 150)))
+                (blue (write (slot "r-blue") (value 75)))
+                (rasterize (call (selector "r-line")))))
+            (edge-3
+              (do
+                (x0 (write (slot "r-x0") (value (read (slot "c-x3")))))
+                (y0 (write (slot "r-y0") (value (read (slot "c-y3")))))
+                (x1 (write (slot "r-x1") (value (read (slot "c-x0")))))
+                (y1 (write (slot "r-y1") (value (read (slot "c-y0")))))
+                (red (write (slot "r-red") (value 255)))
+                (green (write (slot "r-green") (value 150)))
+                (blue (write (slot "r-blue") (value 75)))
+                (rasterize (call (selector "r-line")))))
+            (edge-4
+              (do
+                (x0 (write (slot "r-x0") (value (read (slot "c-x4")))))
+                (y0 (write (slot "r-y0") (value (read (slot "c-y4")))))
+                (x1 (write (slot "r-x1") (value (read (slot "c-x5")))))
+                (y1 (write (slot "r-y1") (value (read (slot "c-y5")))))
+                (red (write (slot "r-red") (value 75)))
+                (green (write (slot "r-green") (value 205)))
+                (blue (write (slot "r-blue") (value 255)))
+                (rasterize (call (selector "r-line")))))
+            (edge-5
+              (do
+                (x0 (write (slot "r-x0") (value (read (slot "c-x5")))))
+                (y0 (write (slot "r-y0") (value (read (slot "c-y5")))))
+                (x1 (write (slot "r-x1") (value (read (slot "c-x6")))))
+                (y1 (write (slot "r-y1") (value (read (slot "c-y6")))))
+                (red (write (slot "r-red") (value 75)))
+                (green (write (slot "r-green") (value 205)))
+                (blue (write (slot "r-blue") (value 255)))
+                (rasterize (call (selector "r-line")))))
+            (edge-6
+              (do
+                (x0 (write (slot "r-x0") (value (read (slot "c-x6")))))
+                (y0 (write (slot "r-y0") (value (read (slot "c-y6")))))
+                (x1 (write (slot "r-x1") (value (read (slot "c-x7")))))
+                (y1 (write (slot "r-y1") (value (read (slot "c-y7")))))
+                (red (write (slot "r-red") (value 75)))
+                (green (write (slot "r-green") (value 205)))
+                (blue (write (slot "r-blue") (value 255)))
+                (rasterize (call (selector "r-line")))))
+            (edge-7
+              (do
+                (x0 (write (slot "r-x0") (value (read (slot "c-x7")))))
+                (y0 (write (slot "r-y0") (value (read (slot "c-y7")))))
+                (x1 (write (slot "r-x1") (value (read (slot "c-x4")))))
+                (y1 (write (slot "r-y1") (value (read (slot "c-y4")))))
+                (red (write (slot "r-red") (value 75)))
+                (green (write (slot "r-green") (value 205)))
+                (blue (write (slot "r-blue") (value 255)))
+                (rasterize (call (selector "r-line")))))
+            (edge-8
+              (do
+                (x0 (write (slot "r-x0") (value (read (slot "c-x0")))))
+                (y0 (write (slot "r-y0") (value (read (slot "c-y0")))))
+                (x1 (write (slot "r-x1") (value (read (slot "c-x4")))))
+                (y1 (write (slot "r-y1") (value (read (slot "c-y4")))))
+                (red (write (slot "r-red") (value 160)))
+                (green (write (slot "r-green") (value 235)))
+                (blue (write (slot "r-blue") (value 170)))
+                (rasterize (call (selector "r-line")))))
+            (edge-9
+              (do
+                (x0 (write (slot "r-x0") (value (read (slot "c-x1")))))
+                (y0 (write (slot "r-y0") (value (read (slot "c-y1")))))
+                (x1 (write (slot "r-x1") (value (read (slot "c-x5")))))
+                (y1 (write (slot "r-y1") (value (read (slot "c-y5")))))
+                (red (write (slot "r-red") (value 160)))
+                (green (write (slot "r-green") (value 235)))
+                (blue (write (slot "r-blue") (value 170)))
+                (rasterize (call (selector "r-line")))))
+            (edge-10
+              (do
+                (x0 (write (slot "r-x0") (value (read (slot "c-x2")))))
+                (y0 (write (slot "r-y0") (value (read (slot "c-y2")))))
+                (x1 (write (slot "r-x1") (value (read (slot "c-x6")))))
+                (y1 (write (slot "r-y1") (value (read (slot "c-y6")))))
+                (red (write (slot "r-red") (value 160)))
+                (green (write (slot "r-green") (value 235)))
+                (blue (write (slot "r-blue") (value 170)))
+                (rasterize (call (selector "r-line")))))
+            (edge-11
+              (do
+                (x0 (write (slot "r-x0") (value (read (slot "c-x3")))))
+                (y0 (write (slot "r-y0") (value (read (slot "c-y3")))))
+                (x1 (write (slot "r-x1") (value (read (slot "c-x7")))))
+                (y1 (write (slot "r-y1") (value (read (slot "c-y7")))))
+                (red (write (slot "r-red") (value 160)))
+                (green (write (slot "r-green") (value 235)))
+                (blue (write (slot "r-blue") (value 170)))
+                (rasterize (call (selector "r-line")))))
+            (present (window-present (target "window") (buffer "buffer")))
+            (yaw
+              (write (slot "c-yaw")
+                (value (rem (left (add (left (read (slot "c-yaw"))) (right 3))) (right 360)))))
+            (pitch
+              (write (slot "c-pitch")
+                (value (rem (left (add (left (read (slot "c-pitch"))) (right 2))) (right 360)))))))))))

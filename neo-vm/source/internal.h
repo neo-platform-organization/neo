@@ -12,6 +12,8 @@ typedef struct neo_edge {
     struct neo_edge *next;
 } neo_edge;
 
+typedef struct neo_stream_resource neo_stream_resource;
+
 typedef struct neo_display_resource neo_display_resource;
 
 typedef struct neo_object {
@@ -23,6 +25,7 @@ typedef struct neo_object {
     neo_value value;
     neo_edge *edges;
     neo_display_resource *display;
+    neo_stream_resource *stream;
     bool deleting;
     bool ether;
     neo_message *message;
@@ -67,6 +70,7 @@ void neo_messages_destroy(neo_vm *vm);
 bool neo_actor_has_messages(neo_vm *vm, neo_object_id id);
 
 char *neo_string(neo_vm *vm, const char *source);
+void neo_stream_release(neo_vm *vm, neo_object *object);
 void neo_display_release(neo_vm *vm, neo_object *object);
 void neo_object_free(neo_vm *vm, neo_object *object);
 neo_object *neo_child_named(neo_vm *vm, neo_object_id parent, const char *name);

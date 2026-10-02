@@ -92,6 +92,18 @@ Keep these limits visible when extending the system. Do not claim complete image
 
 `make test` includes fake-backend window/buffer tests, authority and bounds checks, neo primitive invocation, and allocation-failure rollback. `make test-window` explicitly opens a short-lived window and checks pixel readback, resize, and close events. `build/sanitize_display` covers the headless resource boundary; its verified sandbox run disabled leak detection, with allocation-fault tests separately checking balanced VM ownership.
 
-New modules: `neo_display.h`/`display.c` define resource ownership and buffer operations; `neo_window_x11.h`/`window_x11.c` implement the optional backend. Live resources block copy/move/serialization. Xlib connection-loss recovery and general input events are not implemented. See [window interface](../reference/window-interface.md).
+New modules: `neo_display.h`/`display.c` define resource ownership and buffer operations; `neo_window_x11.h`/`window_x11.c` implement the optional backend. Live resources block copy/move/serialization. Xlib connection-loss recovery is not implemented; the basic normalized event subset is described below. See [window interface](../reference/window-interface.md).
 
 The neo-only triangle example runs with `./build/neo-window neo/triangle.neo triangle`. `make test` executes its actual image through a headless backend, checks every RGBA pixel against the triangle boundaries, checks per-frame execution budgets and completed-frame behavior, and writes `build/triangle.ppm` for inspection.
+
+## Streams and normalized events
+
+`make io` builds `build/neo-io`; run `./build/neo-io neo/terminal.neo terminal greet` to write through a granted stdout stream. The optional POSIX adapter lives in `io_posix.c`, while `io.c`/`neo_io.h` define the portable stream boundary. `make test` now builds this runner for output-redirection checks and tests EOF, partial writes, would-block, broken pipes, rights, lifetime, and allocation rollback.
+
+The window callback interface now optionally exposes normalized input events. X11 translates native input into a bounded queue with explicit overflow reporting. Fake-backend tests cover event snapshots and buffer dimensions; `make test-window` covers real translation and queue overflow. ASan/UBSan runs of `sanitize_io` and `sanitize_display` passed with leak detection disabled in the sandbox. See [I/O interface](../reference/io-interface.md) for remaining blocking, text-input, and graph-state limitations.
+
+## Software renderer and cube
+
+`./build/neo-window neo/cube.neo cube neo/software-renderer.neo` runs the neo software line renderer. `make test` includes actual-image renderer/projection checks and local-call execution limits. Sanitizer targets `sanitize_renderer`, `sanitize_runtime`, and `sanitize_display` cover the new paths; verified sandbox runs use `ASAN_OPTIONS=detect_leaks=0`.
+
+`bootstrap.c` implements explicit host-only copying of inert template fields and handlers before startup; it is not a runtime module loader. On bootstrap failure, discard the partially composed image. `buffer-fill` is a byte-storage operation; the rendering algorithms remain in neo. Exact immutable capability grants are reused to avoid per-pixel handle growth. See [software renderer](../reference/software-renderer.md).

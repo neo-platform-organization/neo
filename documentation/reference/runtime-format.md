@@ -68,6 +68,7 @@ Nonprimitive payload objects evaluate as scalar values. The ordinary empty paylo
 
 | Binding | Named children / behavior |
 | --- | --- |
+| call | selector; invoke a local handler with the same receiver, authority, current message, and shared budget. Nested return ends only that call. |
 | do | Evaluate contained children in order; return the last result, or unit when empty. |
 | if | condition, then, else; evaluate the boolean condition and only the selected branch. |
 | while | condition, body; repeat while the condition is true; normal result is unit. |
@@ -89,7 +90,11 @@ State read/write is deliberately confined to the receiver's immediate children. 
 
 ## External window and buffer primitives
 
-Host-granted resources support `buffer-read`, `buffer-write`, `buffer-size`, `window-present`, `window-poll`, `window-width`, and `window-height`. See the [window interface](window-interface.md) for operands, rights, RGBA layout, ownership, and X11 limits. These are byte access and external presentation operations; no renderer or maths library is implemented in the backend. Loading an image alone never grants display access.
+Host-granted resources support `buffer-fill`, `buffer-read`, `buffer-write`, `buffer-size`, `window-present`, `window-poll`, `window-width`, and `window-height`. See the [window interface](window-interface.md) for operands, rights, RGBA layout, ownership, and X11 limits. These are byte access and external presentation operations; no renderer or maths library is implemented in the backend. Loading an image alone never grants display access.
+
+## Stream and event interface
+
+`stream-read` and `stream-write` operate only on host-granted stream connections. `buffer-width`/`buffer-height` query pixel dimensions. `window-next-event` consumes a normalized event; `window-event` reads its last snapshot. See [I/O interface](io-interface.md) for operands, permissions, EOF/would-block results, terminal setup, and event fields. The first implementation polls synchronously; it does not add resumable I/O or move the scheduler into the graph.
 
 ## Scheduler and failures
 
@@ -103,6 +108,10 @@ A failed message remains processing and blocks the receiver. Earlier effects rem
 
 ## Persistence boundary
 
-Formatting/duplicating ordinary quiescent images is supported. Images containing host windows/pixel buffers, ETHER, messages, active queues, or enabled/failed registrations are explicitly rejected. Pause/unregister alone cannot make a message-bearing image serializable yet. A future codec must preserve all of that state; silently dropping it is not acceptable.
+Formatting/duplicating ordinary quiescent images is supported. Images containing streams, host windows/pixel buffers, ETHER, messages, active queues, or enabled/failed registrations are explicitly rejected. Pause/unregister alone cannot make a message-bearing image serializable yet. A future codec must preserve all of that state; silently dropping it is not acceptable.
 
 The CLI's format/clone commands write text to stdout; neither unload nor formatting deletes or overwrites an input file. External-resource persistence and migration of running native activations are not implemented.
+
+## Software renderer templates
+
+The [software renderer](software-renderer.md) uses the local `call` primitive and `buffer-fill` memory operation. The window launcher can copy explicitly supplied template fields/handlers into an actor before execution. This host-only bootstrap facility does not establish language import syntax or permit ordinary cross-image object copies.

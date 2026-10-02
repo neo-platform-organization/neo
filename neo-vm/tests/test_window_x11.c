@@ -3,6 +3,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/keysym.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,12 +15,6 @@
 
 static Window neo_find_window(Display *display, Window parent, const char *title, unsigned depth) {
     if (depth > 8) { return None; }
-    char *name = NULL;
-    if (XFetchName(display, parent, &name) != 0 && name != NULL) {
-        bool match = strcmp(name, title) == 0;
-        XFree(name);
-        if (match) { return parent; }
-    }
     Window root, owner, *children = NULL;
     unsigned count = 0;
     Window found = None;
@@ -29,6 +24,12 @@ static Window neo_find_window(Display *display, Window parent, const char *title
         }
     }
     if (children != NULL) { XFree(children); }
+    char *name = NULL;
+    if (XFetchName(display, parent, &name) != 0 && name != NULL) {
+        bool match = strcmp(name, title) == 0;
+        XFree(name);
+        if (match && found == None) { found = parent; }
+    }
     return found;
 }
 
@@ -39,9 +40,9 @@ int main(void) {
     const neo_capability *root, *buffer, *window;
     OK(neo_vm_create(NULL, &vm));
     OK(neo_image_create(vm, "test", &root));
-    OK(neo_buffer_create(vm, root, "pixels", 2, 1, &buffer));
+    OK(neo_buffer_create(vm, root, "pixels", 32, 32, &buffer));
     const uint8_t pixels[] = {255, 0, 0, 255, 0, 255, 0, 255};
-    OK(neo_buffer_write(vm, buffer, 0, pixels, sizeof(pixels)));
+    OK(neo_buffer_write(vm, buffer, (16u * 32u + 16u) * 4u, pixels, sizeof(pixels)));
     char title[80];
     (void)snprintf(title, sizeof(title), "neo X11 interface test %ld", (long)getpid());
     OK(neo_window_x11_create(vm, root, "window", title, 64, 64, &window));
@@ -55,6 +56,8 @@ int main(void) {
         (void)nanosleep(&delay, NULL);
     }
     CHECK(native != None);
+    XRaiseWindow(display, native);
+    XSync(display, False);
     neo_window_state state;
     OK(neo_window_poll(vm, window, &state));
     CHECK(!state.closed && state.width != 0 && state.height != 0);
@@ -64,7 +67,7 @@ int main(void) {
         OK(neo_window_poll(vm, window, &state));
         OK(neo_window_present(vm, window, buffer));
         (void)nanosleep(&delay, NULL);
-        XImage *image = XGetImage(display, native, 0, 0, 2, 1, AllPlanes, ZPixmap);
+        XImage *image = XGetImage(display, native, 16, 16, 2, 1, AllPlanes, ZPixmap);
         CHECK(image != NULL);
         unsigned long red = XGetPixel(image, 0, 0), green = XGetPixel(image, 1, 0);
         colors_match = (red & image->red_mask) == image->red_mask &&
@@ -87,6 +90,45 @@ int main(void) {
     }
     CHECK(state.width == 96 && state.height == 80);
     OK(neo_window_present(vm, window, buffer));
+    neo_input_event input;
+    do { OK(neo_window_next_event(vm, window, &input)); } while (input.kind != NEO_INPUT_NONE);
+    XEvent motion = {0};
+    motion.xmotion.type = MotionNotify;
+    motion.xmotion.window = native;
+    motion.xmotion.x = 12;
+    motion.xmotion.y = 23;
+    for (unsigned i = 0; i < 100; ++i) {
+        CHECK(XSendEvent(display, native, False, PointerMotionMask, &motion) != 0);
+    }
+    XSync(display, False);
+    (void)nanosleep(&delay, NULL);
+    OK(neo_window_poll(vm, window, &state));
+    unsigned pointers = 0;
+    uint64_t lost = 0;
+    do {
+        OK(neo_window_next_event(vm, window, &input));
+        if (input.kind == NEO_INPUT_POINTER) {
+            CHECK(input.x == 12 && input.y == 23);
+            ++pointers;
+        }
+        if (input.kind == NEO_INPUT_OVERFLOW) { lost += input.lost; }
+    } while (input.kind != NEO_INPUT_NONE);
+    CHECK(pointers > 0 && pointers <= 64 && lost >= 36);
+    XEvent key = {0};
+    key.xkey.type = KeyPress;
+    key.xkey.display = display;
+    key.xkey.window = native;
+    key.xkey.keycode = XKeysymToKeycode(display, XK_Return);
+    CHECK(XSendEvent(display, native, False, KeyPressMask, &key) != 0);
+    XSync(display, False);
+    (void)nanosleep(&delay, NULL);
+    OK(neo_window_poll(vm, window, &state));
+    bool enter = false;
+    do {
+        OK(neo_window_next_event(vm, window, &input));
+        if (input.kind == NEO_INPUT_KEY) { enter = input.pressed && strcmp(input.key, "enter") == 0; }
+    } while (input.kind != NEO_INPUT_NONE);
+    CHECK(enter);
     XEvent event = {0};
     event.xclient.type = ClientMessage;
     event.xclient.window = native;
@@ -103,6 +145,6 @@ int main(void) {
     CHECK(neo_window_present(vm, window, buffer) == NEO_UNAVAILABLE);
     neo_vm_destroy(vm);
     XCloseDisplay(display);
-    puts("PASS: X11 pixel transfer/readback, resize, close event, resource cleanup");
+    puts("PASS: X11 pixels, resize, normalized pointer/key events, queue overflow, close, cleanup");
     return EXIT_SUCCESS;
 }

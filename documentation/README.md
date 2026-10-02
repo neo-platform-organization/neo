@@ -20,6 +20,8 @@ documentation/
     runtime-format.md
     syntax-cheat-sheet.md
     window-interface.md
+    io-interface.md
+    software-renderer.md
   development/
     build-and-test.md
     c-conventions.md
@@ -27,6 +29,7 @@ documentation/
   design/
     architecture.md
     language-design.md
+    io-and-display.md
     whitepaper.md
     decisions/
       README.md
@@ -55,7 +58,9 @@ Do not create empty subject folders in advance. Split a long guide when the new 
 | Authority and ETHER messages | [Architecture](design/architecture.md) | [Runtime format and lifecycle](reference/runtime-format.md) |
 | Execution, control flow, scheduling, failures | [Code tour](learning/code-tour.md) | [Primitive and scheduler rules](reference/runtime-format.md) |
 | Images and persistence | [Architecture](design/architecture.md) | [Graph format and persistence boundary](reference/runtime-format.md) |
-| Windows and pixel buffers | [Code tour](learning/code-tour.md) | [Window interface](reference/window-interface.md) |
+| Streams, terminal, and input | [I/O design](design/io-and-display.md) | [I/O interface](reference/io-interface.md) |
+| Windows and pixel buffers | [I/O and display design](design/io-and-display.md), [code tour](learning/code-tour.md) | [Window interface](reference/window-interface.md) |
+| Software rendering | [Code tour](learning/code-tour.md) | [Renderer and cube](reference/software-renderer.md) |
 | Spatial model and long-term vision | [Whitepaper](design/whitepaper.md), [plan](planning/implementation-plan.md) | Not implemented; do not infer support from the vision. |
 
 ## Status and authority

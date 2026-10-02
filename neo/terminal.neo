@@ -1,0 +1,24 @@
+// Run: ./build/neo-io neo/terminal.neo terminal greet
+// Streams are granted objects; this image does not know POSIX descriptors.
+(image
+  (terminal
+    (offset 0)
+    (written 0)
+    (handlers
+      (greet
+        (body
+          (while (condition (lt (left (read (slot "offset"))) (right 15)))
+            (body
+              (do
+                (attempt
+                  (write (slot "written")
+                    (value (stream-write (target "stdout") (value "hello from neo\n")
+                      (offset (read (slot "offset")))))))
+                (check
+                  (if (condition (eq (left (read (slot "written"))) (right "would-block")))
+                    // This example fails explicitly; a future scheduler can retry later.
+                    (then (fail))
+                    (else
+                      (write (slot "offset")
+                        (value (add (left (read (slot "offset")))
+                          (right (read (slot "written")))))))))))))))))

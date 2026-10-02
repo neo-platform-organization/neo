@@ -141,6 +141,11 @@ static void neo_cap_publish(neo_vm *vm, neo_capability *cap) {
 
 neo_status neo_issue(neo_vm *vm, neo_object_id id, unsigned rights,
                             const neo_capability **out) {
+    /* Capabilities are immutable. Reuse an exact grant instead of allocating
+     * another permanent handle on every connection lookup (e.g. each pixel). */
+    for (neo_capability *known = vm->capabilities; known != NULL; known = known->next) {
+        if (known->target == id && known->rights == rights) { *out = known; return NEO_OK; }
+    }
     neo_capability *cap = neo_cap_new(vm, id, rights);
     if (cap == NULL) {
         return NEO_OUT_OF_MEMORY;
@@ -151,6 +156,7 @@ neo_status neo_issue(neo_vm *vm, neo_object_id id, unsigned rights,
 }
 
 void neo_object_free(neo_vm *vm, neo_object *object) {
+    neo_stream_release(vm, object);
     neo_display_release(vm, object);
     neo_edge *edge = object->edges;
     while (edge != NULL) {
@@ -545,7 +551,7 @@ static neo_status neo_duplicate(neo_vm *vm, neo_object *source,
                                  unsigned rights, const neo_capability **out) {
     for (neo_object *node = vm->objects; node != NULL; node = node->next) {
         if (neo_inside(vm, node, source->id) &&
-            (node->display != NULL || node->message != NULL || node->ether || node->inbox_first != NULL ||
+            (node->stream != NULL || node->display != NULL || node->message != NULL || node->ether || node->inbox_first != NULL ||
              node->active_message != NULL || neo_actor_has_messages(vm, node->id) ||
              neo_scheduler_contains(vm, node->id))) {
             return NEO_UNSUPPORTED;

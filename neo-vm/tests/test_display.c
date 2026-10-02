@@ -34,7 +34,7 @@ static void neo_fake_destroy(void *context) {
     ++fake->destroyed;
 }
 
-static const neo_window_backend neo_fake_backend = {neo_fake_present, neo_fake_poll, neo_fake_destroy};
+static const neo_window_backend neo_fake_backend = {neo_fake_present, neo_fake_poll, neo_fake_destroy, NULL};
 
 static void neo_test_display(void) {
     neo_vm *vm;
@@ -74,6 +74,11 @@ static void neo_test_display(void) {
     OK(neo_buffer_write(vm, buffer, 8, NULL, 0));
     OK(neo_capability_restrict(vm, buffer, NEO_READ, &read_only));
     CHECK(neo_buffer_write(vm, read_only, 0, bytes, 1) == NEO_DENIED);
+    CHECK(neo_buffer_fill(vm, read_only, 42) == NEO_DENIED);
+    OK(neo_buffer_fill(vm, buffer, 42));
+    OK(neo_buffer_read(vm, buffer, 0, bytes, sizeof(bytes)));
+    for (size_t i = 0; i < sizeof(bytes); ++i) { CHECK(bytes[i] == 42); }
+    OK(neo_buffer_fill(vm, buffer, 0));
     CHECK(neo_buffer_read(vm, window, 0, bytes, 1) == NEO_WRONG_KIND);
     neo_execution report;
     CHECK(neo_behavior_run(vm, actor, "frame", NULL, 100, &report) == NEO_UNAVAILABLE);
@@ -165,7 +170,63 @@ static void neo_test_allocations(void) {
     }
 }
 
+static neo_status neo_test_next_event(void *context, neo_input_event *out) {
+    neo_fake_window *fake = context;
+    if (fake->failure != NEO_OK) { return fake->failure; }
+    *out = (neo_input_event){.kind = NEO_INPUT_KEY, .pressed = true, .key = "enter"};
+    return NEO_OK;
+}
+
+static void neo_test_events(void) {
+    neo_vm *vm;
+    OK(neo_vm_create(NULL, &vm));
+    const neo_capability *root, *actor, *window, *restricted, *buffer;
+    neo_diagnostic error;
+    OK(neo_image_parse(vm,
+        "(image (actor (handlers"
+        " (next (body (window-next-event (target \"window\"))))"
+        " (key (body (window-event (target \"window\") (field \"key\"))))"
+        " (pressed (body (window-event (target \"window\") (field \"pressed\"))))"
+        " (width (body (buffer-width (target \"buffer\"))))"
+        " (height (body (buffer-height (target \"buffer\"))))"
+        ")))", &root, &error));
+    OK(neo_object_child(vm, root, "actor", &actor));
+    neo_fake_window fake = {0};
+    neo_window_backend backend = neo_fake_backend;
+    backend.next_event = neo_test_next_event;
+    OK(neo_window_create(vm, root, "window", &backend, &fake, &window));
+    OK(neo_buffer_create(vm, root, "buffer", 3, 2, &buffer));
+    OK(neo_object_connect(vm, actor, "window", window, NEO_READ | NEO_WRITE));
+    OK(neo_object_connect(vm, actor, "buffer", buffer, NEO_READ));
+    OK(neo_capability_restrict(vm, window, NEO_READ, &restricted));
+    neo_input_event event;
+    CHECK(neo_window_next_event(vm, restricted, &event) == NEO_DENIED);
+    neo_execution report;
+    OK(neo_behavior_run(vm, actor, "next", NULL, 100, &report));
+    CHECK(report.result.kind == NEO_TEXT && strcmp(report.result.text, "key") == 0);
+    neo_execution_release(vm, &report);
+    OK(neo_behavior_run(vm, actor, "key", NULL, 100, &report));
+    CHECK(report.result.kind == NEO_TEXT && strcmp(report.result.text, "enter") == 0);
+    neo_execution_release(vm, &report);
+    OK(neo_behavior_run(vm, actor, "pressed", NULL, 100, &report));
+    CHECK(report.result.kind == NEO_BOOLEAN && report.result.boolean);
+    neo_execution_release(vm, &report);
+    OK(neo_behavior_run(vm, actor, "width", NULL, 100, &report));
+    CHECK(report.result.kind == NEO_INTEGER && report.result.integer == 3);
+    neo_execution_release(vm, &report);
+    OK(neo_behavior_run(vm, actor, "height", NULL, 100, &report));
+    CHECK(report.result.kind == NEO_INTEGER && report.result.integer == 2);
+    neo_execution_release(vm, &report);
+    fake.failure = NEO_IO_ERROR;
+    CHECK(neo_window_next_event(vm, window, &event) == NEO_IO_ERROR);
+    OK(neo_window_get_event(vm, restricted, &event));
+    CHECK(event.kind == NEO_INPUT_KEY && strcmp(event.key, "enter") == 0);
+    neo_vm_destroy(vm);
+    CHECK(fake.destroyed == 1);
+}
+
 int main(void) {
+    neo_test_events();
     neo_test_display();
     neo_test_allocations();
     puts("PASS: buffer bounds, display authority, neo primitives, lifecycle, backend failures, allocation rollback");

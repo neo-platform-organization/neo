@@ -364,7 +364,38 @@ static void neo_test_tokens_and_comments(void) {
     neo_vm_destroy(vm);
 }
 
+static void neo_test_local_calls(void) {
+    neo_vm *vm;
+    OK(neo_vm_create(NULL, &vm));
+    const neo_capability *root = neo_parse(vm,
+        "(actor (handlers"
+        " (value (body (return (value 7))))"
+        " (outer (body (add (left (call (selector \"value\"))) (right 2))))"
+        " (recursive (body (call (selector \"recursive\"))))"
+        " (missing (body (call (selector \"absent\"))))"
+        " (bad (body (call (selector 7))))"
+        " (early (body (call (selector (return (value 11))))))"
+        "))");
+    neo_execution report;
+    OK(neo_behavior_run(vm, root, "outer", NULL, 100, &report));
+    CHECK(report.result.kind == NEO_INTEGER && report.result.integer == 9);
+    neo_execution_release(vm, &report);
+    OK(neo_behavior_run(vm, root, "early", NULL, 100, &report));
+    CHECK(report.result.kind == NEO_INTEGER && report.result.integer == 11);
+    neo_execution_release(vm, &report);
+    CHECK(neo_behavior_run(vm, root, "outer", NULL, 4, &report) == NEO_LIMIT);
+    neo_execution_release(vm, &report);
+    CHECK(neo_behavior_run(vm, root, "recursive", NULL, 1000000, &report) == NEO_LIMIT);
+    neo_execution_release(vm, &report);
+    CHECK(neo_behavior_run(vm, root, "missing", NULL, 100, &report) == NEO_UNAVAILABLE);
+    neo_execution_release(vm, &report);
+    CHECK(neo_behavior_run(vm, root, "bad", NULL, 100, &report) == NEO_WRONG_KIND);
+    neo_execution_release(vm, &report);
+    neo_vm_destroy(vm);
+}
+
 int main(void) {
+    neo_test_local_calls();
     neo_test_tokens_and_comments();
     neo_test_dynamic_literals();
     neo_test_reader_and_roundtrip();

@@ -498,7 +498,7 @@ static neo_status neo_write_node(neo_writer *writer, neo_object *node, size_t de
     if (depth > NEO_DEPTH_LIMIT || writer->nodes++ == NEO_NODE_LIMIT) {
         return NEO_LIMIT;
     }
-    if (node->display != NULL || node->ether || node->message != NULL || node->inbox_first != NULL ||
+    if (node->stream != NULL || node->display != NULL || node->ether || node->message != NULL || node->inbox_first != NULL ||
         node->active_message != NULL || neo_actor_has_messages(writer->vm, node->id) ||
         neo_scheduler_contains(writer->vm, node->id)) {
         return NEO_UNSUPPORTED;
