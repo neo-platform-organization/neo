@@ -33,3 +33,7 @@ gmon.out
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Specific files
+/neo/if.neo
+/neo/inspector.neo

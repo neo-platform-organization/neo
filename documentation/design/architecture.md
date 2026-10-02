@@ -2,6 +2,13 @@
 
 [Documentation index](../README.md)
 
+Quotes always denote text payloads, never identifiers or primitive bindings. Use `(word "if")` for text and `(if ...)` for the primitive. Comments start with `//`; `>` is not a comment marker. The current reader requires bare object names and rejects quoted names. This supersedes earlier quoted-name and quoted-binding syntax.
+
+## Accepted typing and executable syntax update
+
+neo is dynamically typed. Fields have current payload kinds, not fixed declared types; writes can change those kinds. The reader accepts `(n 7)`, `(flag true)`, and `(name "Alice")`, with runtime checks for operation compatibility. `(if ...)` selects a primitive by its name. Known primitive names bind implicitly when no payload is supplied. Explicit literal payloads remain data; `:object` can suppress implicit binding for a data-only object with a reserved name. Named wrappers such as `(body (if ...))` hold nested operations. Legacy tagged input remains supported. See the [runtime reference](../reference/runtime-format.md) for exact behavior; older syntax examples below are historical proposals where they differ.
+
+
 ## Purpose and authority
 
 An initial interpreter now implements a subset of this architecture. Read [build-and-test.md](../development/build-and-test.md) for actual support, [runtime-format.md](../reference/runtime-format.md) for executable syntax, and [code-tour.md](../learning/code-tour.md) for the reading path. Proposed features below must not be mistaken for implemented behavior.
@@ -222,3 +229,11 @@ The four highest-priority remaining decisions are ETHER reachability, enforceabl
 Implement provisional mechanisms behind narrow interfaces and label their defaults. Do not infer that the user's approval of the general architecture settles every entry marked proposed or open.
 
 Resumption of arbitrary running images, spatial protocols, rendering, native code generation, and kernel self-reproduction are later stages. Keep them possible without claiming they are implemented by the initial object store.
+
+## Window and rendering boundary
+
+**Agreed.** Windowing and access to a render buffer are host interfaces. Rendering algorithms, maths, and higher-level libraries belong in neo. The user selected plain X11 windowing instead of OpenGL.
+
+**Implemented first interface.** A backend-independent RGBA byte buffer and window callback interface are attached to capability-protected objects by the trusted host. An optional X11 adapter transfers completed pixels and reports close/resize/expose state. The evaluator accesses resources through granted connections only. No scene renderer is added. Private resource storage is not a new scalar payload kind and never exposes native pointers to neo.
+
+**Provisional scope.** Fixed host-created buffer dimensions, byte-at-a-time language writes, 1:1 opaque presentation, and unsupported resource copy/move/persistence keep this initial boundary small. Bulk writes, input-event objects, buffer resizing, and external-resource persistence remain future work. See the [interface reference](../reference/window-interface.md).

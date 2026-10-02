@@ -4,10 +4,10 @@ CPPFLAGS += -Ineo-vm/include
 CFLAGS ?= -std=c17 -O0 -g
 WARNINGS = -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow -Wstrict-prototypes
 BUILD = build
-SOURCES = neo-vm/source/object.c neo-vm/source/message.c neo-vm/source/image.c neo-vm/source/evaluator.c neo-vm/source/scheduler.c
-HEADERS = neo-vm/include/neo.h neo-vm/include/neo_message.h neo-vm/include/neo_image.h neo-vm/include/neo_execution.h neo-vm/source/internal.h
+SOURCES = neo-vm/source/object.c neo-vm/source/message.c neo-vm/source/image.c neo-vm/source/evaluator.c neo-vm/source/scheduler.c neo-vm/source/display.c
+HEADERS = neo-vm/include/neo.h neo-vm/include/neo_display.h neo-vm/include/neo_message.h neo-vm/include/neo_image.h neo-vm/include/neo_execution.h neo-vm/source/internal.h
 OBJECTS = $(SOURCES:neo-vm/source/%.c=$(BUILD)/%.o)
-TEST_NAMES = objects messages runtime
+TEST_NAMES = objects messages runtime display triangle
 TESTS = $(addprefix $(BUILD)/test_,$(TEST_NAMES))
 SANITIZERS = $(addprefix $(BUILD)/sanitize_,$(TEST_NAMES))
 
@@ -51,3 +51,20 @@ clean:
 	rm -rf $(BUILD)
 
 -include $(OBJECTS:.o=.d)
+
+# Optional X11 host adapter; the core runtime remains independent of Xlib.
+X11_CFLAGS ?= $(shell pkg-config --cflags x11)
+X11_LIBS ?= $(shell pkg-config --libs x11)
+.PHONY: window
+window: $(BUILD)/neo-window
+
+$(BUILD)/neo-window: neo-vm/examples/window.c neo-vm/source/window_x11.c neo-vm/include/neo_window_x11.h $(BUILD)/libneo.a $(HEADERS)
+	$(CC) $(CPPFLAGS) $(X11_CFLAGS) $(CFLAGS) $(WARNINGS) neo-vm/examples/window.c neo-vm/source/window_x11.c $(BUILD)/libneo.a $(LDFLAGS) $(X11_LIBS) -o $@
+
+# Explicit opt-in: creates a short-lived test window on DISPLAY.
+.PHONY: test-window
+test-window: $(BUILD)/test_window_x11
+	./$(BUILD)/test_window_x11
+
+$(BUILD)/test_window_x11: neo-vm/tests/test_window_x11.c neo-vm/source/window_x11.c neo-vm/include/neo_window_x11.h $(BUILD)/libneo.a $(HEADERS)
+	$(CC) $(CPPFLAGS) $(X11_CFLAGS) $(CFLAGS) $(WARNINGS) neo-vm/tests/test_window_x11.c neo-vm/source/window_x11.c $(BUILD)/libneo.a $(LDFLAGS) $(X11_LIBS) -o $@

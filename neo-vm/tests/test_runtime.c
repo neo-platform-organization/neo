@@ -276,7 +276,97 @@ static void neo_test_codec_allocation_failures(void) {
     }
 }
 
+static void neo_test_dynamic_literals(void) {
+    neo_vm *vm;
+    OK(neo_vm_create(NULL, &vm));
+    const neo_capability *root = neo_parse(vm,
+        "(image (actor (n 7) (text \"7\") (flag true)"
+        " (handlers (change (body (write (slot \"n\") (value \"seven\"))))"
+        " (bad (body (add (left (read (slot \"n\"))) (right 1)))))))");
+    const neo_capability *actor = neo_child(vm, root, "actor");
+    const neo_capability *n = neo_child(vm, actor, "n");
+    neo_value value;
+    OK(neo_object_read(vm, n, &value));
+    CHECK(value.kind == NEO_INTEGER && value.integer == 7);
+    OK(neo_object_read(vm, neo_child(vm, actor, "text"), &value));
+    CHECK(value.kind == NEO_TEXT && strcmp(value.text, "7") == 0);
+    const neo_capability *names = neo_parse(vm, "(names (if :object) (add 7) (future))");
+    OK(neo_object_read(vm, neo_child(vm, names, "if"), &value));
+    CHECK(value.kind == NEO_OBJECT);
+    OK(neo_object_read(vm, neo_child(vm, names, "add"), &value));
+    CHECK(value.kind == NEO_INTEGER);
+    char *data_text;
+    OK(neo_image_format(vm, names, &data_text));
+    const neo_capability *names_copy = neo_parse(vm, data_text);
+    neo_image_text_free(vm, data_text);
+    OK(neo_object_read(vm, neo_child(vm, names_copy, "if"), &value));
+    CHECK(value.kind == NEO_OBJECT);
+    neo_execution report;
+    OK(neo_behavior_run(vm, actor, "change", NULL, 100, &report));
+    neo_execution_release(vm, &report);
+    OK(neo_object_read(vm, n, &value));
+    CHECK(value.kind == NEO_TEXT && strcmp(value.text, "seven") == 0);
+    CHECK(neo_behavior_run(vm, actor, "bad", NULL, 100, &report) == NEO_WRONG_KIND);
+    neo_execution_release(vm, &report);
+    char *formatted;
+    OK(neo_image_format(vm, root, &formatted));
+    CHECK(strstr(formatted, ":integer") == NULL && strstr(formatted, ":text") == NULL);
+    CHECK(strstr(formatted, ":primitive") == NULL);
+    (void)neo_parse(vm, formatted);
+    neo_image_text_free(vm, formatted);
+    const char *bad[] = {"(n 9223372036854775808)", "(n 1.5)", "(n unquoted)", "(n :object 7)", "(n 7 8)"};
+    for (size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); ++i) {
+        const neo_capability *invalid;
+        neo_diagnostic error;
+        CHECK(neo_image_parse(vm, bad[i], &invalid, &error) != NEO_OK);
+    }
+    neo_vm_destroy(vm);
+}
+
+static void neo_test_tokens_and_comments(void) {
+    neo_vm *vm;
+    OK(neo_vm_create(NULL, &vm));
+    const neo_capability *root = neo_parse(vm,
+        "// leading comment\n(image #root\n"
+        " (word \"if\")// adjacent comment\n"
+        " (if (condition true) (then 1) (else 0))\n"
+        " (url \"https://example.test/a>b\")\n"
+        " (greater>name) (slash/name) @self #root 1)// trailing comment");
+    neo_value value;
+    OK(neo_object_read(vm, neo_child(vm, root, "word"), &value));
+    CHECK(value.kind == NEO_TEXT && strcmp(value.text, "if") == 0);
+    OK(neo_object_read(vm, neo_child(vm, root, "if"), &value));
+    CHECK(value.kind == NEO_PRIMITIVE && strcmp(value.text, "if") == 0);
+    OK(neo_object_read(vm, neo_child(vm, root, "url"), &value));
+    CHECK(value.kind == NEO_TEXT && strcmp(value.text, "https://example.test/a>b") == 0);
+    char *text;
+    OK(neo_image_format(vm, root, &text));
+    CHECK(strstr(text, "(image ") != NULL && strstr(text, "@self ") != NULL);
+    const neo_capability *copy = neo_parse(vm, text);
+    neo_image_text_free(vm, text);
+    OK(neo_object_read(vm, neo_child(vm, copy, "word"), &value));
+    CHECK(value.kind == NEO_TEXT && strcmp(value.text, "if") == 0);
+    const char *bad[] = {
+        "(\"if\")", "(\"display name\")", "(na\"me)",
+        "(x :primitive \"if\")", "(x :integer \"7\")", "(x :boolean \"true\")",
+        "(x #x @\"edge\" #x 1)", "(x #x @edge \"#x\" 1)",
+        "(x #x @edge #x \"1\")", "> old comment\n(image)"
+    };
+    for (size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); ++i) {
+        const neo_capability *invalid = NULL;
+        neo_diagnostic error;
+        CHECK(neo_image_parse(vm, bad[i], &invalid, &error) == NEO_PARSE_ERROR);
+        CHECK(invalid == NULL && error.message[0] != '\0');
+    }
+    const neo_capability *host;
+    OK(neo_image_create(vm, "display name", &host));
+    CHECK(neo_image_format(vm, host, &text) == NEO_UNSUPPORTED && text == NULL);
+    neo_vm_destroy(vm);
+}
+
 int main(void) {
+    neo_test_tokens_and_comments();
+    neo_test_dynamic_literals();
     neo_test_reader_and_roundtrip();
     neo_test_evaluator();
     neo_test_scheduler();

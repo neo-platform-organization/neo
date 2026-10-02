@@ -2,6 +2,8 @@
 
 neo is an experimental language and runtime built around a live world of objects. Objects own their internal behavior; prototypes are examples to duplicate, rather than sources of shared behavior through delegation. The long-term goal is a consistent spatial computing environment.
 
+neo is **dynamically typed**: `(count 0)` infers an integer payload, and later writes may change its kind. Primitive objects use forms such as `(if ...)`.
+
 The implementation is **C17**. A separate VM loads `neo/image.neo` as an object graph. Loading is inert; behavior runs only when invoked or scheduled.
 
 ## Try it
@@ -79,3 +81,5 @@ C is the initial host language. A future Odin/Zig port or compiled self-hosted s
 ## License
 
 GNU General Public License, version 3.0 only (`GPL-3.0-only`). See [LICENSE](LICENSE).
+
+The optional [X11 window interface](documentation/reference/window-interface.md) presents a pixel buffer filled by neo. Build it with `make window`, then run `./build/neo-window neo/window.neo display`. The supplied image is a blank presentation surface, not a renderer.

@@ -2,7 +2,7 @@
 
 [Documentation index](../README.md)
 
-This documents the actual v0 implementation. It is a provisional engineering format, not a claim that the earlier syntax proposal or full neo language is settled. The whitepaper remains unchanged. See [language-design.md](../design/language-design.md) for broader proposals and [code-tour.md](../learning/code-tour.md) for a beginner's reading path.
+This documents the implemented image syntax, including inferred literals and name-selected primitives. It is a provisional engineering format, not a claim that the earlier syntax proposal or full neo language is settled. The whitepaper remains unchanged. See [language-design.md](../design/language-design.md) for broader proposals and [code-tour.md](../learning/code-tour.md) for a beginner's reading path.
 
 ## Graph format
 
@@ -10,17 +10,19 @@ The CLI accepts one rooted object graph per file:
 
 ```text
 object := '(' name [ '#' label ] [ payload ] { object | edge } ')'
-payload := ':object'
-         | ':integer' signed_decimal
-         | ':boolean' ('true' | 'false')
-         | ':text' string
-         | ':primitive' string
+payload := signed_decimal | 'true' | 'false' | string
+         | ':primitive'
+         | legacy_tagged_payload
 edge := '@' name '#' label decimal_rights_mask
 ```
 
-Whitespace separates tokens. `>` begins a comment outside a quoted string. Names and string payloads can be bare tokens or double-quoted strings. Supported escapes are backslash, quote, newline, carriage return, and tab. String storage preserves bytes (including UTF-8 sequences); it does not validate/normalize Unicode, support embedded NUL, or implement Unicode escape notation yet.
+Whitespace separates tokens. `//` begins a comment outside a quoted string, ending at newline. `>` has no comment meaning. Object names, connection names, labels, and primitive bindings are bare tokens, never quoted strings. Double quotes always denote text payloads: `(word "if")` contains text, while `(if ...)` selects an operation. The current format requires named objects, so `("if")` is rejected; anonymous literal objects have no source notation yet. Supported escapes are backslash, quote, newline, carriage return, and tab. String storage preserves bytes (including UTF-8 sequences); it does not validate/normalize Unicode, support embedded NUL, or implement Unicode escape notation yet.
 
-Every parenthesized expression constructs one object. An object without a payload has an ordinary empty payload. Contained objects must have distinct names within their parent. Their source order is preserved. The names of behavior steps can be descriptive and unique; their operation is determined by the primitive tag, not by their name.
+Payload types are dynamic: `(n 7)`, `(ready true)`, and `(name "Alice")` infer their current payload kinds from literals. A write may change the kind; operations check compatibility when executed. Quote text: `"7"` is text, while `7` is an integer. Bare unknown words and floating-point literals are rejected. Explicit scalar tags remain readable for compatibility but are not emitted by the writer.
+
+`(if ...)` selects the `if` operation from the object's name. No `:primitive` marker is needed. The reader binds recognized operation names when no explicit payload is present. For example, `(add 7)` is integer data; `(add :object)` is an explicitly ordinary object. Unknown names remain ordinary objects. Loading never runs an operation. Explicit `(body :primitive if ...)` is readable; quoted operation bindings are rejected. An unknown binding loads inertly and fails if evaluated.
+
+Every parenthesized expression constructs one object. An object without a payload has an ordinary empty payload. Contained objects must have distinct names within their parent. Their source order is preserved. A known primitive with no explicit payload uses its own name as the binding. Use distinct named wrappers for repeated operations in one container, for example `(first (write ...))` and `(second (write ...))`; ordinary sibling names remain unique.
 
 Labels are file-local names for identities, not runtime IDs or global lookup authority. Edges can point forward or form cycles. Containment cannot form cycles through this syntax. The loader resolves links after allocating all nodes. Nothing executes during loading.
 
@@ -39,7 +41,7 @@ Edges are named separately from contained fields. The final integer records thes
 
 Combine bits by addition when writing the file. A receiver connection for sending only therefore has mask 128. These links cannot identify an object outside the new image or grant filesystem/process authority. Loading an image is a host operation that establishes its internal grants; ordinary running code cannot forge them by manufacturing integer IDs.
 
-The serializer writes explicit tags and generated labels. Re-reading preserves payloads, containment order, connection targets, and rights. It does not preserve numeric object IDs, source spelling, comments, or formatting. Dangling edges are rejected on serialization rather than silently dropped. Version selection is currently implicit in this prototype; a versioned envelope is needed before compatibility is promised.
+The serializer writes bare names, inferred scalar literals, and generated labels. Host-created names or primitive bindings that cannot be represented as bare tokens report unsupported rather than being quoted or renamed. For known primitives whose names match their bindings it omits `:primitive`; legacy/host-created objects with different names retain an explicit binding to preserve their meaning. Ordinary empty objects with reserved names retain `:object`, so formatting cannot turn data into executable primitives. Re-reading preserves payloads, containment order, connection targets, and rights. It does not preserve numeric object IDs, source spelling, comments, or formatting. Dangling edges are rejected on serialization rather than silently dropped. Version selection is currently implicit in this prototype; a versioned envelope is needed before compatibility is promised.
 
 Limits: 1 MiB source/output, 4096 nodes, 128 levels of containment, and 4096 decoded bytes per token. Out-of-memory or parse failure leaves no published partial image. Failed allocations may consume identity numbers; identity continuity is not a language guarantee.
 
@@ -56,7 +58,9 @@ actor
         named argument objects
 ```
 
-Only an explicitly invoked body is evaluated. An object named add with an ordinary payload is data. A primitive-tagged object whose binding is add invokes the evaluator's addition rule when evaluated. An unknown primitive fails before evaluating operands.
+A named container with an ordinary empty payload and exactly one primitive child forwards evaluation to that child. This supports `(body (if ...))`, `(condition (lt ...))`, and `(value (read (slot "count")))`. It applies only during evaluation; merely containing operations does not execute them. Other nonprimitive objects retain their scalar/unit behavior. Use `do` for sequences.
+
+Only an explicitly invoked body is evaluated. An object named add with an explicit literal payload or `:object` is data; `(add ...)` with no explicit payload is a primitive. A primitive-tagged object whose binding is add invokes the evaluator's addition rule when evaluated. An unknown primitive fails before evaluating operands.
 
 Nonprimitive payload objects evaluate as scalar values. The ordinary empty payload acts as unit. Composite values, first-class closures, identity-observable intermediate results, and fully graph-resident activations are not implemented yet. Temporary values and activations currently use private C storage. This is an executable subset, not the full homoiconic execution model.
 
@@ -83,6 +87,10 @@ Arguments evaluate left to right, except for the branches/short-circuit forms ab
 
 State read/write is deliberately confined to the receiver's immediate children. Writes cannot overwrite the active behavior's containing subtree or message internals. External writes, object creation/copy/move primitives, local bindings, break/continue, pattern matching, spatial operations, and language-level failure handlers are not in this evaluator subset yet, even where a host C API exists.
 
+## External window and buffer primitives
+
+Host-granted resources support `buffer-read`, `buffer-write`, `buffer-size`, `window-present`, `window-poll`, `window-width`, and `window-height`. See the [window interface](window-interface.md) for operands, rights, RGBA layout, ownership, and X11 limits. These are byte access and external presentation operations; no renderer or maths library is implemented in the backend. Loading an image alone never grants display access.
+
 ## Scheduler and failures
 
 The host registers receivers in order. Each tick first accepts pending messages up to the submission number captured at the boundary. A registered receiver then handles at most one queued message and its optional tick handler. Submissions emitted during a turn wait until a later tick. Other state writes are immediately visible. There is no artificial pacing or parallel execution.
@@ -95,6 +103,6 @@ A failed message remains processing and blocks the receiver. Earlier effects rem
 
 ## Persistence boundary
 
-Formatting/duplicating ordinary quiescent images is supported. Images containing ETHER, messages, active queues, or enabled/failed registrations are explicitly rejected. Pause/unregister alone cannot make a message-bearing image serializable yet. A future codec must preserve all of that state; silently dropping it is not acceptable.
+Formatting/duplicating ordinary quiescent images is supported. Images containing host windows/pixel buffers, ETHER, messages, active queues, or enabled/failed registrations are explicitly rejected. Pause/unregister alone cannot make a message-bearing image serializable yet. A future codec must preserve all of that state; silently dropping it is not acceptable.
 
 The CLI's format/clone commands write text to stdout; neither unload nor formatting deletes or overwrites an input file. External-resource persistence and migration of running native activations are not implemented.

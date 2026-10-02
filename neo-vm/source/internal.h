@@ -12,6 +12,8 @@ typedef struct neo_edge {
     struct neo_edge *next;
 } neo_edge;
 
+typedef struct neo_display_resource neo_display_resource;
+
 typedef struct neo_object {
     neo_object_id id;
     neo_object_id image;
@@ -20,6 +22,7 @@ typedef struct neo_object {
     char *name;
     neo_value value;
     neo_edge *edges;
+    neo_display_resource *display;
     bool deleting;
     bool ether;
     neo_message *message;
@@ -57,12 +60,14 @@ neo_status neo_issue(neo_vm *vm, neo_object_id id, unsigned rights, const neo_ca
 neo_status neo_node_new(neo_vm *vm, const char *name, neo_value value, neo_object **out);
 bool neo_inside(neo_vm *vm, neo_object *node, neo_object_id ancestor);
 bool neo_valid_value(neo_value value);
+bool neo_primitive_known(const char *name);
 neo_status neo_value_copy(neo_vm *vm, neo_value source, neo_value *out);
 void neo_value_free(neo_vm *vm, neo_value value);
 void neo_messages_destroy(neo_vm *vm);
 bool neo_actor_has_messages(neo_vm *vm, neo_object_id id);
 
 char *neo_string(neo_vm *vm, const char *source);
+void neo_display_release(neo_vm *vm, neo_object *object);
 void neo_object_free(neo_vm *vm, neo_object *object);
 neo_object *neo_child_named(neo_vm *vm, neo_object_id parent, const char *name);
 neo_object *neo_child_after(neo_vm *vm, neo_object_id parent, uint64_t order);

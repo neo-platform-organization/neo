@@ -2,7 +2,11 @@
 
 [Documentation index](../README.md)
 
+Quotes always denote text payloads, never identifiers or primitive bindings. Use `(word "if")` for text and `(if ...)` for the primitive. Comments start with `//`; `>` is not a comment marker. The current reader requires bare object names and rejects quoted names. This supersedes earlier quoted-name and quoted-binding syntax.
+
 This guide is for someone comfortable with small C programs but new to interpreters and runtimes. Follow one complete path before trying to understand every file. C is the implementation language; diagrams below are plain text, not another programming language to learn.
+
+The example image now uses inferred literals (`(count 0)`) and name-selected primitive objects (`(if ...)`). Named containers such as `body` and `condition` hold one primitive child and forward evaluation to it. Older explicit-tag examples in this tour remain valid compatibility syntax. Fields are dynamically typed: a write can change their payload kind.
 
 ## 1. Run something before reading its internals
 
@@ -156,3 +160,17 @@ These experiments connect the file you edit to the graph the reader creates and 
 ## What this base does not establish
 
 It is a small runnable interpreter, not yet a spatial OS. It has no geometry or dimensional transformations, renderer, parallel execution, arbitrary running-image persistence, graph-resident failure handlers, or self-hosted compiler. Those should be designed explicitly. The runtime now gives us a concrete place to test those ideas without pretending they are already solved.
+
+## Following pixels to a window
+
+Start with [window.neo](../../neo/window.neo). Its frame handler asks the window to present the buffer; it does not draw anything. The [C launcher](../../neo-vm/examples/window.c) supplies both resources and grants connections before invoking that handler.
+
+[display.c](../../neo-vm/source/display.c) owns byte storage, checks permissions and bounds, and calls a small backend interface. [window_x11.c](../../neo-vm/source/window_x11.c) translates completed pixel bytes into X11's native image layout and sends them to the window. Rendering algorithms belong on the neo side of that boundary. Native handles stay private to C. See the [interface reference](../reference/window-interface.md) for the byte layout and primitive table.
+
+## A triangle rendered by neo
+
+Run `make window`, then `./build/neo-window neo/triangle.neo triangle` from the repository root. Open [triangle.neo](../../neo/triangle.neo) to follow the renderer. No C drawing code is involved.
+
+The triangle has a top vertex and a horizontal bottom edge. Each row widens the filled span: its half-width is `(y - 80) / 2`, centered at x = 320. neo computes the first and last pixel addresses, loops over that span, and writes four channel bytes per pixel. Eight rows are drawn per invocation so each frame stays within the launcher's execution budget. The `y` field remembers progress between invocations. Once y passes 400, the loops stop and subsequent frames only present the completed buffer (plus updating the batch boundary).
+
+This is a deliberately simple scanline renderer for one fixed triangle, not yet a general triangle rasterizer with arbitrary vertices. `test_triangle.c` executes the actual image against a headless backend and checks every pixel against independent triangle half-plane inequalities, including the untouched background. It also writes `build/triangle.ppm` from the resulting buffer.

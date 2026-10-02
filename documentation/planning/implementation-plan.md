@@ -39,3 +39,7 @@ Odin/Zig migration and a compiled self-hosted neo subset are future options. Pre
 ## Next design work after the executable base
 
 Read [code-tour.md](../learning/code-tour.md) before extending the runtime. Prioritize a concrete spatial operation and its meaning before assuming the generic interpreter already delivers a spatial environment. Separately, resolve full activation/value representation, accepted-message lifecycle persistence, and image-format versioning. Improve indexed lookup only after profiling; preserve the semantic tests.
+
+## External presentation interface
+
+The first window/buffer boundary is implemented with a generic RGBA buffer and an optional X11 backend. No renderer or maths library was added. neo code can write bytes through granted connections and request presentation. See [window interface](../reference/window-interface.md). Higher-level rendering belongs in neo; general input, bulk buffer operations, resource persistence, and resizing buffer storage remain future work.

@@ -62,7 +62,7 @@ static void neo_space(neo_reader *reader) {
         while (isspace((unsigned char)*reader->cursor)) {
             (void)neo_advance(reader);
         }
-        if (*reader->cursor != '>') {
+        if (reader->cursor[0] != '/' || reader->cursor[1] != '/') {
             return;
         }
         while (*reader->cursor != '\0' && *reader->cursor != '\n') {
@@ -87,8 +87,11 @@ static neo_status neo_token(neo_reader *reader, char *out) {
             out[length] = '\0';
             return NEO_OK;
         }
-        if (!quoted && (isspace((unsigned char)c) || c == '(' || c == ')' || c == '>')) {
+        if (!quoted && (isspace((unsigned char)c) || c == '(' || c == ')' || (c == '/' && reader->cursor[1] == '/'))) {
             break;
+        }
+        if (!quoted && c == '"') {
+            return neo_parse_fail(reader, NEO_PARSE_ERROR, "strings must be separate payload tokens");
         }
         (void)neo_advance(reader);
         if (quoted && c == '\\') {
@@ -119,15 +122,24 @@ static neo_status neo_token(neo_reader *reader, char *out) {
     return NEO_OK;
 }
 
+/* Names, labels, numeric metadata, and operation bindings are never strings. */
+static neo_status neo_bare_token(neo_reader *reader, char *out) {
+    neo_space(reader);
+    if (*reader->cursor == '"') {
+        return neo_parse_fail(reader, NEO_PARSE_ERROR, "expected bare token; quoted text is a payload");
+    }
+    return neo_token(reader, out);
+}
+
 static neo_status neo_read_edge(neo_reader *reader, neo_object *owner) {
     char name[NEO_TOKEN_LIMIT + 1], label[NEO_TOKEN_LIMIT + 1], number[NEO_TOKEN_LIMIT + 1];
     (void)neo_advance(reader); /* @ */
-    neo_status status = neo_token(reader, name);
+    neo_status status = neo_bare_token(reader, name);
     if (status == NEO_OK) {
-        status = neo_token(reader, label);
+        status = neo_bare_token(reader, label);
     }
     if (status == NEO_OK) {
-        status = neo_token(reader, number);
+        status = neo_bare_token(reader, number);
     }
     if (status != NEO_OK) {
         return status;
@@ -176,7 +188,7 @@ static neo_status neo_read_node(neo_reader *reader, neo_object *parent,
     }
     (void)neo_advance(reader);
     char name[NEO_TOKEN_LIMIT + 1], token[NEO_TOKEN_LIMIT + 1];
-    neo_status status = neo_token(reader, name);
+    neo_status status = neo_bare_token(reader, name);
     if (status != NEO_OK) {
         return status;
     }
@@ -225,7 +237,8 @@ static neo_status neo_read_node(neo_reader *reader, neo_object *parent,
         }
     }
     neo_space(reader);
-    if (*reader->cursor == ':') {
+    bool tagged = *reader->cursor == ':';
+    if (tagged) {
         status = neo_token(reader, token);
         if (status != NEO_OK) {
             return status;
@@ -234,7 +247,7 @@ static neo_status neo_read_node(neo_reader *reader, neo_object *parent,
         if (strcmp(token, ":object") == 0) {
             value.kind = NEO_OBJECT;
         } else if (strcmp(token, ":integer") == 0) {
-            status = neo_token(reader, token);
+            status = neo_bare_token(reader, token);
             if (status != NEO_OK) {
                 return status;
             }
@@ -247,7 +260,7 @@ static neo_status neo_read_node(neo_reader *reader, neo_object *parent,
             value.kind = NEO_INTEGER;
             value.integer = (int64_t)integer;
         } else if (strcmp(token, ":boolean") == 0) {
-            status = neo_token(reader, token);
+            status = neo_bare_token(reader, token);
             if (status != NEO_OK) {
                 return status;
             }
@@ -258,11 +271,19 @@ static neo_status neo_read_node(neo_reader *reader, neo_object *parent,
             value.boolean = strcmp(token, "true") == 0;
         } else if (strcmp(token, ":text") == 0 || strcmp(token, ":primitive") == 0) {
             value.kind = strcmp(token, ":text") == 0 ? NEO_TEXT : NEO_PRIMITIVE;
-            status = neo_token(reader, token);
-            if (status != NEO_OK) {
-                return status;
+            neo_space(reader);
+            if (value.kind == NEO_PRIMITIVE &&
+                (*reader->cursor == '(' || *reader->cursor == ')' ||
+                 *reader->cursor == '@' || *reader->cursor == '\0')) {
+                value.text = name;
+            } else {
+                status = value.kind == NEO_PRIMITIVE
+                    ? neo_bare_token(reader, token) : neo_token(reader, token);
+                if (status != NEO_OK) {
+                    return status;
+                }
+                value.text = token;
             }
-            value.text = token;
         } else {
             return neo_parse_fail(reader, NEO_PARSE_ERROR, "unknown payload tag");
         }
@@ -270,6 +291,41 @@ static neo_status neo_read_node(neo_reader *reader, neo_object *parent,
         if (status != NEO_OK) {
             return status;
         }
+    }
+    neo_space(reader);
+    if (*reader->cursor != '(' && *reader->cursor != ')' &&
+        *reader->cursor != '@' && *reader->cursor != '\0') {
+        /* Inferred literals are values, never permanent field declarations. */
+        if (tagged) {
+            return neo_parse_fail(reader, NEO_PARSE_ERROR, "unexpected extra payload");
+        }
+        bool quoted = *reader->cursor == '"';
+        status = neo_token(reader, token);
+        if (status != NEO_OK) { return status; }
+        neo_value value = {0};
+        if (quoted) {
+            value.kind = NEO_TEXT;
+            value.text = token;
+        } else if (strcmp(token, "true") == 0 || strcmp(token, "false") == 0) {
+            value.kind = NEO_BOOLEAN;
+            value.boolean = strcmp(token, "true") == 0;
+        } else {
+            char *end = NULL;
+            errno = 0;
+            intmax_t integer = strtoimax(token, &end, 10);
+            if (end == token || *end != '\0' || errno != 0 || integer < INT64_MIN || integer > INT64_MAX) {
+                return neo_parse_fail(reader, NEO_PARSE_ERROR, "expected integer, boolean, or quoted text literal");
+            }
+            value.kind = NEO_INTEGER;
+            value.integer = (int64_t)integer;
+        }
+        status = neo_value_copy(reader->vm, value, &node->value);
+        if (status != NEO_OK) { return status; }
+    }
+    if (!tagged && node->value.kind == NEO_OBJECT && neo_primitive_known(name)) {
+        status = neo_value_copy(reader->vm,
+            (neo_value){.kind = NEO_PRIMITIVE, .text = name}, &node->value);
+        if (status != NEO_OK) { return status; }
     }
     for (;;) {
         neo_space(reader);
@@ -421,6 +477,20 @@ static neo_status neo_quote(neo_writer *writer, const char *text) {
     return status == NEO_OK ? neo_append(writer, "\"") : status;
 }
 
+/* Host names that need quoting have no spelling in this image syntax. */
+static neo_status neo_write_bare(neo_writer *writer, const char *text) {
+    size_t length = strlen(text);
+    if (length == 0) { return NEO_UNSUPPORTED; }
+    if (length > NEO_TOKEN_LIMIT) { return NEO_LIMIT; }
+    for (const unsigned char *p = (const unsigned char *)text; *p != 0; ++p) {
+        if (isspace(*p) || *p < 32u || *p == '(' || *p == ')' || *p == '"' ||
+            (*p == '/' && p[1] == '/')) {
+            return NEO_UNSUPPORTED;
+        }
+    }
+    return neo_append(writer, text);
+}
+
 #define NEO_WRITE(expression) do { neo_status write_status = (expression); \
     if (write_status != NEO_OK) { return write_status; } } while (0)
 
@@ -428,7 +498,7 @@ static neo_status neo_write_node(neo_writer *writer, neo_object *node, size_t de
     if (depth > NEO_DEPTH_LIMIT || writer->nodes++ == NEO_NODE_LIMIT) {
         return NEO_LIMIT;
     }
-    if (node->ether || node->message != NULL || node->inbox_first != NULL ||
+    if (node->display != NULL || node->ether || node->message != NULL || node->inbox_first != NULL ||
         node->active_message != NULL || neo_actor_has_messages(writer->vm, node->id) ||
         neo_scheduler_contains(writer->vm, node->id)) {
         return NEO_UNSUPPORTED;
@@ -437,20 +507,36 @@ static neo_status neo_write_node(neo_writer *writer, neo_object *node, size_t de
         NEO_WRITE(neo_append(writer, "  "));
     }
     NEO_WRITE(neo_append(writer, "("));
-    NEO_WRITE(neo_quote(writer, node->name));
+    NEO_WRITE(neo_write_bare(writer, node->name));
     char buffer[96];
     (void)snprintf(buffer, sizeof(buffer), " #n%" PRIu64, node->id);
     NEO_WRITE(neo_append(writer, buffer));
     switch (node->value.kind) {
-        case NEO_OBJECT: NEO_WRITE(neo_append(writer, " :object")); break;
+        case NEO_OBJECT:
+            /* Preserve data objects whose names also name built-in operations. */
+            if (neo_primitive_known(node->name)) {
+                NEO_WRITE(neo_append(writer, " :object"));
+            }
+            break;
         case NEO_INTEGER:
-            (void)snprintf(buffer, sizeof(buffer), " :integer %" PRId64, node->value.integer);
+            (void)snprintf(buffer, sizeof(buffer), " %" PRId64, node->value.integer);
             NEO_WRITE(neo_append(writer, buffer)); break;
         case NEO_BOOLEAN:
-            NEO_WRITE(neo_append(writer, node->value.boolean ? " :boolean true" : " :boolean false")); break;
-        case NEO_TEXT: case NEO_PRIMITIVE:
-            NEO_WRITE(neo_append(writer, node->value.kind == NEO_TEXT ? " :text " : " :primitive "));
+            NEO_WRITE(neo_append(writer, node->value.boolean ? " true" : " false")); break;
+        case NEO_TEXT:
+            NEO_WRITE(neo_append(writer, " "));
             NEO_WRITE(neo_quote(writer, node->value.text)); break;
+        case NEO_PRIMITIVE:
+            if (strcmp(node->name, node->value.text) == 0 && neo_primitive_known(node->name)) {
+                break;
+            }
+            NEO_WRITE(neo_append(writer, " :primitive"));
+            if (strcmp(node->name, node->value.text) != 0) {
+                /* Preserve host-created objects with distinct operation bindings. */
+                NEO_WRITE(neo_append(writer, " "));
+                NEO_WRITE(neo_write_bare(writer, node->value.text));
+            }
+            break;
     }
     for (neo_edge *edge = node->edges; edge != NULL; edge = edge->next) {
         neo_object *target = neo_lookup(writer->vm, edge->target);
@@ -461,7 +547,7 @@ static neo_status neo_write_node(neo_writer *writer, neo_object *node, size_t de
             return NEO_WRONG_IMAGE;
         }
         NEO_WRITE(neo_append(writer, " @"));
-        NEO_WRITE(neo_quote(writer, edge->name));
+        NEO_WRITE(neo_write_bare(writer, edge->name));
         (void)snprintf(buffer, sizeof(buffer), " #n%" PRIu64 " %u", target->id, edge->rights);
         NEO_WRITE(neo_append(writer, buffer));
     }

@@ -1,5 +1,6 @@
 #include "internal.h"
 #include "neo_execution.h"
+#include "neo_display.h"
 
 #include <string.h>
 
@@ -81,19 +82,89 @@ static bool neo_equal(neo_value a, neo_value b) {
     return false;
 }
 
-static neo_status neo_run_operation(neo_activation *a, neo_object *node,
-                                    size_t depth, neo_value *out) {
-    const char *op = node->value.text;
+bool neo_primitive_known(const char *op) {
     static const char *const primitives[] = {
         "do", "if", "while", "return", "fail", "read", "write", "message", "send",
-        "not", "and", "or", "eq", "add", "sub", "mul", "div", "rem", "lt", "le", "gt", "ge"
+        "not", "and", "or", "eq", "add", "sub", "mul", "div", "rem", "lt", "le", "gt", "ge",
+        "buffer-read", "buffer-write", "buffer-size", "window-present", "window-poll",
+        "window-width", "window-height"
     };
     bool known = false;
     for (size_t i = 0; i < sizeof(primitives) / sizeof(primitives[0]); ++i) {
         if (strcmp(op, primitives[i]) == 0) { known = true; break; }
     }
-    if (!known) { return NEO_UNSUPPORTED; }
+    return known;
 
+}
+
+static neo_status neo_display_operation(neo_activation *a, neo_object *node,
+                                        size_t depth, neo_value *out) {
+    const char *op = node->value.text;
+    neo_value target_name = {0}, operand = {0}, value = {0};
+    const neo_capability *target = NULL;
+    neo_status status = neo_operand(a, node, "target", depth, &target_name);
+    if (status != NEO_OK || a->returning) { goto done; }
+    if (target_name.kind != NEO_TEXT) { status = NEO_WRONG_KIND; goto done; }
+    status = neo_object_connection(a->vm, a->authority, target_name.text, &target);
+    if (status != NEO_OK) { goto done; }
+    if (strcmp(op, "buffer-size") == 0) {
+        size_t size = 0;
+        status = neo_buffer_size(a->vm, target, &size);
+        if (status == NEO_OK) { *out = (neo_value){.kind = NEO_INTEGER, .integer = (int64_t)size}; }
+    } else if (strcmp(op, "buffer-read") == 0 || strcmp(op, "buffer-write") == 0) {
+        status = neo_operand(a, node, "index", depth, &operand);
+        if (status != NEO_OK || a->returning) { goto done; }
+        if (operand.kind != NEO_INTEGER) { status = NEO_WRONG_KIND; goto done; }
+        if (operand.integer < 0 || (uint64_t)operand.integer > SIZE_MAX) {
+            status = NEO_LIMIT; goto done;
+        }
+        uint8_t byte = 0;
+        if (strcmp(op, "buffer-write") == 0) {
+            status = neo_operand(a, node, "value", depth, &value);
+            if (status != NEO_OK || a->returning) { goto done; }
+            if (value.kind != NEO_INTEGER) { status = NEO_WRONG_KIND; goto done; }
+            if (value.integer < 0 || value.integer > 255) { status = NEO_LIMIT; goto done; }
+            byte = (uint8_t)value.integer;
+            status = neo_buffer_write(a->vm, target, (size_t)operand.integer, &byte, 1);
+        } else {
+            status = neo_buffer_read(a->vm, target, (size_t)operand.integer, &byte, 1);
+        }
+        if (status == NEO_OK) { *out = (neo_value){.kind = NEO_INTEGER, .integer = byte}; }
+    } else if (strcmp(op, "window-present") == 0) {
+        status = neo_operand(a, node, "buffer", depth, &operand);
+        if (status != NEO_OK || a->returning) { goto done; }
+        if (operand.kind != NEO_TEXT) { status = NEO_WRONG_KIND; goto done; }
+        const neo_capability *buffer = NULL;
+        status = neo_object_connection(a->vm, a->authority, operand.text, &buffer);
+        if (status == NEO_OK) { status = neo_window_present(a->vm, target, buffer); }
+    } else {
+        neo_window_state state = {0};
+        bool poll = strcmp(op, "window-poll") == 0;
+        status = poll ? neo_window_poll(a->vm, target, &state) :
+            neo_window_get_state(a->vm, target, &state);
+        if (status == NEO_OK && poll) {
+            *out = (neo_value){.kind = NEO_BOOLEAN, .boolean = state.closed};
+        } else if (status == NEO_OK) {
+            size_t size = strcmp(op, "window-width") == 0 ? state.width : state.height;
+            if (size > INT64_MAX) { status = NEO_LIMIT; }
+            else { *out = (neo_value){.kind = NEO_INTEGER, .integer = (int64_t)size}; }
+        }
+    }
+done:
+    neo_value_free(a->vm, target_name);
+    neo_value_free(a->vm, operand);
+    neo_value_free(a->vm, value);
+    return status;
+}
+
+static neo_status neo_run_operation(neo_activation *a, neo_object *node,
+                                    size_t depth, neo_value *out) {
+    const char *op = node->value.text;
+    if (!neo_primitive_known(op)) { return NEO_UNSUPPORTED; }
+
+    if (strncmp(op, "buffer-", 7) == 0 || strncmp(op, "window-", 7) == 0) {
+        return neo_display_operation(a, node, depth, out);
+    }
     neo_vm *vm = a->vm;
     neo_value left = {0}, right = {0};
     neo_status status = NEO_OK;
@@ -242,7 +313,15 @@ static neo_status neo_evaluate(neo_activation *a, neo_object *node,
     ++a->report->steps;
     neo_status status;
     if (node->value.kind != NEO_PRIMITIVE) {
-        status = neo_value_copy(a->vm, node->value, out);
+        neo_object *child = neo_child_after(a->vm, node->id, 0);
+        if (node->value.kind == NEO_OBJECT && child != NULL &&
+            child->value.kind == NEO_PRIMITIVE &&
+            neo_child_after(a->vm, node->id, child->order) == NULL) {
+            /* Named operands/body containers forward to their operation. */
+            status = neo_evaluate(a, child, depth + 1, out);
+        } else {
+            status = neo_value_copy(a->vm, node->value, out);
+        }
     } else {
         status = neo_run_operation(a, node, depth, out);
     }

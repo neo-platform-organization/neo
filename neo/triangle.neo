@@ -1,0 +1,70 @@
+// A filled cyan triangle, rasterized entirely in neo.
+// Run: ./build/neo-window neo/triangle.neo triangle
+// Fixed 640x480 RGBA buffer. Vertices: (320,80), (160,400), (480,400).
+// Draw eight scanlines per frame to stay within the host's execution budget.
+(image
+  (triangle
+    (y 80)
+    (row-stop 80)
+    (half-width 0)
+    (index 0)
+    (end 0)
+    (handlers
+      (frame
+        (body
+          (do
+            (batch
+              (write (slot "row-stop")
+                (value (add (left (read (slot "y"))) (right 8)))))
+            (rows
+              (while (condition
+                (and
+                  (left (le (left (read (slot "y"))) (right 400)))
+                  (right (lt (left (read (slot "y"))) (right (read (slot "row-stop")))))))
+                (body
+                  (do
+                    // Sloping edges widen by one pixel every two rows.
+                    (width
+                      (write (slot "half-width")
+                        (value (div
+                          (left (sub (left (read (slot "y"))) (right 80)))
+                          (right 2)))))
+                    // First and last pixel offsets on this row: 4 * (y*640 + x).
+                    (start
+                      (write (slot "index")
+                        (value (mul
+                          (left (add
+                            (left (mul (left (read (slot "y"))) (right 640)))
+                            (right (sub (left 320) (right (read (slot "half-width")))))))
+                          (right 4)))))
+                    (finish
+                      (write (slot "end")
+                        (value (mul
+                          (left (add
+                            (left (mul (left (read (slot "y"))) (right 640)))
+                            (right (add (left 320) (right (read (slot "half-width")))))))
+                          (right 4)))))
+                    (pixels
+                      (while (condition (le (left (read (slot "index"))) (right (read (slot "end")))))
+                        (body
+                          (do
+                            (red
+                              (buffer-write (target "buffer")
+                                (index (read (slot "index"))) (value 64)))
+                            (green
+                              (buffer-write (target "buffer")
+                                (index (add (left (read (slot "index"))) (right 1))) (value 200)))
+                            (blue
+                              (buffer-write (target "buffer")
+                                (index (add (left (read (slot "index"))) (right 2))) (value 255)))
+                            (alpha
+                              (buffer-write (target "buffer")
+                                (index (add (left (read (slot "index"))) (right 3))) (value 255)))
+                            (advance
+                              (write (slot "index")
+                                (value (add (left (read (slot "index"))) (right 4)))))))))
+                    (next-row
+                      (write (slot "y")
+                        (value (add (left (read (slot "y"))) (right 1)))))))))
+            // Re-present completed pixels on every frame, including after expose.
+            (show (window-present (target "window") (buffer "buffer")))))))))

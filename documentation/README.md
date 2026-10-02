@@ -6,7 +6,7 @@ This is the entry point for learning, using, and extending neo. Commands in thes
 
 - **Learning the implementation:** follow the [code tour](learning/code-tour.md), with the [example image](../neo/image.neo) open beside it.
 - **Building or changing code:** read [build and test](development/build-and-test.md) and the [C conventions](development/c-conventions.md).
-- **Writing an image:** use the [implemented format and primitives](reference/runtime-format.md).
+- **Writing an image:** start with the [syntax cheat sheet](reference/syntax-cheat-sheet.md), then use the [implemented format and primitives](reference/runtime-format.md) for details.
 - **Understanding the design:** read the [architecture](design/architecture.md), then the [implementation plan](planning/implementation-plan.md).
 
 ## Structure
@@ -18,6 +18,8 @@ documentation/
     code-tour.md
   reference/
     runtime-format.md
+    syntax-cheat-sheet.md
+    window-interface.md
   development/
     build-and-test.md
     c-conventions.md
@@ -53,6 +55,7 @@ Do not create empty subject folders in advance. Split a long guide when the new 
 | Authority and ETHER messages | [Architecture](design/architecture.md) | [Runtime format and lifecycle](reference/runtime-format.md) |
 | Execution, control flow, scheduling, failures | [Code tour](learning/code-tour.md) | [Primitive and scheduler rules](reference/runtime-format.md) |
 | Images and persistence | [Architecture](design/architecture.md) | [Graph format and persistence boundary](reference/runtime-format.md) |
+| Windows and pixel buffers | [Code tour](learning/code-tour.md) | [Window interface](reference/window-interface.md) |
 | Spatial model and long-term vision | [Whitepaper](design/whitepaper.md), [plan](planning/implementation-plan.md) | Not implemented; do not infer support from the vision. |
 
 ## Status and authority

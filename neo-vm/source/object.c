@@ -151,6 +151,7 @@ neo_status neo_issue(neo_vm *vm, neo_object_id id, unsigned rights,
 }
 
 void neo_object_free(neo_vm *vm, neo_object *object) {
+    neo_display_release(vm, object);
     neo_edge *edge = object->edges;
     while (edge != NULL) {
         neo_edge *next = edge->next;
@@ -544,7 +545,7 @@ static neo_status neo_duplicate(neo_vm *vm, neo_object *source,
                                  unsigned rights, const neo_capability **out) {
     for (neo_object *node = vm->objects; node != NULL; node = node->next) {
         if (neo_inside(vm, node, source->id) &&
-            (node->message != NULL || node->ether || node->inbox_first != NULL ||
+            (node->display != NULL || node->message != NULL || node->ether || node->inbox_first != NULL ||
              node->active_message != NULL || neo_actor_has_messages(vm, node->id) ||
              neo_scheduler_contains(vm, node->id))) {
             return NEO_UNSUPPORTED;

@@ -2,6 +2,13 @@
 
 [Documentation index](../README.md)
 
+Quotes always denote text payloads, never identifiers or primitive bindings. Use `(word "if")` for text and `(if ...)` for the primitive. Comments start with `//`; `>` is not a comment marker. The current reader requires bare object names and rejects quoted names. This supersedes earlier quoted-name and quoted-binding syntax.
+
+## Accepted typing and executable syntax update
+
+neo is dynamically typed. Fields have current payload kinds, not fixed declared types; writes can change those kinds. The reader accepts `(n 7)`, `(flag true)`, and `(name "Alice")`, with runtime checks for operation compatibility. `(if ...)` selects a primitive by its name. Known primitive names bind implicitly when no payload is supplied. Explicit literal payloads remain data; `:object` can suppress implicit binding for a data-only object with a reserved name. Named wrappers such as `(body (if ...))` hold nested operations. Legacy tagged input remains supported. See the [runtime reference](../reference/runtime-format.md) for exact behavior; older syntax examples below are historical proposals where they differ.
+
+
 The executable prototype now has a deliberately smaller, explicitly tagged syntax. See [runtime-format.md](../reference/runtime-format.md) for what actually runs. The examples and feature tables below remain design proposals, not a compatibility promise.
 
 Status: proposal for review, not implemented or agreed syntax. Read [architecture.md](architecture.md) for settled semantics. The user has established image.neo as the image graph and a separate VM capable of loading, duplicating, and deleting multiple image instances. The initial VM will be written in C.
@@ -24,14 +31,14 @@ link     = "@", identifier ;
 literal  = integer | string ;
 ```
 
-Whitespace separates tokens. `>` starts a comment outside strings, ending at newline. Identifiers use ASCII letters/underscore initially, followed by letters, digits, underscores, or hyphens. Integers are signed decimal. Strings are UTF-8 in double quotes, with `\"`, `\\`, `\n`, `\r`, `\t`, and `\uXXXX` escapes; reject invalid Unicode scalar sequences. Reserved literal object names are `true`, `false`, and `unit`, each used as a zero-child object. No implicit truthiness.
+Whitespace separates tokens. `//` starts a comment outside strings, ending at newline. Identifiers use ASCII letters/underscore initially, followed by letters, digits, underscores, or hyphens. Integers are signed decimal. Strings are UTF-8 in double quotes, with `\"`, `\\`, `\n`, `\r`, `\t`, and `\uXXXX` escapes; reject invalid Unicode scalar sequences. Reserved literal object names are `true`, `false`, and `unit`, each used as a zero-child object. No implicit truthiness.
 
 Every parenthesized expression defines one object. A label identifies that node within the file. A link adds an edge to an existing node, not another contained copy. Labels are not runtime addresses or a globally searchable namespace. Forward links are allowed. Reject duplicate labels and unresolved links. Resolve links after allocating nodes, permitting reference cycles without containment cycles.
 
 Literal payload tokens are reader notation for primitive payload objects; the runtime does not expose non-object values merely because source uses a shorthand. Ordered entries are preserved. A named-slot API rejects ambiguous repeated names; sequence operations may contain repeated operation names without ambiguity because they use entry order.
 
 ```neo
-> A containment tree with a connection back to the root.
+// A containment tree with a connection back to the root.
 (image #world
   (cell #cell-a
     (environment @world)

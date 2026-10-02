@@ -1,0 +1,7 @@
+// Host grants "buffer" and "window" connections before invoking frame.
+// This presents an initially black buffer. Add pixel-producing behavior in neo.
+(image
+  (display
+    (handlers
+      (frame
+        (body (window-present (target "window") (buffer "buffer")))))))

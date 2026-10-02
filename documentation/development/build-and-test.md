@@ -2,6 +2,8 @@
 
 [Documentation index](../README.md)
 
+Quotes always denote text payloads, never identifiers or primitive bindings. Use `(word "if")` for text and `(if ...)` for the primitive. Comments start with `//`; `>` is not a comment marker. The current reader requires bare object names and rejects quoted names. This supersedes earlier quoted-name and quoted-binding syntax.
+
 ## Current base
 
 neo now has a small executable C17 interpreter. A separate VM parses a plain object graph, invokes receiver-owned behavior, and runs ETHER messages through a sequential scheduler. The CLI and static library share the same runtime.
@@ -29,6 +31,10 @@ Requirements: C17 compiler, Make, an archiver such as ar, and a POSIX shell for 
 format and clone write an ordinary graph to stdout; they do not overwrite source files. Each CLI invocation starts a fresh VM. check accepts several files and loads them into independent images in the same VM without executing them.
 
 Sanitizer targets compile separate instrumented binaries for AddressSanitizer and UndefinedBehaviorSanitizer. LeakSanitizer cannot run in some traced sandboxes; the verified run used authorized execution outside that environment. Do not equate a blocked sanitizer run with success.
+
+## Dynamic payloads and syntax
+
+The reader infers integers, booleans, and quoted text from literals. Payload kinds can change on write; operand kinds are checked during execution. Primitives can bind through their own names, as in `(if ...)`, with named containers forwarding to a sole primitive child. The writer emits inferred literals; legacy explicit tags remain accepted. Tests cover inferred literals, text-versus-number distinction, kind-changing writes, invalid literals, runtime type errors, and serialization.
 
 ## Modules
 
@@ -76,6 +82,16 @@ These are implementation defaults and gaps, not additional agreed language seman
 - The scheduler has one thread. Registration and primitive behavior do not mutate concurrently. Turns run to completion within a host-provided instruction budget; budget exhaustion is a reported failure, not resumable preemption.
 - A failure pauses its receiver. Explicit recovery may retry from the beginning or discard. Prior effects remain, and retry can repeat them. This host mechanism is provisional pending language-level handlers.
 - Named siblings must be unique. Strings preserve bytes with a small escape vocabulary; embedded NUL and Unicode escapes are unsupported. Syntax is provisional and unversioned.
-- No spatial geometry, dimensional transformation, rendering, parallel VM, external-device model, or self-hosting is implemented. Those are future design work, not capabilities implied by the graph representation.
+- No spatial geometry, dimensional transformation, rendering, parallel VM, general external-device model, or self-hosting is implemented. Those are future design work, not capabilities implied by the graph representation.
 
 Keep these limits visible when extending the system. Do not claim complete image persistence or full homoiconicity from the current executable subset.
+
+## Optional X11 window interface
+
+`make window` builds `build/neo-window` with Xlib; run `./build/neo-window neo/window.neo display` for the blank presentation image. No renderer is provided. Xlib development files and pkg-config are required for this optional target only. The default runtime and tests remain headless.
+
+`make test` includes fake-backend window/buffer tests, authority and bounds checks, neo primitive invocation, and allocation-failure rollback. `make test-window` explicitly opens a short-lived window and checks pixel readback, resize, and close events. `build/sanitize_display` covers the headless resource boundary; its verified sandbox run disabled leak detection, with allocation-fault tests separately checking balanced VM ownership.
+
+New modules: `neo_display.h`/`display.c` define resource ownership and buffer operations; `neo_window_x11.h`/`window_x11.c` implement the optional backend. Live resources block copy/move/serialization. Xlib connection-loss recovery and general input events are not implemented. See [window interface](../reference/window-interface.md).
+
+The neo-only triangle example runs with `./build/neo-window neo/triangle.neo triangle`. `make test` executes its actual image through a headless backend, checks every RGBA pixel against the triangle boundaries, checks per-frame execution budgets and completed-frame behavior, and writes `build/triangle.ppm` for inspection.
