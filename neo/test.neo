@@ -1,4 +1,5 @@
 (image
-  (handlers
-    (hello
-      (body (return (value "Hello, World!"))))))
+  (hello
+    (handlers
+      (main
+        (body (stream-write (target "stdout") (value "Hello, World!\n")))))))

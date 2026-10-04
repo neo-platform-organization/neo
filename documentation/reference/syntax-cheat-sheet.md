@@ -1,8 +1,42 @@
 # neo syntax cheat sheet
 
-[Documentation index](../README.md) · [Full runtime reference](runtime-format.md) · [Example image](../../neo/image.neo)
+[Documentation index](../README.md) · [Full runtime reference](runtime-format.md) · [Counter fixture](../../neo-vm/tests/fixtures/counter.neo)
 
 This covers the currently implemented image language. Examples are neo source fragments; operations execute only when evaluated in an invocation. Loading a file does not run them. Everything represented here is an object; “kind” describes its current payload, not a class or a static type declaration.
+
+## Build and launch
+
+Commands run from the repository root. One executable starts one VM; CLI and GUI
+can operate on the same image. These are host arguments, not neo syntax.
+
+| Command / argument | Meaning |
+| --- | --- |
+| `make` | Build `build/neo`, including the Linux X11 provider. |
+| `make WITH_X11=0` | Build the same binary without X11; GUI requests report unsupported. |
+| `./build/neo [--cli] [--gui] IMAGE ACTOR [HANDLER] [--template IMAGE]...` | Common launch form; mode flags precede the image. |
+| `--cli` | Grant stdin/stdout/stderr; without GUI, invoke once. Default mode if neither flag is given. |
+| `--gui` | Grant window and pixel buffer; invoke repeatedly until close or failure. |
+| `--cli --gui` | Both resource sets, same VM and receiver, using the GUI loop. |
+| `ACTOR` | Immediate image child name, or `.` for the root. |
+| `HANDLER` | Defaults to `main` for CLI-only, `frame` with GUI. |
+| `--template IMAGE` | Copy template contents into the actor before execution; repeatable. |
+| `./build/neo help` | Show usage. |
+| `./build/neo platform` | Report compiled platform providers; does not grant access. |
+| `./build/neo check IMAGE...` | Load and validate without execution. |
+| `./build/neo format IMAGE` | Write normalized graph text to stdout. |
+| `./build/neo clone IMAGE` | Duplicate graph and write it to stdout. |
+| `./build/neo run IMAGE ACTOR HANDLER [STEP_BUDGET]` | Diagnostic invocation with result/state output; no terminal grants. |
+| `./build/neo tick IMAGE TICKS [STEP_BUDGET]` | Run the existing scheduler for a bounded number of ticks. |
+
+```sh
+./build/neo --cli neo/terminal.neo terminal greet
+./build/neo --gui neo/cube.neo cube --template neo/software-renderer.neo
+./build/neo --cli --gui neo/cube.neo cube --template neo/software-renderer.neo
+```
+
+GUI mode currently supplies the existing window/buffer interface, not a completed
+OS GUI. CLI mode is not an interactive shell. See [launch modes](runtime-format.md#launch-modes)
+for budgets, blocking behavior, and resource lifetime.
 
 ## Structure and literals
 
