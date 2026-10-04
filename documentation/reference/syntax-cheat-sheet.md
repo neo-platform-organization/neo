@@ -1,6 +1,6 @@
 # neo syntax cheat sheet
 
-[Language documentation](README.md) · [Full runtime reference](runtime-format.md)
+[Language documentation](../../neo/documentation/README.md) · [Full runtime reference](../../neo/documentation/runtime-format.md)
 
 This covers the currently implemented image language. Examples are neo source fragments; operations execute only when evaluated in an invocation. Loading a file does not run them. Everything represented here is an object; “kind” describes its current payload, not a class or a static type declaration.
 
@@ -11,31 +11,61 @@ can operate on the same image. These are host arguments, not neo syntax.
 
 | Command / argument | Meaning |
 | --- | --- |
-| `make` | Build `build/neo`, including the Linux X11 provider. |
+| `make test` | Run `neo selftest` using the same binary; no separate test executable. |
+| `make -s path` | Print the executable path selected from normalized `uname` architecture/OS. |
+| `make` | Build `build/x86_64/Linux/neo`, including the Linux X11 provider. |
 | `make WITH_X11=0` | Build the same binary without X11; GUI requests report unsupported. |
-| `./build/neo [--cli] [--gui] IMAGE ACTOR [HANDLER]` | Common launch form; mode flags precede the image. |
+| `./build/x86_64/Linux/neo [--cli] [--gui] IMAGE ACTOR [HANDLER]` | Common launch form; mode flags precede the image. |
 | `--cli` | Grant stdin/stdout/stderr; without GUI, invoke once. Default mode if neither flag is given. |
 | `--gui` | Grant window and pixel buffer; invoke repeatedly until close or failure. |
 | `--cli --gui` | Both resource sets, same VM and receiver, using the GUI loop. |
 | `ACTOR` | Immediate image child name, or `.` for the root. |
 | `HANDLER` | Defaults to `main` for CLI-only, `frame` with GUI. |
-| `./build/neo help` | Show usage. |
-| `./build/neo platform` | Report compiled platform providers; does not grant access. |
-| `./build/neo check IMAGE...` | Load and validate without execution. |
-| `./build/neo format IMAGE` | Write normalized graph text to stdout. |
-| `./build/neo clone IMAGE` | Duplicate graph and write it to stdout. |
-| `./build/neo run IMAGE ACTOR HANDLER [STEP_BUDGET]` | Diagnostic invocation with result/state output; no terminal grants. |
-| `./build/neo tick IMAGE TICKS [STEP_BUDGET]` | Run the existing scheduler for a bounded number of ticks. |
+| `./build/x86_64/Linux/neo help` | Show usage. |
+| `./build/x86_64/Linux/neo platform` | Report compiled platform providers; does not grant access. |
+| `./build/x86_64/Linux/neo check IMAGE...` | Load and validate without execution. |
+| `./build/x86_64/Linux/neo format IMAGE` | Write normalized graph text to stdout. |
+| `./build/x86_64/Linux/neo clone IMAGE` | Duplicate graph and write it to stdout. |
+| `./build/x86_64/Linux/neo run IMAGE ACTOR HANDLER [STEP_BUDGET]` | Diagnostic invocation with result/state output; no terminal grants. |
+| `./build/x86_64/Linux/neo tick IMAGE TICKS [STEP_BUDGET]` | Run the existing scheduler for a bounded number of ticks. |
 
 ```sh
-./build/neo --cli neo/terminal.neo terminal greet
-./build/neo --gui neo/cube.neo cube
-./build/neo --cli --gui neo/cube.neo cube
+./build/x86_64/Linux/neo --cli neo/neo-os/image.neo browser demo
+./build/x86_64/Linux/neo --gui neo/cube.neo cube
+./build/x86_64/Linux/neo --cli --gui neo/cube.neo cube
 ```
 
 GUI mode currently supplies the existing window/buffer interface, not a completed
-OS GUI. CLI mode is not an interactive shell. See [launch modes](runtime-format.md#launch-modes)
+OS GUI. CLI mode is not an interactive shell. See [launch modes](../../neo/documentation/runtime-format.md#launch-modes)
 for budgets, blocking behavior, and resource lifetime.
+
+## Protected graph access
+
+See [graph operations](graph-operations.md) for authority, lifetime, and failure rules.
+
+| Operation | Form |
+| --- | --- |
+| Receiver reference | `(self)` |
+| Named child | `(child (target (self)) (name "count"))` |
+| Child by index | `(child-at (target (self)) (index 0))` |
+| Child count | `(child-count (target (self)))` |
+| Child existence | `(has-child (target (self)) (name "count"))` |
+| Explicit connection | `(connection (target (self)) (name "environment"))` |
+| Reduce rights | `(restrict (target (self)) (rights 1))` |
+| Identity equality | `(same (left (self)) (right (self)))` |
+| Object name / payload kind | `(object-name (target (self)))`, `(object-kind (target (self)))` |
+| Inert payload read | `(inspect (target (child (target (self)) (name "count"))))` |
+| Create | `(object-create (target (self)) (name "count") (value 0))` |
+| Write | `(object-write (target (child (target (self)) (name "count"))) (value 1))` |
+| Copy / move | `(object-copy (target ...) (destination ...) (name "copy"))`; `object-move` has the same operands. |
+| Delete | `(object-delete (target ...))` |
+| Persist a connection | `(connect (target ...) (name "peer") (value ...) (rights 1))` |
+| Invoke another receiver | `(invoke (target ...) (selector "main"))`; requires READ/ACT. |
+| Scalar text conversion | `(to-text (value 42))` |
+
+Ellipses above are operand placeholders, not executable syntax. Temporary reference
+results cannot be stored as payloads; persistent relationships use connections.
+Neither reference lookup nor inspection duplicates or executes the target.
 
 ## Structure and literals
 
@@ -93,7 +123,7 @@ Payloads are dynamically typed: writing text into an integer field changes its k
 
 ## Stream primitives
 
-Endpoints must be granted by the host. See the [I/O interface](../../documentation/reference/io-interface.md) for partial-transfer handling and the terminal launcher.
+Endpoints must be granted by the host. See the [I/O interface](io-interface.md) for partial-transfer handling and the terminal launcher.
 
 | Primitive | Example | Result |
 | --- | --- | --- |
@@ -102,7 +132,7 @@ Endpoints must be granted by the host. See the [I/O interface](../../documentati
 
 ## Window and buffer primitives
 
-The [software renderer and cube](software-renderer.md) demonstrate these operations. These require host-granted connections; see the [window interface](../../documentation/reference/window-interface.md) for setup and limits. The host provides windowing and byte storage; rendering algorithms belong in neo.
+The [software renderer and cube](../../neo/documentation/software-renderer.md) demonstrate these operations. These require host-granted connections; see the [window interface](window-interface.md) for setup and limits. The host provides windowing and byte storage; rendering algorithms belong in neo.
 
 | Primitive | Example | Behavior |
 | --- | --- | --- |
@@ -112,7 +142,7 @@ The [software renderer and cube](software-renderer.md) demonstrate these operati
 | `buffer-width` | `(buffer-width (target "buffer"))` | Fixed pixel width; READ. |
 | `buffer-height` | `(buffer-height (target "buffer"))` | Fixed pixel height; READ. |
 | `window-next-event` | `(window-next-event (target "window"))` | Consume one collected event, return type text or `"none"`; READ + WRITE. |
-| `window-event` | `(window-event (target "window") (field "key"))` | Inspect last event snapshot; READ. See [event fields](../../documentation/reference/io-interface.md). |
+| `window-event` | `(window-event (target "window") (field "key"))` | Inspect last event snapshot; READ. See [event fields](io-interface.md). |
 | `buffer-size` | `(buffer-size (target "buffer"))` | Buffer size in bytes; READ. |
 | `window-present` | `(window-present (target "window") (buffer "buffer"))` | Present pixels; WRITE on window, READ on buffer. |
 | `window-poll` | `(window-poll (target "window"))` | Poll events, return close-requested boolean; WRITE. |
@@ -206,14 +236,14 @@ An explicit unknown primitive binding can load but fails when evaluated. Unknown
 | Numbers | Signed 64-bit integers only; no floating-point literals. |
 | Expressions | Named operands; no infix operators, `self.field`, brace blocks, or assignment syntax. |
 | Variables and control flow | No local bindings, `break`, `continue`, or pattern matching. |
-| Object operations | No language-level creation, copy, move, or delete primitives yet. |
+| Object operations | Protected structural primitives are available; active code/receivers cannot be deleted or mutated. |
 | Rich values | No first-class closures or composite evaluation results; temporary values use private C storage. |
 | Spatial objects | No built-in spatial operations or dimensional types yet. |
 | Recovery | No language-level failure handlers yet; the host can retry or discard failed activity. |
 | Persistence | Ordinary quiescent graphs only; active messages, ETHER, scheduler state, streams, windows, and pixel buffers cannot yet be serialized. |
 | Format limits | 1 MiB source/output, 4096 objects, 128 containment levels, 4096 decoded bytes per token. |
 
-See the [runtime reference](runtime-format.md) for authority restrictions, failure behavior, scheduler details, and persistence guarantees.
+See the [runtime reference](../../neo/documentation/runtime-format.md) for authority restrictions, failure behavior, scheduler details, and persistence guarantees.
 
 ### Packed numeric storage
 
@@ -227,7 +257,7 @@ See the [runtime reference](runtime-format.md) for authority restrictions, failu
 
 Arrays have fixed length and checked zero-based indices. Whole-payload `write`
 can replace an array. Matrix shape is an image-level convention; see
-[packed arrays](runtime-format.md#packed-integer-arrays).
+[packed arrays](../../neo/documentation/runtime-format.md#packed-integer-arrays).
 
 ### Platform metadata
 
@@ -235,4 +265,4 @@ can replace an array. Matrix shape is an image-level convention; see
 | --- | --- | --- |
 | `platform-info` | `(platform-info (field "environment"))` | Read host-configured metadata; returns text or a provider boolean. Never grants I/O authority. |
 
-See [platform fields and errors](../../documentation/reference/platform-interface.md).
+See [platform fields and errors](platform-interface.md).

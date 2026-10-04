@@ -10,4 +10,6 @@ int neo_cli_run(int argc, char **argv);
 /** Launch parser uses the same argv convention as neo_cli_run. */
 int neo_cli_launch(int argc, char **argv);
 
+int neo_cli_selftest(void);
+
 #endif

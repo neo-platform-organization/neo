@@ -1,0 +1,328 @@
+// Project Substrate: one image, owned packages/prototypes, and a terminal browser.
+// Run: ./build/x86_64/Linux/neo --cli neo/neo-os/image.neo browser demo
+// The initial spatial convention checks coordinate count; it is not a full space/transform model.
+(image #world
+  (packages #packages
+    (maths
+      (vector #vector
+        (left-values [1 2 3])
+        (right-values [4 5 6])
+        (index 0)
+        (sum 0)
+        (handlers
+          (dot
+            (body
+              (do
+                (step1
+                  (if (condition (!= (left (array-size (slot "left-values"))) (right (array-size (slot "right-values")))))
+                    (then (fail))
+                    (else)))
+                (step2 (write (slot "index") (value 0)))
+                (step3 (write (slot "sum") (value 0)))
+                (step4
+                  (while
+                    (condition (< (left (read (slot "index"))) (right (array-size (slot "left-values")))))
+                    (body
+                      (do
+                        (step1
+                          (write
+                            (slot "sum")
+                            (value
+                              (add
+                                (left (read (slot "sum")))
+                                (right
+                                  (mul
+                                    (left (array-get (slot "left-values") (index (read (slot "index")))))
+                                    (right (array-get (slot "right-values") (index (read (slot "index")))))))))))
+                        (step2 (write (slot "index") (value (add (left (read (slot "index"))) (right 1)))))))))
+                (step5 (return (value (read (slot "sum")))))))))))
+    (spatial
+      (point #point
+        (dimensions 3)
+        (coordinates [0 0 0])
+        (handlers
+          (valid
+            (body
+              (return
+                (value
+                  (and
+                    (left (>= (left (read (slot "dimensions"))) (right 0)))
+                    (right (== (left (read (slot "dimensions"))) (right (array-size (slot "coordinates"))))))))))))))
+  (workspace #workspace)
+  (browser @packages #packages 1 @workspace #workspace 255 @vector #vector 9 @point #point 9
+    (package-index 0)
+    (prototype-index 0)
+    (output "")
+    (offset 0)
+    (written 0)
+    (finished false)
+    (handlers
+      (main
+        (body
+          (do
+            (step1
+              (do
+                (step1
+                  (do
+                    (step1 (write (slot "output") (value "Project Substrate - live prototype browser")))
+                    (step2 (call (selector "emit")))))
+                (step2 (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit")))))))
+            (step2 (write (slot "package-index") (value 0)))
+            (step3
+              (while
+                (condition
+                  (<
+                    (left (read (slot "package-index")))
+                    (right (child-count (target (connection (target (self)) (name "packages")))))))
+                (body
+                  (do
+                    (step1 (do (step1 (write (slot "output") (value "package "))) (step2 (call (selector "emit")))))
+                    (step2
+                      (do
+                        (step1
+                          (do
+                            (step1
+                              (write
+                                (slot "output")
+                                (value
+                                  (object-name
+                                    (target
+                                      (child-at
+                                        (target (connection (target (self)) (name "packages")))
+                                        (index (read (slot "package-index")))))))))
+                            (step2 (call (selector "emit")))))
+                        (step2 (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit")))))))
+                    (step3 (write (slot "prototype-index") (value 0)))
+                    (step4
+                      (while
+                        (condition
+                          (<
+                            (left (read (slot "prototype-index")))
+                            (right
+                              (child-count
+                                (target
+                                  (child-at
+                                    (target (connection (target (self)) (name "packages")))
+                                    (index (read (slot "package-index")))))))))
+                        (body
+                          (do
+                            (step1
+                              (do
+                                (step1 (write (slot "output") (value "  prototype ")))
+                                (step2 (call (selector "emit")))))
+                            (step2
+                              (do
+                                (step1
+                                  (write
+                                    (slot "output")
+                                    (value
+                                      (object-name
+                                        (target
+                                          (child-at
+                                            (target
+                                              (child-at
+                                                (target (connection (target (self)) (name "packages")))
+                                                (index (read (slot "package-index")))))
+                                            (index (read (slot "prototype-index")))))))))
+                                (step2 (call (selector "emit")))))
+                            (step3
+                              (do
+                                (step1 (write (slot "output") (value " | children: ")))
+                                (step2 (call (selector "emit")))))
+                            (step4
+                              (do
+                                (step1
+                                  (do
+                                    (step1
+                                      (write
+                                        (slot "output")
+                                        (value
+                                          (to-text
+                                            (value
+                                              (child-count
+                                                (target
+                                                  (child-at
+                                                    (target
+                                                      (child-at
+                                                        (target (connection (target (self)) (name "packages")))
+                                                        (index (read (slot "package-index")))))
+                                                    (index (read (slot "prototype-index")))))))))))
+                                    (step2 (call (selector "emit")))))
+                                (step2
+                                  (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit")))))))
+                            (step5
+                              (write
+                                (slot "prototype-index")
+                                (value (add (left (read (slot "prototype-index"))) (right 1)))))))))
+                    (step5
+                      (write (slot "package-index") (value (add (left (read (slot "package-index"))) (right 1)))))))))
+            (step4
+              (do (step1 (write (slot "output") (value "Workspace objects: "))) (step2 (call (selector "emit")))))
+            (step5
+              (do
+                (step1
+                  (do
+                    (step1
+                      (write
+                        (slot "output")
+                        (value
+                          (to-text (value (child-count (target (connection (target (self)) (name "workspace")))))))))
+                    (step2 (call (selector "emit")))))
+                (step2 (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit"))))))))))
+      (demo
+        (body
+          (do
+            (step1 (call (selector "main")))
+            (step2
+              (do
+                (step1
+                  (if (condition (has-child (target (connection (target (self)) (name "workspace"))) (name "vector-copy")))
+                    (then
+                      (object-delete
+                        (target (child (target (connection (target (self)) (name "workspace"))) (name "vector-copy")))))
+                    (else)))
+                (step2
+                  (object-copy
+                    (target (connection (target (self)) (name "vector")))
+                    (destination (connection (target (self)) (name "workspace")))
+                    (name "vector-copy")))))
+            (step3
+              (do
+                (step1
+                  (if (condition (has-child (target (connection (target (self)) (name "workspace"))) (name "point-copy")))
+                    (then
+                      (object-delete
+                        (target (child (target (connection (target (self)) (name "workspace"))) (name "point-copy")))))
+                    (else)))
+                (step2
+                  (object-copy
+                    (target (connection (target (self)) (name "point")))
+                    (destination (connection (target (self)) (name "workspace")))
+                    (name "point-copy")))))
+            (step4
+              (object-write
+                (target
+                  (child
+                    (target (child (target (connection (target (self)) (name "workspace"))) (name "vector-copy")))
+                    (name "left-values")))
+                (value [1 2 3 4])))
+            (step5
+              (object-write
+                (target
+                  (child
+                    (target (child (target (connection (target (self)) (name "workspace"))) (name "vector-copy")))
+                    (name "right-values")))
+                (value [5 6 7 8])))
+            (step6 (do (step1 (write (slot "output") (value "4D dot product: "))) (step2 (call (selector "emit")))))
+            (step7
+              (do
+                (step1
+                  (do
+                    (step1
+                      (write
+                        (slot "output")
+                        (value
+                          (to-text
+                            (value
+                              (invoke
+                                (target
+                                  (child
+                                    (target (connection (target (self)) (name "workspace")))
+                                    (name "vector-copy")))
+                                (selector "dot")))))))
+                    (step2 (call (selector "emit")))))
+                (step2 (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit")))))))
+            (step8
+              (object-write
+                (target
+                  (child
+                    (target (child (target (connection (target (self)) (name "workspace"))) (name "point-copy")))
+                    (name "dimensions")))
+                (value 4)))
+            (step9
+              (object-write
+                (target
+                  (child
+                    (target (child (target (connection (target (self)) (name "workspace"))) (name "point-copy")))
+                    (name "coordinates")))
+                (value [10 20 30 40])))
+            (step10
+              (do (step1 (write (slot "output") (value "4D point shape valid: "))) (step2 (call (selector "emit")))))
+            (step11
+              (do
+                (step1
+                  (do
+                    (step1
+                      (write
+                        (slot "output")
+                        (value
+                          (to-text
+                            (value
+                              (invoke
+                                (target
+                                  (child (target (connection (target (self)) (name "workspace"))) (name "point-copy")))
+                                (selector "valid")))))))
+                    (step2 (call (selector "emit")))))
+                (step2 (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit")))))))
+            (step12
+              (do
+                (step1 (write (slot "output") (value "Original point dimension: ")))
+                (step2 (call (selector "emit")))))
+            (step13
+              (do
+                (step1
+                  (do
+                    (step1
+                      (write
+                        (slot "output")
+                        (value
+                          (to-text
+                            (value
+                              (inspect
+                                (target
+                                  (child (target (connection (target (self)) (name "point"))) (name "dimensions")))))))))
+                    (step2 (call (selector "emit")))))
+                (step2 (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit")))))))
+            (step14
+              (do
+                (step1 (write (slot "output") (value "Independent workspace copies: ")))
+                (step2 (call (selector "emit")))))
+            (step15
+              (do
+                (step1
+                  (do
+                    (step1
+                      (write
+                        (slot "output")
+                        (value
+                          (to-text (value (child-count (target (connection (target (self)) (name "workspace")))))))))
+                    (step2 (call (selector "emit")))))
+                (step2 (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit"))))))))))
+      (emit
+        (body
+          (do
+            (step1 (write (slot "offset") (value 0)))
+            (step2 (write (slot "finished") (value false)))
+            (step3
+              (while
+                (condition (not (value (read (slot "finished")))))
+                (body
+                  (do
+                    (step1
+                      (write
+                        (slot "written")
+                        (value
+                          (stream-write
+                            (target "stdout")
+                            (value (read (slot "output")))
+                            (offset (read (slot "offset")))))))
+                    (step2
+                      (if (condition (== (left (read (slot "written"))) (right "would-block")))
+                        (then (fail))
+                        (else
+                          (if (condition (== (left (read (slot "written"))) (right 0)))
+                            (then (write (slot "finished") (value true)))
+                            (else
+                              (write
+                                (slot "offset")
+                                (value (add (left (read (slot "offset"))) (right (read (slot "written")))))))))))))))))))))

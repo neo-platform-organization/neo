@@ -86,7 +86,7 @@ Nonprimitive payload objects evaluate as scalar or packed-array values. The ordi
 
 Arguments evaluate left to right, except for the branches/short-circuit forms above. Condition values must be boolean. Integer overflow, division by zero, invalid operand kinds, missing fields, and denied writes return distinct statuses. Division truncates toward zero. The signed-minimum divided or remaindered by -1 reports overflow instead of invoking undefined C behavior.
 
-State read/write is deliberately confined to the receiver's immediate children. Writes cannot overwrite the active behavior's containing subtree or message internals. External writes, object creation/copy/move primitives, local bindings, break/continue, pattern matching, spatial operations, and language-level failure handlers are not in this evaluator subset yet, even where a host C API exists.
+State read/write is deliberately confined to the receiver's immediate children. Writes cannot overwrite the active behavior's containing subtree or message internals. Explicit reference-based inspection and structural operations are described in [graph operations](../../documentation/reference/graph-operations.md). Local bindings, break/continue, pattern matching, general spatial protocols, and language-level failure handlers remain unimplemented.
 
 ## External window and buffer primitives
 
@@ -163,9 +163,9 @@ One `neo` process owns one VM. The same executable handles CLI, GUI, or both:
 
 ```sh
 make
-./build/neo --cli neo/terminal.neo terminal greet
-./build/neo --gui neo/cube.neo cube
-./build/neo --cli --gui neo/cube.neo cube
+./build/x86_64/Linux/neo --cli neo/neo-os/image.neo browser demo
+./build/x86_64/Linux/neo --gui neo/cube.neo cube
+./build/x86_64/Linux/neo --cli --gui neo/cube.neo cube
 ```
 
 Syntax: `neo [--cli] [--gui] IMAGE ACTOR [HANDLER]`.
@@ -192,3 +192,12 @@ Linux builds include X11 by default; `make WITH_X11=0` builds the same binary pa
 without it, making GUI requests fail as unsupported. GUI mode currently exposes
 the existing display interface, not the future dimensional OS GUI. Universal
 spatial packages must precede that GUI's implementation.
+
+## Temporary reference results
+
+Graph primitives can return a temporary capability reference (`NEO_REFERENCE` in C).
+It has no literal syntax and cannot be persisted as an ordinary payload or message.
+`same` compares live identities; `==`/`!=` reject reference operands. Protected graph
+connections remain the persisted relationship representation. See the
+[graph contract](../../documentation/reference/graph-operations.md) and
+[OS image guide](../../documentation/reference/project-substrate.md).

@@ -14,6 +14,7 @@
 static void neo_usage(void) {
     fputs("usage:\n"
           "  neo platform\n"
+          "  neo selftest\n"
           "  neo [--cli] [--gui] IMAGE ACTOR [HANDLER]\n"
           "  neo check IMAGE...\n"
           "  neo format IMAGE\n"
@@ -48,6 +49,7 @@ static bool neo_number_arg(const char *text, size_t *out) {
 
 static void neo_print_value(neo_value value) {
     switch (value.kind) {
+        case NEO_REFERENCE: printf("reference"); break;
         case NEO_OBJECT: printf("unit"); break;
         case NEO_INTEGER: printf("%" PRId64, value.integer); break;
         case NEO_BOOLEAN: printf("%s", value.boolean ? "true" : "false"); break;
@@ -229,6 +231,7 @@ int neo_cli_run(int argc, char **argv) {
     if (argc == 2 && (strcmp(argv[1], "help") == 0 || strcmp(argv[1], "--help") == 0)) {
         neo_usage(); return EXIT_SUCCESS;
     }
+    if (argc == 2 && strcmp(argv[1], "selftest") == 0) { return neo_cli_selftest(); }
     if (argc > 1) {
         const char *commands[] = {"platform", "check", "format", "clone", "run", "tick"};
         for (size_t i = 0; i < sizeof(commands) / sizeof(commands[0]); ++i) {

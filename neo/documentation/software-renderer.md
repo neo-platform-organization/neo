@@ -6,10 +6,10 @@ From the VM repository root:
 
 ```sh
 make
-./build/neo --gui neo/cube.neo cube
-./build/neo --gui neo/shaded-cube.neo cube
-./build/neo --gui neo/shaded-sphere.neo sphere
-./build/neo --gui neo/triangle.neo triangle
+./build/x86_64/Linux/neo --gui neo/cube.neo cube
+./build/x86_64/Linux/neo --gui neo/shaded-cube.neo cube
+./build/x86_64/Linux/neo --gui neo/shaded-sphere.neo sphere
+./build/x86_64/Linux/neo --gui neo/triangle.neo triangle
 ```
 
 Each image owns its renderer. No `--template`, include, or external renderer source

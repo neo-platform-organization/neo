@@ -1,5 +1,5 @@
 // Rotating flat-shaded cube: 8 vertices, 12 triangles, six face colors, one fixed light.
-// Run: ./build/neo --gui neo/shaded-cube.neo cube
+// Run: ./build/x86_64/Linux/neo --gui neo/shaded-cube.neo cube
 // Self-contained image: the whole renderer lives in this one actor, nothing is loaded from other files.
 // Needs "buffer" (READ+WRITE) and "window" connections, which `neo --gui` grants.
 // Pipeline per frame (handler "frame"): rotate (yaw then pitch, fixed point scale 10000) -> perspective

@@ -46,6 +46,7 @@ char *neo_string(neo_vm *vm, const char *source) {
 
 bool neo_valid_value(neo_value value) {
     switch (value.kind) {
+        case NEO_REFERENCE: return false;
         case NEO_OBJECT:
         case NEO_INTEGER:
         case NEO_BOOLEAN:
@@ -63,6 +64,7 @@ bool neo_valid_value(neo_value value) {
 neo_status neo_value_copy(neo_vm *vm, neo_value source, neo_value *out) {
     *out = (neo_value){.kind = source.kind};
     switch (source.kind) {
+        case NEO_REFERENCE: return NEO_WRONG_KIND;
         case NEO_INTEGER:
             out->integer = source.integer;
             break;

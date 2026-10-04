@@ -36,7 +36,8 @@ typedef enum neo_kind {
     NEO_BOOLEAN,
     NEO_TEXT,
     NEO_PRIMITIVE,
-    NEO_INTEGERS
+    NEO_INTEGERS,
+    NEO_REFERENCE /* Transient evaluator result; never a stored payload. */
 } neo_kind;
 
 typedef enum neo_right {
@@ -62,6 +63,7 @@ typedef struct neo_value {
     const char *text;
     const int64_t *integers;
     size_t count;
+    const neo_capability *reference; /* Borrowed until VM destruction. */
 } neo_value;
 
 typedef void *(*neo_allocate_fn)(void *context, size_t size);

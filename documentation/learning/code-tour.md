@@ -34,3 +34,17 @@ For a language example, read [shaded-cube.neo](../../neo/shaded-cube.neo). Verte
 coordinates are a packed integer payload owned by the cube, not individual active
 objects. Rotation, projection, and rasterization run in neo. The kernel presents
 completed bytes. General dimensional protocols are not implemented by this demo.
+
+## Inspecting and changing the world from neo
+
+[graph.c](../../neo-vm/execution/graph.c) evaluates operand values first, then uses
+held capabilities to resolve objects. Reference results carry VM-owned handles;
+text cannot manufacture one. Mutation uses existing kernel APIs. A chain of active
+receivers protects every suspended caller's behavior while `invoke` runs another
+receiver under its own authority and the shared instruction budget.
+
+[image.neo](../../neo/neo-os/image.neo) uses these mechanisms for a prototype
+catalogue and workspace. The browser reads the catalogue; copying gives workspace
+objects their own arrays and behavior. Their maths/shape handlers execute through
+`invoke`. [selftest.c](../../neo-vm/cli/selftest.c) is a command in the same binary,
+covering authority and lifetime cases plus that actual image.

@@ -4,7 +4,7 @@
 
 ```sh
 make
-./build/neo --gui neo/shaded-cube.neo cube
+./build/x86_64/Linux/neo --gui neo/shaded-cube.neo cube
 ```
 
 The host creates an ordinary protected window resource and a separate RGBA byte
@@ -27,5 +27,5 @@ contexts are released on deletion/unload/VM destruction. Live resources block
 copy/move and serialization; reconnecting them after persistence is not implemented.
 Native connection-loss recovery is also not implemented.
 
-See [language primitives](../../neo/documentation/syntax-cheat-sheet.md) for byte
+See [language primitives](syntax-cheat-sheet.md) for byte
 access, buffer fill, presentation, event inspection, and width/height queries.

@@ -1,5 +1,5 @@
 // Rotating flat-shaded sphere: UV mesh, 8 rings x 12 segments, two-color checker so the spin is visible.
-// Run: ./build/neo --gui neo/shaded-sphere.neo sphere
+// Run: ./build/x86_64/Linux/neo --gui neo/shaded-sphere.neo sphere
 // Self-contained image: the whole renderer lives in this one actor, nothing is loaded from other files.
 // Needs "buffer" (READ+WRITE) and "window" connections, which `neo --gui` grants.
 // Pipeline per frame (handler "frame"): rotate (yaw then pitch, fixed point scale 10000) -> perspective

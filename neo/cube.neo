@@ -1,5 +1,5 @@
 // Rotating wireframe cube. Geometry, rotation, projection, and rasterization are neo.
-// Run: ./build/neo --gui neo/cube.neo cube
+// Run: ./build/x86_64/Linux/neo --gui neo/cube.neo cube
 // Self-contained image: this actor owns its renderer fields and handlers.
 // Fixed-point trig scale: 10000. Angles are degrees; no accumulated matrix drift.
 // Camera: distance 400, focal length 300. Cube half-size 80 stays ahead of camera.

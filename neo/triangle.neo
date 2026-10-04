@@ -1,5 +1,5 @@
 // A filled cyan triangle, rasterized entirely in neo.
-// Run: ./build/neo-window neo/triangle.neo triangle
+// Run: ./build/x86_64/Linux/neo-window neo/triangle.neo triangle
 // Fixed 640x480 RGBA buffer. Vertices: (320,80), (160,400), (480,400).
 // Draw eight scanlines per frame to stay within the host's execution budget.
 (image

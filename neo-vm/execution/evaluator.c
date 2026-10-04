@@ -1,29 +1,18 @@
 #include "internal.h"
-#include "execution/execution.h"
+#include "execution/evaluator_internal.h"
 #include "display/display.h"
 #include "io/io.h"
 
 #include <string.h>
+#include <stdio.h>
+#include <inttypes.h>
 
 #define NEO_EVAL_DEPTH 128u
-
-typedef struct neo_activation {
-    neo_vm *vm;
-    const neo_capability *authority;
-    neo_object *receiver;
-    neo_object *body;
-    const neo_context *context;
-    const neo_message *message;
-    neo_execution *report;
-    size_t budget;
-    bool returning;
-    neo_value return_value;
-} neo_activation;
 
 static neo_status neo_evaluate(neo_activation *activation, neo_object *expression,
                                size_t depth, neo_value *out);
 
-static neo_status neo_operand(neo_activation *activation, neo_object *operation,
+neo_status neo_operand(neo_activation *activation, neo_object *operation,
                               const char *name, size_t depth, neo_value *out) {
     neo_object *child = neo_child_named(activation->vm, operation->id, name);
     if (child == NULL) {
@@ -81,14 +70,16 @@ static bool neo_equal(neo_value a, neo_value b) {
         case NEO_INTEGERS:
             return a.count == b.count && (a.count == 0 ||
                 memcmp(a.integers, b.integers, a.count * sizeof(int64_t)) == 0);
+        case NEO_REFERENCE: return false;
         case NEO_PRIMITIVE: return false;
     }
     return false;
 }
 
 bool neo_primitive_known(const char *op) {
+    if (neo_graph_primitive_known(op)) { return true; }
     static const char *const primitives[] = {
-        "platform-info", "array-get", "array-set", "array-size", "call", "do", "if", "while", "return", "fail", "read", "write", "message", "send",
+        "platform-info", "array-get", "array-set", "array-size", "call", "invoke", "do", "if", "while", "return", "fail", "read", "write", "message", "send",
         "not", "and", "or", "==", "!=", "add", "sub", "mul", "div", "rem", "<", "<=", ">", ">=",
         "buffer-fill", "buffer-read", "buffer-write", "buffer-size", "window-present", "window-poll",
         "window-width", "window-height", "stream-read", "stream-write",
@@ -309,6 +300,7 @@ static neo_status neo_run_operation(neo_activation *a, neo_object *node,
     const char *op = node->value.text;
     if (!neo_primitive_known(op)) { return NEO_UNSUPPORTED; }
 
+    if (neo_graph_primitive_known(op)) { return neo_graph_operation(a, node, depth, out); }
     if (strcmp(op, "platform-info") == 0) {
         neo_value field = {0};
         neo_status status = neo_operand(a, node, "field", depth, &field);
@@ -349,19 +341,39 @@ static neo_status neo_run_operation(neo_activation *a, neo_object *node,
     neo_vm *vm = a->vm;
     neo_value left = {0}, right = {0};
     neo_status status = NEO_OK;
-    if (strcmp(op, "call") == 0) {
-        status = neo_operand(a, node, "selector", depth, &left);
+    if (strcmp(op, "call") == 0 || strcmp(op, "invoke") == 0) {
+        bool cross_receiver = strcmp(op, "invoke") == 0;
+        neo_value target = {0};
+        if (cross_receiver) { status = neo_operand(a, node, "target", depth, &target); }
+        if (status == NEO_OK && !a->returning) { status = neo_operand(a, node, "selector", depth, &left); }
         if (status == NEO_OK && !a->returning) {
+            neo_object *receiver = a->receiver;
+            const neo_capability *authority = a->authority;
+            const neo_context *context = a->context;
             if (left.kind != NEO_TEXT) { status = NEO_WRONG_KIND; }
-            else {
-                neo_object *handlers = neo_child_named(vm, a->receiver->id, "handlers");
+            if (status == NEO_OK && cross_receiver) {
+                if (target.kind != NEO_REFERENCE) { status = NEO_WRONG_KIND; }
+                else {
+                    authority = target.reference;
+                    status = neo_resolve(vm, authority, NEO_ACT | NEO_READ, &receiver);
+                    if (status == NEO_OK) { status = neo_context_create(vm, authority, &context); }
+                }
+            }
+            if (status == NEO_OK) {
+                neo_object *handlers = neo_child_named(vm, receiver->id, "handlers");
                 neo_object *handler = handlers == NULL ? NULL : neo_child_named(vm, handlers->id, left.text);
                 neo_object *body = handler == NULL ? NULL : neo_child_named(vm, handler->id, "body");
                 if (body == NULL) { status = NEO_UNAVAILABLE; }
                 else {
-                    /* Same receiver/authority/message and shared budget. A return
-                     * ends only this local invocation; recursive depth is bounded. */
+                    /* Shared report/budget; separate return scope and receiver
+                     * authority. Protect suspended callers through parent links. */
                     neo_activation nested = *a;
+                    nested.parent = a;
+                    nested.receiver = receiver;
+                    nested.authority = authority;
+                    nested.context = context;
+                    nested.body = body;
+                    if (cross_receiver) { nested.message = NULL; }
                     nested.returning = false;
                     nested.return_value = (neo_value){0};
                     status = neo_evaluate(&nested, body, depth + 1, out);
@@ -372,6 +384,7 @@ static neo_status neo_run_operation(neo_activation *a, neo_object *node,
                 }
             }
         }
+        neo_value_free(vm, target);
         neo_value_free(vm, left);
         return status;
     }
@@ -430,7 +443,12 @@ static neo_status neo_run_operation(neo_activation *a, neo_object *node,
                            strcmp(slot->name, "handlers") == 0) {
                     status = NEO_DENIED;
                 } else {
+                    neo_object_id slot_id = slot->id;
                     status = neo_operand(a, node, "value", depth, &right);
+                    /* Structural operands can delete the original slot. Keep its
+                     * identity, never a node pointer or a fresh name lookup. */
+                    slot = neo_lookup(vm, slot_id);
+                    if (status == NEO_OK && !a->returning && slot == NULL) { status = NEO_UNAVAILABLE; }
                     if (status == NEO_OK && !a->returning) {
                         neo_value replacement;
                         status = neo_value_copy(vm, right, &replacement);
@@ -494,9 +512,13 @@ static neo_status neo_run_operation(neo_activation *a, neo_object *node,
             status = neo_operand(a, node, "right", depth, &right);
             if (status == NEO_OK && !a->returning) {
                 if (strcmp(op, "==") == 0 || strcmp(op, "!=") == 0) {
+                    if (left.kind == NEO_REFERENCE || right.kind == NEO_REFERENCE) {
+                        status = NEO_WRONG_KIND;
+                    } else {
                     bool equal = neo_equal(left, right);
                     *out = (neo_value){.kind = NEO_BOOLEAN,
                         .boolean = strcmp(op, "==") == 0 ? equal : !equal};
+                    }
                 } else if (strcmp(op, "and") == 0 || strcmp(op, "or") == 0) {
                     if (right.kind != NEO_BOOLEAN) { status = NEO_WRONG_KIND; }
                     else { *out = right; }

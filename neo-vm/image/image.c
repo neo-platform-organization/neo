@@ -552,6 +552,7 @@ static neo_status neo_write_node(neo_writer *writer, neo_object *node, size_t de
     (void)snprintf(buffer, sizeof(buffer), " #n%" PRIu64, node->id);
     NEO_WRITE(neo_append(writer, buffer));
     switch (node->value.kind) {
+        case NEO_REFERENCE: return NEO_UNSUPPORTED;
         case NEO_OBJECT:
             /* Preserve data objects whose names also name built-in operations. */
             if (neo_primitive_known(node->name)) {

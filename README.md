@@ -3,8 +3,9 @@
 neo is a live object-graph language and environment, implemented by a universal
 C17 VM. Objects contain state and behavior and communicate through protected
 connections and messages. The current implementation is an interpreter and pixel
-window interface; general dimensional packages and the OS environment are still
-being developed.
+window interface; the first OS image now provides prototype browsing, independent cloning,
+dimension-independent integer dot products, and point shape validation. General
+spatial protocols and a full OS environment remain in development.
 
 ## Build and run
 
@@ -13,13 +14,15 @@ and Xlib development headers, then run:
 
 ```sh
 make
-./build/neo help
-./build/neo platform
-./build/neo --gui neo/shaded-cube.neo cube
-./build/neo --cli --gui neo/shaded-cube.neo cube
+make test
+./build/x86_64/Linux/neo help
+./build/x86_64/Linux/neo platform
+./build/x86_64/Linux/neo --gui neo/shaded-cube.neo cube
+./build/x86_64/Linux/neo --cli --gui neo/shaded-cube.neo cube
 ```
 
-The build produces only `build/neo`. One process owns one VM. Select `--cli`,
+The build produces only `build/ARCH/OS/neo`, selected from normalized `uname` output
+(default here: `build/x86_64/Linux/neo`). `make -s path` prints it. One process owns one VM. Select `--cli`,
 `--gui`, or both to grant terminal and/or display interfaces to the same image.
 Without flags, CLI is selected. Launch syntax:
 
@@ -57,7 +60,7 @@ neo-vm/
   internal.h     private shared VM structures
 neo/             image files and isolated language documentation
 documentation/   VM guides and C interface documentation
-build/neo        universal executable
+build/ARCH/OS/neo universal executable
 ```
 
 Each subsystem colocates its C source and header. Preserved `.neo` sources from
@@ -69,9 +72,22 @@ Comparisons are prefix objects: `(== (left 1) (right 1))`,
 Quoted symbols are text. Comments start with `//`.
 
 Read the [VM guides](documentation/README.md),
-[language syntax](neo/documentation/syntax-cheat-sheet.md), and
+[language syntax](documentation/reference/syntax-cheat-sheet.md), and
 [runtime contracts](neo/documentation/runtime-format.md).
 [Doxygen](https://www.doxygen.nl/manual/markdown.html) can turn Markdown and C
 API comments into a browsable manual using `doxygen Doxyfile`.
 
 Licensed under [GPLv3](LICENSE).
+
+## Try Project Substrate
+
+```sh
+./build/x86_64/Linux/neo --cli neo/neo-os/image.neo browser
+./build/x86_64/Linux/neo --cli neo/neo-os/image.neo browser demo
+```
+
+The demo clones prototypes, computes a 4D dot product (70), and validates a 4D
+point while leaving the 3D prototype unchanged. All behavior is in one image.
+See [the OS guide](documentation/reference/project-substrate.md) and
+[protected graph operations](documentation/reference/graph-operations.md).
+`make test` uses the `selftest` subcommand; it creates no other executable.
