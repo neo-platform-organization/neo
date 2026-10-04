@@ -1,0 +1,1 @@
+$(error Target x86_64/Windows is a stub; no implementation or binary is available)

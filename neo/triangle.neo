@@ -19,8 +19,8 @@
             (rows
               (while (condition
                 (and
-                  (left (le (left (read (slot "y"))) (right 400)))
-                  (right (lt (left (read (slot "y"))) (right (read (slot "row-stop")))))))
+                  (left (<= (left (read (slot "y"))) (right 400)))
+                  (right (< (left (read (slot "y"))) (right (read (slot "row-stop")))))))
                 (body
                   (do
                     // Sloping edges widen by one pixel every two rows.
@@ -45,7 +45,7 @@
                             (right (add (left 320) (right (read (slot "half-width")))))))
                           (right 4)))))
                     (pixels
-                      (while (condition (le (left (read (slot "index"))) (right (read (slot "end")))))
+                      (while (condition (<= (left (read (slot "index"))) (right (read (slot "end")))))
                         (body
                           (do
                             (red

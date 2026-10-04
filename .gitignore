@@ -37,3 +37,6 @@ Thumbs.db
 # Specific files
 /neo/if.neo
 /neo/inspector.neo
+
+# Generated documentation
+/generated-docs/

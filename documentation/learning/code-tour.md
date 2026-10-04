@@ -1,248 +1,36 @@
-# Reading neo from the outside in
-
-[Documentation index](../README.md)
-
-Quotes always denote text payloads, never identifiers or primitive bindings. Use `(word "if")` for text and `(if ...)` for the primitive. Comments start with `//`; `>` is not a comment marker. The current reader requires bare object names and rejects quoted names. This supersedes earlier quoted-name and quoted-binding syntax.
-
-This guide is for someone comfortable with small C programs but new to interpreters and runtimes. Follow one complete path before trying to understand every file. C is the implementation language; diagrams below are plain text, not another programming language to learn.
-
-The example image now uses inferred literals (`(count 0)`) and name-selected primitive objects (`(if ...)`). Named containers such as `body` and `condition` hold one primitive child and forward evaluation to it. Older explicit-tag examples in this tour remain valid compatibility syntax. Fields are dynamically typed: a write can change their payload kind.
-
-## 1. Run something before reading its internals
-
-From the repository root (the directory containing Makefile):
-
-```sh
-make test
-./build/neo check neo/image.neo
-./build/neo run neo/image.neo counter increment
-./build/neo tick neo/image.neo 4
-```
-
-The direct invocation prints result 1 and counter.count = 1. The tick run prints counter.count = 3 and sender.sent = true. Each command starts a new VM and loads a new image; the previous invocation does not silently persist its changes to disk.
-
-Open [the image](../../neo/image.neo). Find counter, count, handlers, increment, and body. The body contains objects describing a write and a calculation. This is actual data read from a file, not a behavior hardcoded into the C demo.
-
-The intended path is:
-
-```text
-file bytes
-  -> reader builds objects and connections
-  -> VM retains the live image
-  -> caller invokes a handler or scheduler delivers a message
-  -> evaluator follows the receiver's behavior objects
-  -> primitive implementation changes a receiver field
-```
-
-Loading does not execute the last three steps. That separation lets you inspect, duplicate, or validate an image before starting it.
-
-## 2. Find the front door: main.c
-
-Read [cli.c](../../neo-vm/source/cli.c), starting with neo_cli_run. The small main.c forwards process arguments to it. Ignore the details of parsing and evaluation on your first pass. Notice its job is ordinary C orchestration:
-
-```c
-neo_vm *vm = NULL;
-neo_status status = neo_vm_create(NULL, &vm);
-```
-
-The function returns a status and writes the VM pointer through the output argument. The NULL allocator selects the default malloc/free implementation. The VM is freed before the process exits.
-
-The CLI reads a file, asks neo_image_parse to build a graph, and then selects a command. It performs filesystem I/O; the evaluator has no ambient filesystem access. This is one concrete authority boundary.
-
-## 3. Read the public promises before private structures
-
-Read [neo-vm/include/neo.h](../../neo-vm/include/neo.h). You do not need to memorize every function. Find:
-
-- neo_status: the ways an operation can complete or fail.
-- neo_value: the host representation of an object's payload.
-- neo_vm and neo_capability: opaque types whose fields callers do not access.
-- copy, move, and image lifecycle operations.
-
-An output parameter is not a second return mechanism with hidden behavior. It is a pointer to caller-owned storage the function fills in. A status tells you whether that output is usable.
-
-## 4. What is stored? internal.h and object.c
-
-Read [neo-vm/source/internal.h](../../neo-vm/source/internal.h). Each neo_object has identity, image membership, a parent identity, a name, a payload, connections, and runtime bookkeeping. None of those field names causes behavior by itself.
-
-The VM retains a linked chain for whole-image operations and maintains bucket indexes for identities and parents. Each object records its container ID; looking for children scans the matching parent bucket instead of the whole VM. Child order remains an explicit ordinal. These indexes accelerate lookup without changing the graph's meaning.
-
-Read these functions in [neo-vm/source/object.c](../../neo-vm/source/object.c), in order:
-
-1. neo_node_new: allocate and initialize one unpublished object.
-2. neo_object_create: validate authority, allocate everything needed, then publish.
-3. neo_resolve: validate the capability before accessing its target.
-4. neo_duplicate: allocate all copies, remap internal connections, then publish.
-5. neo_transfer: implement copy or duplicate-then-delete move.
-6. neo_delete_region: remove a region from listings before freeing its storage.
-
-The copy mapping is temporary bookkeeping. The published world is the object graph. These are different structures with different lifetimes.
-
-## 5. How text becomes a graph: image.c
-
-Read [neo-vm/source/image.c](../../neo-vm/source/image.c). The reader advances through a string, tracks line/column, and recognizes parentheses, names, tags, labels, and edges.
-
-The central function is neo_read_node. It builds a node and recursively reads its contained children. All nodes remain private to the loading operation until validation succeeds.
-
-Connections need a second pass because a target label may appear later in the file. Once every node exists, neo_image_parse resolves pending edges. An error releases the temporary graph instead of publishing half an image.
-
-The writer performs the inverse traversal. It serializes meaning, not C memory addresses. A loaded copy gets different numeric IDs while preserving which objects connect to which.
-
-The implemented grammar and exact limits are in [runtime-format.md](../reference/runtime-format.md). The older [language-design.md](../design/language-design.md) contains broader proposals, not a description of everything this reader accepts.
-
-## 6. How behavior runs: evaluator.c
-
-Read [neo-vm/source/evaluator.c](../../neo-vm/source/evaluator.c), starting at neo_behavior_run. It finds:
-
-```text
-receiver -> handlers -> selected handler -> body
-```
-
-An activation holds information about this invocation: receiver, authority, input message, remaining budget, and return state. It is currently a private C structure, not yet a fully inspectable neo activation object.
-
-neo_evaluate asks whether the current object is data or a primitive operation. Data supplies a value. A primitive dispatches to the corresponding implementation rule. A primitive is still represented by an object in the image; the C branch is how this first VM executes it.
-
-Trace increment:
-
-```text
-do
-  write
-    obtain slot name "count"
-    add
-      read current count
-      obtain integer 1
-    replace count's payload with the result
-  return
-    read updated count
-```
-
-Notice why if cannot evaluate all children before choosing a branch: the unselected branch may change state or fail. Evaluation order is a language rule, not a side effect of how the C loop happened to be written.
-
-Temporary result payloads are owned by the evaluator and freed explicitly. They are not yet exposed as independently inspectable intermediate graph objects. This is one remaining gap between the prototype and the full everything-is-an-object vision.
-
-## 7. Why messages need a separate module
-
-Read [neo-vm/include/neo_message.h](../../neo-vm/include/neo_message.h), then the access check and acceptance functions in [neo-vm/source/message.c](../../neo-vm/source/message.c).
-
-Messages are objects in ETHER with protected metadata. Ordinary object access cannot bypass their policy. A context identifies the acting object; a name written in a message cannot impersonate that actor.
-
-Acceptance closes the editing window and enqueues the message without allocating or calling user code in between. This is atomic in our sequential runtime. It is not a claim that this C code is safe to call concurrently.
-
-## 8. Who runs next? scheduler.c
-
-Read [neo-vm/source/scheduler.c](../../neo-vm/source/scheduler.c). The scheduler is a loop that chooses work; it does not supply the receiver's behavior.
-
-```text
-capture the current submission boundary
-accept eligible messages
-for each registered receiver in order:
-  process at most one message
-  run its optional tick behavior
-```
-
-In image.neo, sender creates a message during its first tick. Acceptance for that tick has already happened, so counter processes the message at the next boundary. This is an explicit provisional scheduling policy.
-
-If behavior fails, the receiver pauses. The host can inspect the report, repair the body, then explicitly retry or discard. Retry starts over and can repeat earlier side effects. There is no automatic rollback.
-
-## 9. Read tests as executable examples
-
-Start with neo_test_reader_and_roundtrip in [neo-vm/tests/test_runtime.c](../../neo-vm/tests/test_runtime.c). Then read neo_test_scheduler, which deliberately causes a failure, edits the divisor, and retries the retained message.
-
-Next read [neo-vm/tests/test_objects.c](../../neo-vm/tests/test_objects.c) and [neo-vm/tests/test_messages.c](../../neo-vm/tests/test_messages.c). CHECK/OK are test assertions, not language syntax. Fault allocators deliberately make the nth allocation fail to prove partial work is cleaned up.
-
-[neo-vm/tests/test_cli.sh](../../neo-vm/tests/test_cli.sh) only drives the real executable and checks its output and exit status. The runtime itself remains C.
-
-## 10. Small experiments
-
-Make a separate copy of image.neo before editing it. Change the increment amount from 1 to 2 and invoke increment. Change the tick comparison threshold and observe the final count. Then put fail in an unselected if branch: it should not execute. Put it in the selected branch and inspect the reported operation ID.
-
-These experiments connect the file you edit to the graph the reader creates and the C rules the evaluator applies. Do not start by rewriting memory management.
-
-## What this base does not establish
-
-It is a small runnable interpreter, not yet a spatial OS. It has no geometry or dimensional transformations, renderer, parallel execution, arbitrary running-image persistence, graph-resident failure handlers, or self-hosted compiler. Those should be designed explicitly. The runtime now gives us a concrete place to test those ideas without pretending they are already solved.
-
-## Following pixels to a window
-
-Start with [window.neo](../../neo/window.neo). Its frame handler asks the window to present the buffer; it does not draw anything. The [C launcher](../../neo-vm/source/launch.c) supplies both resources and grants connections before invoking that handler.
-
-[display.c](../../neo-vm/source/display.c) owns byte storage, checks permissions and bounds, and calls a small backend interface. [window_x11.c](../../neo-vm/source/window_x11.c) translates completed pixel bytes into X11's native image layout and sends them to the window. Rendering algorithms belong on the neo side of that boundary. Native handles stay private to C. See the [interface reference](../reference/window-interface.md) for the byte layout and primitive table.
-
-## A triangle rendered by neo
-
-Run `make`, then `./build/neo --gui neo/triangle.neo triangle` from the repository root. Open [triangle.neo](../../neo/triangle.neo) to follow the renderer. No C drawing code is involved.
-
-The triangle has a top vertex and a horizontal bottom edge. Each row widens the filled span: its half-width is `(y - 80) / 2`, centered at x = 320. neo computes the first and last pixel addresses, loops over that span, and writes four channel bytes per pixel. Eight rows are drawn per invocation so each frame stays within the launcher's execution budget. The `y` field remembers progress between invocations. Once y passes 400, the loops stop and subsequent frames only present the completed buffer (plus updating the batch boundary).
-
-This is a deliberately simple scanline renderer for one fixed triangle, not yet a general triangle rasterizer with arbitrary vertices. `test_triangle.c` executes the actual image against a headless backend and checks every pixel against independent triangle half-plane inequalities, including the untouched background. It also writes `build/triangle.ppm` from the resulting buffer.
-
-## Following terminal I/O
-
-[terminal.neo](../../neo/terminal.neo) knows only the connection name `stdout`. Its write returns a byte count, and the image advances its offset by that count. [io.c](../../neo-vm/source/io.c) checks authority and calls a backend; [io_posix.c](../../neo-vm/source/io_posix.c) owns the OS-specific descriptor operations. [launch.c](../../neo-vm/source/launch.c) grants the standard streams before invoking the image. This is the same boundary used for windows: neo names capabilities, and the kernel adapter knows the platform.
-
-See the [I/O reference](../reference/io-interface.md) for input bytes, partial writes, event snapshots, and limitations. The snapshot/queue implementation is still native scaffolding; this is not yet the fully graph-resident execution model.
-
-## From one triangle to reusable drawing behavior
-
-[software-renderer.neo](../../neo/software-renderer.neo) contains the first reusable software renderer. Read `r-point` first: it checks the coordinate bounds, computes a byte address, and stores RGBA channels. `r-line` interpolates a sequence of positions and calls `r-point`. Both operate through a granted buffer connection.
-
-[cube.neo](../../neo/cube.neo) supplies eight vertices, fixed-point sine/cosine, two-axis rotation, and perspective projection. Its frame handler clears the old image, projects the vertices, asks `r-line` to draw twelve edges, presents the buffer, and advances the angles. The renderer never needs to understand a cube; the cube never needs to understand X11.
-
-The launcher copies the renderer's fields and handlers into the cube at startup. `(call (selector "r-line"))` then invokes that owned behavior. This initial API uses receiver fields for inputs and scratch storage, so it is sequential rather than reentrant. See the [renderer reference](../reference/software-renderer.md) for commands and limits.
-
-## Why the cube now uses arrays
-
-Open `neo/cube.neo`: `vertices` owns 24 integers, interpreted as eight rows of
-three coordinates. `edges` owns pairs of vertex indices. `projected` holds eight
-pairs of screen coordinates. One loop transforms the vertices, another draws the
-edges. The cube remains one actor; vertices and edges are data, not independent
-actors or repeated instruction blocks.
-
-In C terms, the vertex payload is like an owned `int64_t vertices[24]`. Accessing
-row `r`, column `c` means `vertices[r * 3 + c]`. neo's `array-get` and `array-set`
-perform checked element access. The C runtime supplies storage; the rotation,
-projection, and line algorithm still run as neo behavior. Duplicating the object
-copies its array, so changing a duplicate cannot change the original.
-
-Object lookup also changed: `internal.h` has private bucket indexes for identity
-and immediate parent. `neo_node_publish` inserts a fully prepared node into both
-indexes; `neo_object_free` removes it. Searches inspect a bucket rather than
-walking every object in the VM. Collisions still compare actual identities and
-names. The ordered child iterator still selects by ordinal, so execution order
-has not changed. These indexes are disposable host bookkeeping, not image state.
-
-## Platform information without platform coupling
-
-`neo_platform.h` describes the environment using ordinary C values. `platform.c`
-knows no Linux or X11 APIs. The selected `platform_linux.c` adapter supplies
-`hosted`, `linux`, and `x86_64`; virtualization stays `unknown`. The runner copies
-that descriptor into the VM before loading an image. `platform-info` reads it.
-
-Knowing a stream provider exists is like knowing the machine has a door: it does
-not give an object the key. Access still comes from a granted stream/window
-capability and the usual rights checks. The descriptor remains informational. Resource opening now goes through a
-separate platform callback table. See the [platform reference](../reference/platform-interface.md).
-
-## Opening resources through the platform
-
-`neo_platform_services` combines metadata, a callback table, and a host-owned
-context. The runner requests providers from `neo_platform_native_services` and
-installs them before loading the image. The core then calls `read_source`,
-`open_stream`, `open_window`, or `wait` without knowing native handles or APIs.
-
-For example, the terminal runner asks for `NEO_STANDARD_OUTPUT`; the Linux adapter
-maps it to a native descriptor and creates the existing stream resource. The runner
-then explicitly grants a WRITE connection to the actor. A different backend can
-supply the same stream contract without changing that actor's neo code.
-
-The fake-platform test uses memory as its image source and callbacks as its display.
-This makes host independence executable and testable, rather than merely naming
-an interface. The single executable now uses this boundary for both modes.
-
-## One process, one VM, two interfaces
-
-[main.c](../../neo-vm/source/main.c) passes arguments to the dispatcher in
-[cli.c](../../neo-vm/source/cli.c). [launch.c](../../neo-vm/source/launch.c) parses
-the mode flags and owns a single VM from creation to destruction. CLI and GUI
-are resource choices, not separate runtimes. Combining them grants terminal
-streams and window/buffer connections to the same actor in the same loaded image.
-The current graphical loop is bootstrap scaffolding, not the future OS scheduler.
+# Read the VM
+
+[VM documentation](../README.md)
+
+Start with [main.c](../../neo-vm/main.c): it forwards process arguments to
+[cli.c](../../neo-vm/cli/cli.c). Utility arguments inspect or run an image;
+[launch.c](../../neo-vm/cli/launch.c) selects CLI, GUI, or both interfaces, loads one
+image, grants resources, and invokes the selected receiver. Both interfaces share
+that VM and image lifetime.
+
+Read [objects.c](../../neo-vm/objects/objects.c) next. It allocates identities,
+contains payloads, validates capabilities, and performs independent deep copying
+with internal-reference remapping. C storage implements the graph; it is not a
+class system. Duplication stays in the kernel.
+
+[image.c](../../neo-vm/image/image.c) constructs an inert graph, then resolves
+connections. Loading does not execute it. [evaluator.c](../../neo-vm/execution/evaluator.c)
+walks receiver-owned behavior objects, dispatching protected primitive mechanisms
+in C. `==`, `!=`, `<`, `>`, `<=`, and `>=` are primitive object names with two
+operand children. They retain the object-graph syntax.
+
+[messages.c](../../neo-vm/messages/messages.c) controls message authority and
+acceptance. [scheduler.c](../../neo-vm/execution/scheduler.c) supplies the current
+sequential host policy. Queues/activations are not yet fully graph-resident.
+
+[platform.c](../../neo-vm/platform/platform.c) supplies the generic host contract.
+The [Linux adapter](../../neo-vm/platform/x86_64/Linux/platform.c) opens sources,
+streams, windows, and waits. [io.c](../../neo-vm/io/io.c) and
+[display.c](../../neo-vm/display/display.c) validate protected resource access;
+[POSIX streams](../../neo-vm/platform/posix/streams.c) and
+[X11](../../neo-vm/platform/x11/x11.c) translate native mechanisms.
+
+For a language example, read [shaded-cube.neo](../../neo/shaded-cube.neo). Vertex
+coordinates are a packed integer payload owned by the cube, not individual active
+objects. Rotation, projection, and rasterization run in neo. The kernel presents
+completed bytes. General dimensional protocols are not implemented by this demo.

@@ -1,6 +1,6 @@
 // Rotating wireframe cube. Geometry, rotation, projection, and rasterization are neo.
-// Run: ./build/neo-window neo/cube.neo cube neo/software-renderer.neo
-// The host copies the renderer prototype into this actor before execution.
+// Run: ./build/neo --gui neo/cube.neo cube
+// Self-contained image: this actor owns its renderer fields and handlers.
 // Fixed-point trig scale: 10000. Angles are degrees; no accumulated matrix drift.
 // Camera: distance 400, focal length 300. Cube half-size 80 stays ahead of camera.
 // Three edge groups use orange, cyan, and green. Hidden edges stay visible.
@@ -36,18 +36,36 @@
     (c-a 0)
     (c-b 0)
     (c-color 0)
-    (handlers
+    (r-width 0)
+(r-height 0)
+(r-x 0)
+(r-y 0)
+(r-x0 0)
+(r-y0 0)
+(r-x1 0)
+(r-y1 0)
+(r-red 64)
+(r-green 200)
+(r-blue 255)
+(r-index 0)
+(r-dx 0)
+(r-dy 0)
+(r-steps 0)
+(r-abs-y 0)
+(r-i 0)
+(r-visible false)
+(handlers
       (c-sine
         (body
           (do
             (reduce (write (slot "c-t") (value (rem (left (read (slot "c-angle"))) (right 360)))))
             (positive
-              (if (condition (lt (left (read (slot "c-t"))) (right 0)))
+              (if (condition (< (left (read (slot "c-t"))) (right 0)))
                 (then (write (slot "c-t") (value (add (left (read (slot "c-t"))) (right 360)))))
                 (else)))
             (sign (write (slot "c-sign") (value 1)))
             (half-turn
-              (if (condition (ge (left (read (slot "c-t"))) (right 180)))
+              (if (condition (>= (left (read (slot "c-t"))) (right 180)))
                 (then
                   (do
                     (angle (write (slot "c-t") (value (sub (left (read (slot "c-t"))) (right 180)))))
@@ -153,7 +171,7 @@
                 (save (write (slot "c-cos-pitch") (value (read (slot "c-trig")))))))
             (reset-vertices (write (slot "c-i") (value 0)))
             (vertices-loop
-              (while (condition (lt (left (read (slot "c-i"))) (right 8)))
+              (while (condition (< (left (read (slot "c-i"))) (right 8)))
                 (body (do
                     (x (write (slot "c-vx") (value (array-get (slot "vertices") (index (mul (left (read (slot "c-i"))) (right 3)))))))
                     (y (write (slot "c-vy") (value (array-get (slot "vertices") (index (add (left (mul (left (read (slot "c-i"))) (right 3))) (right 1)))))))
@@ -164,7 +182,7 @@
                     (advance (write (slot "c-i") (value (add (left (read (slot "c-i"))) (right 1)))))))))
             (reset-edges (write (slot "c-i") (value 0)))
             (edges-loop
-              (while (condition (lt (left (read (slot "c-i"))) (right 24)))
+              (while (condition (< (left (read (slot "c-i"))) (right 24)))
                 (body (do
                     (first (write (slot "c-a") (value (mul (left (array-get (slot "edges") (index (read (slot "c-i"))))) (right 2)))))
                     (second (write (slot "c-b") (value (mul (left (array-get (slot "edges") (index (add (left (read (slot "c-i"))) (right 1))))) (right 2)))))
@@ -184,4 +202,111 @@
                 (value (rem (left (add (left (read (slot "c-yaw"))) (right 3))) (right 360)))))
             (pitch
               (write (slot "c-pitch")
-                (value (rem (left (add (left (read (slot "c-pitch"))) (right 2))) (right 360)))))))))))
+                (value (rem (left (add (left (read (slot "c-pitch"))) (right 2))) (right 360))))))))
+(r-init
+      (body
+        (do
+          (width (write (slot "r-width") (value (buffer-width (target "buffer")))))
+          (height (write (slot "r-height") (value (buffer-height (target "buffer"))))))))
+(r-clear (body (buffer-fill (target "buffer") (value 0))))
+(r-point
+      (body
+        (do
+          (visibility
+            (write (slot "r-visible")
+              (value
+                (and
+                  (left
+                    (and
+                      (left (>= (left (read (slot "r-x"))) (right 0)))
+                      (right (< (left (read (slot "r-x"))) (right (read (slot "r-width")))))))
+                  (right
+                    (and
+                      (left (>= (left (read (slot "r-y"))) (right 0)))
+                      (right (< (left (read (slot "r-y"))) (right (read (slot "r-height")))))))))))
+          (plot
+            (if (condition (read (slot "r-visible")))
+              (then
+                (do
+                  (address
+                    (write (slot "r-index")
+                      (value
+                        (mul
+                          (left
+                            (add
+                              (left (mul (left (read (slot "r-y"))) (right (read (slot "r-width")))))
+                              (right (read (slot "r-x")))))
+                          (right 4)))))
+                  (red
+                    (buffer-write (target "buffer")
+                      (index (read (slot "r-index")))
+                      (value (read (slot "r-red")))))
+                  (green
+                    (buffer-write (target "buffer")
+                      (index (add (left (read (slot "r-index"))) (right 1)))
+                      (value (read (slot "r-green")))))
+                  (blue
+                    (buffer-write (target "buffer")
+                      (index (add (left (read (slot "r-index"))) (right 2)))
+                      (value (read (slot "r-blue")))))
+                  (alpha
+                    (buffer-write (target "buffer")
+                      (index (add (left (read (slot "r-index"))) (right 3)))
+                      (value 255)))))
+              (else))))))
+(r-line
+      (body
+        (do
+          (delta-x
+            (write (slot "r-dx") (value (sub (left (read (slot "r-x1"))) (right (read (slot "r-x0")))))))
+          (delta-y
+            (write (slot "r-dy") (value (sub (left (read (slot "r-y1"))) (right (read (slot "r-y0")))))))
+          (abs-x
+            (write (slot "r-steps")
+              (value
+                (if (condition (< (left (read (slot "r-dx"))) (right 0)))
+                  (then (sub (left 0) (right (read (slot "r-dx")))))
+                  (else (read (slot "r-dx")))))))
+          (abs-y
+            (write (slot "r-abs-y")
+              (value
+                (if (condition (< (left (read (slot "r-dy"))) (right 0)))
+                  (then (sub (left 0) (right (read (slot "r-dy")))))
+                  (else (read (slot "r-dy")))))))
+          (longest
+            (if (condition (> (left (read (slot "r-abs-y"))) (right (read (slot "r-steps")))))
+              (then (write (slot "r-steps") (value (read (slot "r-abs-y")))))
+              (else)))
+          (reset (write (slot "r-i") (value 0)))
+          (draw
+            (if (condition (== (left (read (slot "r-steps"))) (right 0)))
+              (then
+                (do
+                  (x (write (slot "r-x") (value (read (slot "r-x0")))))
+                  (y (write (slot "r-y") (value (read (slot "r-y0")))))
+                  (point (call (selector "r-point")))))
+              (else
+                (while (condition (<= (left (read (slot "r-i"))) (right (read (slot "r-steps")))))
+                  (body
+                    (do
+                      (x
+                        (write (slot "r-x")
+                          (value
+                            (add
+                              (left (read (slot "r-x0")))
+                              (right
+                                (div
+                                  (left (mul (left (read (slot "r-dx"))) (right (read (slot "r-i")))))
+                                  (right (read (slot "r-steps")))))))))
+                      (y
+                        (write (slot "r-y")
+                          (value
+                            (add
+                              (left (read (slot "r-y0")))
+                              (right
+                                (div
+                                  (left (mul (left (read (slot "r-dy"))) (right (read (slot "r-i")))))
+                                  (right (read (slot "r-steps")))))))))
+                      (point (call (selector "r-point")))
+                      (advance (write (slot "r-i") (value (add (left (read (slot "r-i"))) (right 1))))))))))))))
+)))

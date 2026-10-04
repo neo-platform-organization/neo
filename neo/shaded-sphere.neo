@@ -1,0 +1,735 @@
+// Rotating flat-shaded sphere: UV mesh, 8 rings x 12 segments, two-color checker so the spin is visible.
+// Run: ./build/neo --gui neo/shaded-sphere.neo sphere
+// Self-contained image: the whole renderer lives in this one actor, nothing is loaded from other files.
+// Needs "buffer" (READ+WRITE) and "window" connections, which `neo --gui` grants.
+// Pipeline per frame (handler "frame"): rotate (yaw then pitch, fixed point scale 10000) -> perspective
+// project -> cull back faces by screen-space winding -> Lambert shading from a fixed light (ambient
+// 2000/10000) -> flat-shaded scanline fill. No depth buffer: a convex mesh needs none once back faces
+// are culled. All of it is neo; native code only touches bytes.
+// Tunable fields: m-focal (zoom, pixels), m-dist (camera distance), m-dyaw / m-dpitch (degrees per
+// frame), m-yaw / m-pitch (starting angles).
+// Mesh data: vertices (3 ints each), faces (3 vertex indices each), normals (unit, scaled 10000),
+// colors (RGB per triangle), projected (2 ints per vertex, scratch).
+// Fill costs about 60 evaluator steps per pixel, so the 1,000,000 step frame budget limits coverage.
+(image
+  (sphere
+    (m-yaw 0)
+    (m-pitch 20)
+    (m-dyaw 5)
+    (m-dpitch 3)
+    (m-dist 400)
+    (m-focal 170)
+    (r-width 0)
+    (r-height 0)
+    (s-x0 0)
+    (s-y0 0)
+    (s-x1 0)
+    (s-y1 0)
+    (s-x2 0)
+    (s-y2 0)
+    (s-red 0)
+    (s-green 0)
+    (s-blue 0)
+    (s-t 0)
+    (s-y 0)
+    (s-last 0)
+    (s-xa 0)
+    (s-xb 0)
+    (s-left 0)
+    (s-right 0)
+    (s-idx 0)
+    (s-end 0)
+    (s-end4 0)
+    (m-angle 0)
+    (m-t 0)
+    (m-sign 0)
+    (m-product 0)
+    (m-trig 0)
+    (m-sy 0)
+    (m-cy 0)
+    (m-sp 0)
+    (m-cp 0)
+    (m-m00 0)
+    (m-m02 0)
+    (m-m10 0)
+    (m-m11 0)
+    (m-m12 0)
+    (m-m20 0)
+    (m-m21 0)
+    (m-m22 0)
+    (m-lx 0)
+    (m-ly 0)
+    (m-lz 0)
+    (m-i 0)
+    (m-k 0)
+    (m-vx 0)
+    (m-vy 0)
+    (m-vz 0)
+    (m-rx 0)
+    (m-ry 0)
+    (m-rz 0)
+    (m-depth 0)
+    (m-cross 0)
+    (m-dot 0)
+    (m-shade 0)
+    (m-nv 86)
+    (m-nf 168)
+    (vertices
+      [0 100 0 38 92 0 33 92 19 19 92 33 0 92 38 -19 92 33 -33 92 19 -38 92 0 -33 92 -19 -19 92 -33 0 92 -38 19 92 -33 33 92 -19 71 71 0 61 71 35 35 71 61 0 71 71 -35 71 61 -61 71 35 -71 71 0 -61 71 -35 -35 71 -61 0 71 -71 35 71 -61 61 71 -35 92 38 0 80 38 46 46 38 80 0 38 92 -46 38 80 -80 38 46 -92 38 0 -80 38 -46 -46 38 -80 0 38 -92 46 38 -80 80 38 -46 100 0 0 87 0 50 50 0 87 0 0 100 -50 0 87 -87 0 50 -100 0 0 -87 0 -50 -50 0 -87 0 0 -100 50 0 -87 87 0 -50 92 -38 0 80 -38 46 46 -38 80 0 -38 92 -46 -38 80 -80 -38 46 -92 -38 0 -80 -38 -46 -46 -38 -80 0 -38 -92 46 -38 -80 80 -38 -46 71 -71 0 61 -71 35 35 -71 61 0 -71 71 -35 -71 61 -61 -71 35 -71 -71 0 -61 -71 -35 -35 -71 -61 0 -71 -71 35 -71 -61 61 -71 -35 38 -92 0 33 -92 19 19 -92 33 0 -92 38 -19 -92 33 -33 -92 19 -38 -92 0 -33 -92 -19 -19 -92 -33 0 -92 -38 19 -92 -33 33 -92 -19 0 -100 0])
+    (faces
+      [0 2 1 0 3 2 0 4 3 0 5 4 0 6 5 0 7 6 0 8 7 0 9 8 0 10 9 0 11 10 0 12 11 0 1 12 1 2 14 1 14 13 2 3 15 2 15 14 3 4 16 3 16 15 4 5 17 4 17 16 5 6 18 5 18 17 6 7 19 6 19 18 7 8 20 7 20 19 8 9 21 8 21 20 9 10 22 9 22 21 10 11 23 10 23 22 11 12 24 11 24 23 12 1 13 12 13 24 13 14 26 13 26 25 14 15 27 14 27 26 15 16 28 15 28 27 16 17 29 16 29 28 17 18 30 17 30 29 18 19 31 18 31 30 19 20 32 19 32 31 20 21 33 20 33 32 21 22 34 21 34 33 22 23 35 22 35 34 23 24 36 23 36 35 24 13 25 24 25 36 25 26 38 25 38 37 26 27 39 26 39 38 27 28 40 27 40 39 28 29 41 28 41 40 29 30 42 29 42 41 30 31 43 30 43 42 31 32 44 31 44 43 32 33 45 32 45 44 33 34 46 33 46 45 34 35 47 34 47 46 35 36 48 35 48 47 36 25 37 36 37 48 37 38 50 37 50 49 38 39 51 38 51 50 39 40 52 39 52 51 40 41 53 40 53 52 41 42 54 41 54 53 42 43 55 42 55 54 43 44 56 43 56 55 44 45 57 44 57 56 45 46 58 45 58 57 46 47 59 46 59 58 47 48 60 47 60 59 48 37 49 48 49 60 49 50 62 49 62 61 50 51 63 50 63 62 51 52 64 51 64 63 52 53 65 52 65 64 53 54 66 53 66 65 54 55 67 54 67 66 55 56 68 55 68 67 56 57 69 56 69 68 57 58 70 57 70 69 58 59 71 58 71 70 59 60 72 59 72 71 60 49 61 60 61 72 61 62 74 61 74 73 62 63 75 62 75 74 63 64 76 63 76 75 64 65 77 64 77 76 65 66 78 65 78 77 66 67 79 66 79 78 67 68 80 67 80 79 68 69 81 68 81 80 69 70 82 69 82 81 70 71 83 70 83 82 71 72 84 71 84 83 72 61 73 72 73 84 85 73 74 85 74 75 85 75 76 85 76 77 85 77 78 85 78 79 85 79 80 85 80 81 85 81 82 85 82 83 85 83 84 85 84 73])
+    (normals
+      [2057 9771 541 1503 9771 1503 541 9771 2057 -541 9771 2057 -1503 9771 1503 -2057 9771 541 -2057 9771 -541 -1503 9771 -1503 -541 9771 -2057 541 9771 -2057 1503 9771 -1503 2057 9771 -541 5406 8292 1423 5307 8339 1516 3956 8289 3956 3956 8289 3956 1399 8354 5316 1530 8306 5355 -1423 8292 5406 -1516 8339 5307 -3956 8289 3956 -3956 8289 3956 -5316 8354 1399 -5355 8306 1530 -5406 8292 -1423 -5307 8339 -1516 -3956 8289 -3956 -3956 8289 -3956 -1399 8354 -5316 -1530 8306 -5355 1423 8292 -5406 1516 8339 -5307 3956 8289 -3956 3956 8289 -3956 5316 8354 -1399 5355 8306 -1530 8080 5421 2308 8239 5243 2149 5948 5407 5948 5948 5407 5948 2343 5219 8202 2125 5398 8145 -2308 5421 8080 -2149 5243 8239 -5948 5407 5948 -5948 5407 5948 -8202 5219 2343 -8145 5398 2125 -8080 5421 -2308 -8239 5243 -2149 -5948 5407 -5948 -5948 5407 -5948 -2343 5219 -8202 -2125 5398 -8145 2308 5421 -8080 2149 5243 -8239 5948 5407 -5948 5948 5407 -5948 8202 5219 -2343 8145 5398 -2125 9479 2007 2473 9483 1997 2466 6927 2005 6927 6927 2005 6927 2473 1996 9481 2465 2006 9481 -2473 2007 9479 -2466 1997 9483 -6927 2005 6927 -6927 2005 6927 -9481 1996 2473 -9481 2006 2465 -9479 2007 -2473 -9483 1997 -2466 -6927 2005 -6927 -6927 2005 -6927 -2473 1996 -9481 -2465 2006 -9481 2473 2007 -9479 2466 1997 -9483 6927 2005 -6927 6927 2005 -6927 9481 1996 -2473 9481 2006 -2465 9481 -2006 2465 9481 -1996 2473 6927 -2005 6927 6927 -2005 6927 2466 -1997 9483 2473 -2007 9479 -2465 -2006 9481 -2473 -1996 9481 -6927 -2005 6927 -6927 -2005 6927 -9483 -1997 2466 -9479 -2007 2473 -9481 -2006 -2465 -9481 -1996 -2473 -6927 -2005 -6927 -6927 -2005 -6927 -2466 -1997 -9483 -2473 -2007 -9479 2465 -2006 -9481 2473 -1996 -9481 6927 -2005 -6927 6927 -2005 -6927 9483 -1997 -2466 9479 -2007 -2473 8145 -5398 2125 8202 -5219 2343 5948 -5407 5948 5948 -5407 5948 2149 -5243 8239 2308 -5421 8080 -2125 -5398 8145 -2343 -5219 8202 -5948 -5407 5948 -5948 -5407 5948 -8239 -5243 2149 -8080 -5421 2308 -8145 -5398 -2125 -8202 -5219 -2343 -5948 -5407 -5948 -5948 -5407 -5948 -2149 -5243 -8239 -2308 -5421 -8080 2125 -5398 -8145 2343 -5219 -8202 5948 -5407 -5948 5948 -5407 -5948 8239 -5243 -2149 8080 -5421 -2308 5355 -8306 1530 5316 -8354 1399 3956 -8289 3956 3956 -8289 3956 1516 -8339 5307 1423 -8292 5406 -1530 -8306 5355 -1399 -8354 5316 -3956 -8289 3956 -3956 -8289 3956 -5307 -8339 1516 -5406 -8292 1423 -5355 -8306 -1530 -5316 -8354 -1399 -3956 -8289 -3956 -3956 -8289 -3956 -1516 -8339 -5307 -1423 -8292 -5406 1530 -8306 -5355 1399 -8354 -5316 3956 -8289 -3956 3956 -8289 -3956 5307 -8339 -1516 5406 -8292 -1423 2057 -9771 541 1503 -9771 1503 541 -9771 2057 -541 -9771 2057 -1503 -9771 1503 -2057 -9771 541 -2057 -9771 -541 -1503 -9771 -1503 -541 -9771 -2057 541 -9771 -2057 1503 -9771 -1503 2057 -9771 -541])
+    (colors
+      [235 90 60 245 238 220 235 90 60 245 238 220 235 90 60 245 238 220 235 90 60 245 238 220 235 90 60 245 238 220 235 90 60 245 238 220 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 235 90 60 235 90 60 245 238 220 245 238 220 245 238 220 235 90 60 245 238 220 235 90 60 245 238 220 235 90 60 245 238 220 235 90 60 245 238 220 235 90 60 245 238 220 235 90 60])
+    (projected
+      [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0])
+    (handlers
+      (r-init
+        (body
+          (do
+            (width (write (slot "r-width") (value (buffer-width (target "buffer")))))
+            (height (write (slot "r-height") (value (buffer-height (target "buffer"))))))))
+      (r-clear (body (buffer-fill (target "buffer") (value 0))))
+      (s-tri
+        (body
+          (do
+            (sort-a
+              (if
+                (condition (> (left (read (slot "s-y0"))) (right (read (slot "s-y1")))))
+                (then
+                  (do
+                    (save-x (write (slot "s-t") (value (read (slot "s-x0")))))
+                    (x-a (write (slot "s-x0") (value (read (slot "s-x1")))))
+                    (x-b (write (slot "s-x1") (value (read (slot "s-t")))))
+                    (save-y (write (slot "s-t") (value (read (slot "s-y0")))))
+                    (y-a (write (slot "s-y0") (value (read (slot "s-y1")))))
+                    (y-b (write (slot "s-y1") (value (read (slot "s-t")))))))
+                (else)))
+            (sort-b
+              (if
+                (condition (> (left (read (slot "s-y1"))) (right (read (slot "s-y2")))))
+                (then
+                  (do
+                    (save-x (write (slot "s-t") (value (read (slot "s-x1")))))
+                    (x-a (write (slot "s-x1") (value (read (slot "s-x2")))))
+                    (x-b (write (slot "s-x2") (value (read (slot "s-t")))))
+                    (save-y (write (slot "s-t") (value (read (slot "s-y1")))))
+                    (y-a (write (slot "s-y1") (value (read (slot "s-y2")))))
+                    (y-b (write (slot "s-y2") (value (read (slot "s-t")))))))
+                (else)))
+            (sort-c
+              (if
+                (condition (> (left (read (slot "s-y0"))) (right (read (slot "s-y1")))))
+                (then
+                  (do
+                    (save-x (write (slot "s-t") (value (read (slot "s-x0")))))
+                    (x-a (write (slot "s-x0") (value (read (slot "s-x1")))))
+                    (x-b (write (slot "s-x1") (value (read (slot "s-t")))))
+                    (save-y (write (slot "s-t") (value (read (slot "s-y0")))))
+                    (y-a (write (slot "s-y0") (value (read (slot "s-y1")))))
+                    (y-b (write (slot "s-y1") (value (read (slot "s-t")))))))
+                (else)))
+            (guard
+              (if
+                (condition (== (left (read (slot "s-y2"))) (right (read (slot "s-y0")))))
+                (then)
+                (else
+                  (do
+                    (first
+                      (write
+                        (slot "s-y")
+                        (value
+                          (if
+                            (condition (< (left (read (slot "s-y0"))) (right 0)))
+                            (then 0)
+                            (else (read (slot "s-y0")))))))
+                    (last
+                      (write
+                        (slot "s-last")
+                        (value
+                          (if
+                            (condition
+                              (<
+                                (left (read (slot "s-y2")))
+                                (right (sub (left (read (slot "r-height"))) (right 1)))))
+                            (then (read (slot "s-y2")))
+                            (else (sub (left (read (slot "r-height"))) (right 1)))))))
+                    (rows
+                      (while
+                        (condition (<= (left (read (slot "s-y"))) (right (read (slot "s-last")))))
+                        (body
+                          (do
+                            (long-edge
+                              (write
+                                (slot "s-xa")
+                                (value
+                                  (add
+                                    (left (read (slot "s-x0")))
+                                    (right
+                                      (div
+                                        (left
+                                          (mul
+                                            (left
+                                              (sub (left (read (slot "s-x2"))) (right (read (slot "s-x0")))))
+                                            (right
+                                              (sub (left (read (slot "s-y"))) (right (read (slot "s-y0")))))))
+                                        (right (sub (left (read (slot "s-y2"))) (right (read (slot "s-y0")))))))))))
+                            (short-edge
+                              (write
+                                (slot "s-xb")
+                                (value
+                                  (if
+                                    (condition (< (left (read (slot "s-y"))) (right (read (slot "s-y1")))))
+                                    (then
+                                      (add
+                                        (left (read (slot "s-x0")))
+                                        (right
+                                          (div
+                                            (left
+                                              (mul
+                                                (left
+                                                  (sub (left (read (slot "s-x1"))) (right (read (slot "s-x0")))))
+                                                (right
+                                                  (sub (left (read (slot "s-y"))) (right (read (slot "s-y0")))))))
+                                            (right
+                                              (sub (left (read (slot "s-y1"))) (right (read (slot "s-y0")))))))))
+                                    (else
+                                      (if
+                                        (condition
+                                          (== (left (read (slot "s-y2"))) (right (read (slot "s-y1")))))
+                                        (then (read (slot "s-x1")))
+                                        (else
+                                          (add
+                                            (left (read (slot "s-x1")))
+                                            (right
+                                              (div
+                                                (left
+                                                  (mul
+                                                    (left
+                                                      (sub
+                                                        (left (read (slot "s-x2")))
+                                                        (right (read (slot "s-x1")))))
+                                                    (right
+                                                      (sub
+                                                        (left (read (slot "s-y")))
+                                                        (right (read (slot "s-y1")))))))
+                                                (right
+                                                  (sub (left (read (slot "s-y2"))) (right (read (slot "s-y1")))))))))))))))
+                            (left
+                              (write
+                                (slot "s-left")
+                                (value
+                                  (if
+                                    (condition (< (left (read (slot "s-xa"))) (right (read (slot "s-xb")))))
+                                    (then (read (slot "s-xa")))
+                                    (else (read (slot "s-xb")))))))
+                            (right
+                              (write
+                                (slot "s-right")
+                                (value
+                                  (if
+                                    (condition (< (left (read (slot "s-xa"))) (right (read (slot "s-xb")))))
+                                    (then (read (slot "s-xb")))
+                                    (else (read (slot "s-xa")))))))
+                            (clip-left
+                              (if
+                                (condition (< (left (read (slot "s-left"))) (right 0)))
+                                (then (write (slot "s-left") (value 0)))
+                                (else)))
+                            (clip-right
+                              (if
+                                (condition
+                                  (>
+                                    (left (read (slot "s-right")))
+                                    (right (sub (left (read (slot "r-width"))) (right 1)))))
+                                (then
+                                  (write
+                                    (slot "s-right")
+                                    (value (sub (left (read (slot "r-width"))) (right 1)))))
+                                (else)))
+                            (fill
+                              (if
+                                (condition (<= (left (read (slot "s-left"))) (right (read (slot "s-right")))))
+                                (then
+                                  (do
+                                    (start
+                                      (write
+                                        (slot "s-idx")
+                                        (value
+                                          (mul
+                                            (left
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "s-y")))
+                                                    (right (read (slot "r-width")))))
+                                                (right (read (slot "s-left")))))
+                                            (right 4)))))
+                                    (stop
+                                      (write
+                                        (slot "s-end")
+                                        (value
+                                          (add
+                                            (left
+                                              (mul
+                                                (left
+                                                  (add
+                                                    (left
+                                                      (mul
+                                                        (left (read (slot "s-y")))
+                                                        (right (read (slot "r-width")))))
+                                                    (right (read (slot "s-right")))))
+                                                (right 4)))
+                                            (right 4)))))
+                                    (stop4
+                                      (write
+                                        (slot "s-end4")
+                                        (value (sub (left (read (slot "s-end"))) (right 4)))))
+                                    (tail
+                                      (while
+                                        (condition
+                                          (< (left (read (slot "s-idx"))) (right (read (slot "s-end")))))
+                                        (body
+                                          (do
+                                            (r0
+                                              (buffer-write
+                                                (target "buffer")
+                                                (index (read (slot "s-idx")))
+                                                (value (read (slot "s-red")))))
+                                            (g0
+                                              (buffer-write
+                                                (target "buffer")
+                                                (index (add (left (read (slot "s-idx"))) (right 1)))
+                                                (value (read (slot "s-green")))))
+                                            (b0
+                                              (buffer-write
+                                                (target "buffer")
+                                                (index (add (left (read (slot "s-idx"))) (right 2)))
+                                                (value (read (slot "s-blue")))))
+                                            (a0
+                                              (buffer-write
+                                                (target "buffer")
+                                                (index (add (left (read (slot "s-idx"))) (right 3)))
+                                                (value 255)))
+                                            (advance
+                                              (write
+                                                (slot "s-idx")
+                                                (value (add (left (read (slot "s-idx"))) (right 4)))))))))))
+                                (else)))
+                            (next (write (slot "s-y") (value (add (left (read (slot "s-y"))) (right 1))))))))))))))))
+      (m-sine
+        (body
+          (do
+            (reduce (write (slot "m-t") (value (rem (left (read (slot "m-angle"))) (right 360)))))
+            (positive
+              (if
+                (condition (< (left (read (slot "m-t"))) (right 0)))
+                (then (write (slot "m-t") (value (add (left (read (slot "m-t"))) (right 360)))))
+                (else)))
+            (sign (write (slot "m-sign") (value 1)))
+            (half-turn
+              (if
+                (condition (>= (left (read (slot "m-t"))) (right 180)))
+                (then
+                  (do
+                    (angle (write (slot "m-t") (value (sub (left (read (slot "m-t"))) (right 180)))))
+                    (sign (write (slot "m-sign") (value -1)))))
+                (else)))
+            (product
+              (write
+                (slot "m-product")
+                (value (mul (left (read (slot "m-t"))) (right (sub (left 180) (right (read (slot "m-t")))))))))
+            (result
+              (write
+                (slot "m-trig")
+                (value
+                  (mul
+                    (left (read (slot "m-sign")))
+                    (right
+                      (div
+                        (left (mul (left 40000) (right (read (slot "m-product")))))
+                        (right (sub (left 40500) (right (read (slot "m-product"))))))))))))))
+      (frame
+        (body
+          (do
+            (configure (call (selector "r-init")))
+            (clear (call (selector "r-clear")))
+            (sin-yaw
+              (do
+                (angle (write (slot "m-angle") (value (read (slot "m-yaw")))))
+                (evaluate (call (selector "m-sine")))
+                (save (write (slot "m-sy") (value (read (slot "m-trig")))))))
+            (cos-yaw
+              (do
+                (angle (write (slot "m-angle") (value (add (left (read (slot "m-yaw"))) (right 90)))))
+                (evaluate (call (selector "m-sine")))
+                (save (write (slot "m-cy") (value (read (slot "m-trig")))))))
+            (sin-pitch
+              (do
+                (angle (write (slot "m-angle") (value (read (slot "m-pitch")))))
+                (evaluate (call (selector "m-sine")))
+                (save (write (slot "m-sp") (value (read (slot "m-trig")))))))
+            (cos-pitch
+              (do
+                (angle (write (slot "m-angle") (value (add (left (read (slot "m-pitch"))) (right 90)))))
+                (evaluate (call (selector "m-sine")))
+                (save (write (slot "m-cp") (value (read (slot "m-trig")))))))
+            (matrix
+              (do
+                (m00 (write (slot "m-m00") (value (read (slot "m-cy")))))
+                (m02 (write (slot "m-m02") (value (read (slot "m-sy")))))
+                (m10
+                  (write
+                    (slot "m-m10")
+                    (value
+                      (div (left (mul (left (read (slot "m-sp"))) (right (read (slot "m-sy"))))) (right 10000)))))
+                (m11 (write (slot "m-m11") (value (read (slot "m-cp")))))
+                (m12
+                  (write
+                    (slot "m-m12")
+                    (value
+                      (sub
+                        (left 0)
+                        (right
+                          (div
+                            (left (mul (left (read (slot "m-sp"))) (right (read (slot "m-cy")))))
+                            (right 10000)))))))
+                (m20
+                  (write
+                    (slot "m-m20")
+                    (value
+                      (sub
+                        (left 0)
+                        (right
+                          (div
+                            (left (mul (left (read (slot "m-cp"))) (right (read (slot "m-sy")))))
+                            (right 10000)))))))
+                (m21 (write (slot "m-m21") (value (read (slot "m-sp")))))
+                (m22
+                  (write
+                    (slot "m-m22")
+                    (value
+                      (div (left (mul (left (read (slot "m-cp"))) (right (read (slot "m-cy"))))) (right 10000)))))))
+            (light
+              (do
+                (lx
+                  (write
+                    (slot "m-lx")
+                    (value
+                      (div
+                        (left
+                          (add
+                            (left
+                              (add
+                                (left (mul (left (read (slot "m-m00"))) (right -4000)))
+                                (right (mul (left (read (slot "m-m10"))) (right 5000)))))
+                            (right (mul (left (read (slot "m-m20"))) (right -7700)))))
+                        (right 10000)))))
+                (ly
+                  (write
+                    (slot "m-ly")
+                    (value
+                      (div
+                        (left
+                          (add
+                            (left (mul (left (read (slot "m-m11"))) (right 5000)))
+                            (right (mul (left (read (slot "m-m21"))) (right -7700)))))
+                        (right 10000)))))
+                (lz
+                  (write
+                    (slot "m-lz")
+                    (value
+                      (div
+                        (left
+                          (add
+                            (left
+                              (add
+                                (left (mul (left (read (slot "m-m02"))) (right -4000)))
+                                (right (mul (left (read (slot "m-m12"))) (right 5000)))))
+                            (right (mul (left (read (slot "m-m22"))) (right -7700)))))
+                        (right 10000)))))))
+            (reset-vertices (write (slot "m-i") (value 0)))
+            (vertices
+              (while
+                (condition (< (left (read (slot "m-i"))) (right (read (slot "m-nv")))))
+                (body
+                  (do
+                    (x
+                      (write
+                        (slot "m-vx")
+                        (value (array-get (slot "vertices") (index (mul (left (read (slot "m-i"))) (right 3)))))))
+                    (y
+                      (write
+                        (slot "m-vy")
+                        (value
+                          (array-get
+                            (slot "vertices")
+                            (index (add (left (mul (left (read (slot "m-i"))) (right 3))) (right 1)))))))
+                    (z
+                      (write
+                        (slot "m-vz")
+                        (value
+                          (array-get
+                            (slot "vertices")
+                            (index (add (left (mul (left (read (slot "m-i"))) (right 3))) (right 2)))))))
+                    (rx
+                      (write
+                        (slot "m-rx")
+                        (value
+                          (div
+                            (left
+                              (add
+                                (left (mul (left (read (slot "m-m00"))) (right (read (slot "m-vx")))))
+                                (right (mul (left (read (slot "m-m02"))) (right (read (slot "m-vz")))))))
+                            (right 10000)))))
+                    (ry
+                      (write
+                        (slot "m-ry")
+                        (value
+                          (div
+                            (left
+                              (add
+                                (left
+                                  (add
+                                    (left (mul (left (read (slot "m-m10"))) (right (read (slot "m-vx")))))
+                                    (right (mul (left (read (slot "m-m11"))) (right (read (slot "m-vy")))))))
+                                (right (mul (left (read (slot "m-m12"))) (right (read (slot "m-vz")))))))
+                            (right 10000)))))
+                    (rz
+                      (write
+                        (slot "m-rz")
+                        (value
+                          (div
+                            (left
+                              (add
+                                (left
+                                  (add
+                                    (left (mul (left (read (slot "m-m20"))) (right (read (slot "m-vx")))))
+                                    (right (mul (left (read (slot "m-m21"))) (right (read (slot "m-vy")))))))
+                                (right (mul (left (read (slot "m-m22"))) (right (read (slot "m-vz")))))))
+                            (right 10000)))))
+                    (depth
+                      (write
+                        (slot "m-depth")
+                        (value (add (left (read (slot "m-dist"))) (right (read (slot "m-rz")))))))
+                    (sx
+                      (array-set
+                        (slot "projected")
+                        (index (mul (left (read (slot "m-i"))) (right 2)))
+                        (value
+                          (add
+                            (left (div (left (read (slot "r-width"))) (right 2)))
+                            (right
+                              (div
+                                (left (mul (left (read (slot "m-rx"))) (right (read (slot "m-focal")))))
+                                (right (read (slot "m-depth")))))))))
+                    (sy
+                      (array-set
+                        (slot "projected")
+                        (index (add (left (mul (left (read (slot "m-i"))) (right 2))) (right 1)))
+                        (value
+                          (sub
+                            (left (div (left (read (slot "r-height"))) (right 2)))
+                            (right
+                              (div
+                                (left (mul (left (read (slot "m-ry"))) (right (read (slot "m-focal")))))
+                                (right (read (slot "m-depth")))))))))
+                    (next (write (slot "m-i") (value (add (left (read (slot "m-i"))) (right 1)))))))))
+            (reset-faces (write (slot "m-i") (value 0)))
+            (faces
+              (while
+                (condition (< (left (read (slot "m-i"))) (right (read (slot "m-nf")))))
+                (body
+                  (do
+                    (index (write (slot "m-k") (value (mul (left (read (slot "m-i"))) (right 3)))))
+                    (c0
+                      (write
+                        (slot "s-x0")
+                        (value
+                          (array-get
+                            (slot "projected")
+                            (index
+                              (mul
+                                (left
+                                  (array-get (slot "faces") (index (add (left (read (slot "m-k"))) (right 0)))))
+                                (right 2)))))))
+                    (c1
+                      (write
+                        (slot "s-y0")
+                        (value
+                          (array-get
+                            (slot "projected")
+                            (index
+                              (add
+                                (left
+                                  (mul
+                                    (left
+                                      (array-get
+                                        (slot "faces")
+                                        (index (add (left (read (slot "m-k"))) (right 0)))))
+                                    (right 2)))
+                                (right 1)))))))
+                    (c2
+                      (write
+                        (slot "s-x1")
+                        (value
+                          (array-get
+                            (slot "projected")
+                            (index
+                              (mul
+                                (left
+                                  (array-get (slot "faces") (index (add (left (read (slot "m-k"))) (right 1)))))
+                                (right 2)))))))
+                    (c3
+                      (write
+                        (slot "s-y1")
+                        (value
+                          (array-get
+                            (slot "projected")
+                            (index
+                              (add
+                                (left
+                                  (mul
+                                    (left
+                                      (array-get
+                                        (slot "faces")
+                                        (index (add (left (read (slot "m-k"))) (right 1)))))
+                                    (right 2)))
+                                (right 1)))))))
+                    (c4
+                      (write
+                        (slot "s-x2")
+                        (value
+                          (array-get
+                            (slot "projected")
+                            (index
+                              (mul
+                                (left
+                                  (array-get (slot "faces") (index (add (left (read (slot "m-k"))) (right 2)))))
+                                (right 2)))))))
+                    (c5
+                      (write
+                        (slot "s-y2")
+                        (value
+                          (array-get
+                            (slot "projected")
+                            (index
+                              (add
+                                (left
+                                  (mul
+                                    (left
+                                      (array-get
+                                        (slot "faces")
+                                        (index (add (left (read (slot "m-k"))) (right 2)))))
+                                    (right 2)))
+                                (right 1)))))))
+                    (cross
+                      (write
+                        (slot "m-cross")
+                        (value
+                          (sub
+                            (left
+                              (mul
+                                (left (sub (left (read (slot "s-x1"))) (right (read (slot "s-x0")))))
+                                (right (sub (left (read (slot "s-y2"))) (right (read (slot "s-y0")))))))
+                            (right
+                              (mul
+                                (left (sub (left (read (slot "s-y1"))) (right (read (slot "s-y0")))))
+                                (right (sub (left (read (slot "s-x2"))) (right (read (slot "s-x0")))))))))))
+                    (cull
+                      (if
+                        (condition (> (left (read (slot "m-cross"))) (right 0)))
+                        (then
+                          (do
+                            (dot
+                              (write
+                                (slot "m-dot")
+                                (value
+                                  (div
+                                    (left
+                                      (add
+                                        (left
+                                          (add
+                                            (left
+                                              (mul
+                                                (left (array-get (slot "normals") (index (read (slot "m-k")))))
+                                                (right (read (slot "m-lx")))))
+                                            (right
+                                              (mul
+                                                (left
+                                                  (array-get
+                                                    (slot "normals")
+                                                    (index (add (left (read (slot "m-k"))) (right 1)))))
+                                                (right (read (slot "m-ly")))))))
+                                        (right
+                                          (mul
+                                            (left
+                                              (array-get
+                                                (slot "normals")
+                                                (index (add (left (read (slot "m-k"))) (right 2)))))
+                                            (right (read (slot "m-lz")))))))
+                                    (right 10000)))))
+                            (lit
+                              (if
+                                (condition (< (left (read (slot "m-dot"))) (right 0)))
+                                (then (write (slot "m-dot") (value 0)))
+                                (else)))
+                            (shade
+                              (write
+                                (slot "m-shade")
+                                (value
+                                  (add
+                                    (left 2000)
+                                    (right
+                                      (div (left (mul (left 8000) (right (read (slot "m-dot"))))) (right 10000)))))))
+                            (red
+                              (write
+                                (slot "s-red")
+                                (value
+                                  (div
+                                    (left
+                                      (mul
+                                        (left (array-get (slot "colors") (index (read (slot "m-k")))))
+                                        (right (read (slot "m-shade")))))
+                                    (right 10000)))))
+                            (green
+                              (write
+                                (slot "s-green")
+                                (value
+                                  (div
+                                    (left
+                                      (mul
+                                        (left
+                                          (array-get
+                                            (slot "colors")
+                                            (index (add (left (read (slot "m-k"))) (right 1)))))
+                                        (right (read (slot "m-shade")))))
+                                    (right 10000)))))
+                            (blue
+                              (write
+                                (slot "s-blue")
+                                (value
+                                  (div
+                                    (left
+                                      (mul
+                                        (left
+                                          (array-get
+                                            (slot "colors")
+                                            (index (add (left (read (slot "m-k"))) (right 2)))))
+                                        (right (read (slot "m-shade")))))
+                                    (right 10000)))))
+                            (fill (call (selector "s-tri")))))
+                        (else)))
+                    (next (write (slot "m-i") (value (add (left (read (slot "m-i"))) (right 1)))))))))
+            (present (window-present (target "window") (buffer "buffer")))
+            (yaw
+              (write
+                (slot "m-yaw")
+                (value
+                  (rem (left (add (left (read (slot "m-yaw"))) (right (read (slot "m-dyaw"))))) (right 360)))))
+            (pitch
+              (write
+                (slot "m-pitch")
+                (value
+                  (rem (left (add (left (read (slot "m-pitch"))) (right (read (slot "m-dpitch"))))) (right 360)))))))))))

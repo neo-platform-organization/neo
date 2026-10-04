@@ -2,7 +2,7 @@
 
 [Documentation index](../README.md)
 
-These naming and formatting conventions were accepted by the user. Read alongside the [architecture](../design/architecture.md). C implements neo; C types do not define a class hierarchy in the language.
+These naming and formatting conventions were accepted by the user. C implements neo; C types do not define a class hierarchy in the language.
 
 ## Names and layout
 
@@ -42,6 +42,6 @@ This is a naming illustration, not a final authorized-operation signature. The i
 
 Use the architecture's proposed portable C17 baseline. Keep runtime code standard-library-only initially. Document ownership of allocated memory, borrowed pointers, output parameters, and cleanup obligations in headers. Define outputs on failure consistently. Never expose raw C addresses as neo identities or serialize native layouts or function pointers.
 
-Use strict compiler warnings and debug builds. Run address and undefined-behavior sanitizers where the toolchain supports them. Test semantic invariants and failure paths, especially allocation failure, invalid handles, duplication remapping, permission checks, and message acceptance. Assertions express internal programmer invariants; malformed images and denied operations return failures rather than relying on assertions.
+Use strict compiler warnings and debug builds. Run address and undefined-behavior sanitizers where the toolchain supports them. Assertions express internal programmer invariants; malformed images and denied operations return failures rather than relying on assertions.
 
 Keep host error reporting separate from neo's configurable failure policy. A C status return does not prescribe whether the image retries, repairs, or propagates a language-level failure.
