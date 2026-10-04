@@ -9,8 +9,8 @@ The first renderer is a sequential software renderer written in neo. It supports
 From the repository root:
 
 ```sh
-make window
-./build/neo-window neo/cube.neo cube neo/software-renderer.neo
+make
+./build/neo --gui neo/cube.neo cube --template neo/software-renderer.neo
 ```
 
 The [cube image](../../neo/cube.neo) contains geometry, rotation, projection, and frame behavior. The [renderer template](../../neo/software-renderer.neo) contains pixel and line algorithms. The existing X11 adapter presents the completed RGBA buffer; no renderer or maths library was added to C.
@@ -74,7 +74,7 @@ on contiguous integer storage. Two loops replace the previous per-vertex and
 per-edge instruction blocks. See [array primitives](runtime-format.md#packed-integer-arrays).
 
 Use `make release-window`, then
-`./build/release/neo-window neo/cube.neo cube neo/software-renderer.neo`
+`./build/neo --gui neo/cube.neo cube --template neo/software-renderer.neo`
 for the optimized C build. The default debug build also benefits from indexed
 graph lookup. The 16 ms host pause and per-frame rotation increments remain;
 this demo still does not use elapsed-time animation.

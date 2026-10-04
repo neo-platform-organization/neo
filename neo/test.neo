@@ -1,0 +1,4 @@
+(image
+  (handlers
+    (hello
+      (body (return (value "Hello, World!"))))))

@@ -1,0 +1,31 @@
+// neo reference image. Loading is inert; literals determine payload kinds.
+// Primitive names select operations; named wrappers hold nested expressions.
+(image #world
+  (counter #counter
+    (count 0)
+    (handlers
+      (increment
+        (body
+          (do
+            (update
+              (write (slot "count")
+                (value (add (left (read (slot "count"))) (right 1)))))
+            (result (return (value (read (slot "count"))))))))
+      (tick
+        (body
+          (if (condition (lt (left (read (slot "count"))) (right 3)))
+            (then
+              (write (slot "count")
+                (value (add (left (read (slot "count"))) (right 1)))))
+            (else))))))
+  (sender @counter #counter 128
+    (sent false)
+    (handlers
+      (tick
+        (body
+          (if (condition (not (value (read (slot "sent")))))
+            (then
+              (do
+                (request (send (target "counter") (value "increment")))
+                (remember (write (slot "sent") (value true)))))
+            (else)))))))

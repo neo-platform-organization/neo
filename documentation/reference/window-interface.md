@@ -13,13 +13,13 @@ neo behavior -> buffer object -> window-present -> host backend -> X11 window
 Run from the repository root:
 
 ```sh
-make window
-./build/neo-window neo/window.neo display
+make
+./build/neo --gui neo/window.neo display
 ```
 
 The optional target needs Xlib development headers/libraries and pkg-config (`libx11-dev` and `pkg-config` on Debian). Running needs an accessible X server through DISPLAY; XWayland also provides this interface. The normal `make` and `make test` remain headless and do not link Xlib.
 
-For a renderer written in neo, run `./build/neo-window neo/triangle.neo triangle`. It fills a cyan triangle on the fixed 640 × 480 buffer, eight scanlines per frame, then keeps presenting the completed pixels. Its vertices are (320,80), (160,400), and (480,400). Resizing the window clips or exposes margins; it does not rescale the triangle.
+For a renderer written in neo, run `./build/neo --gui neo/triangle.neo triangle`. It fills a cyan triangle on the fixed 640 × 480 buffer, eight scanlines per frame, then keeps presenting the completed pixels. Its vertices are (320,80), (160,400), and (480,400). Resizing the window clips or exposes margins; it does not rescale the triangle.
 
 The supplied `window.neo` image presents a black buffer. It deliberately contains no renderer. The launcher loads the image, creates a 640 × 480 buffer and window, grants the selected actor connections named `buffer` and `window`, and repeatedly invokes its `frame` handler. Closing the window ends the launcher; a failed invocation reports the error and ends it. Its 16 ms pause is example-host policy, not a VM scheduling rule. It invokes frame directly, without starting the message scheduler.
 
@@ -66,7 +66,7 @@ Buffer dimensions and event consumption are documented in the [I/O interface](io
 
 ## C embedding and backend boundary
 
-See [neo_display.h](../../neo-vm/include/neo_display.h) and [neo_window_x11.h](../../neo-vm/include/neo_window_x11.h). The [launcher](../../neo-vm/examples/window.c) demonstrates host setup.
+See [neo_display.h](../../neo-vm/include/neo_display.h) and [neo_window_x11.h](../../neo-vm/include/neo_window_x11.h). The [launcher](../../neo-vm/source/launch.c) demonstrates host setup.
 
 | C entry point | Purpose |
 | --- | --- |
@@ -103,4 +103,4 @@ Headless tests cover buffer bounds, initialization, capability denial, stale ref
 
 ## Reusable software renderer
 
-Run `./build/neo-window neo/cube.neo cube neo/software-renderer.neo` for the rotating wireframe cube. Optional trailing template paths are copied into the selected actor before execution; the actor owns its fields and behavior. See [software renderer](software-renderer.md) for the line-rendering contract, local calls, and bootstrap limitations. `buffer-fill` provides bounded byte clearing without putting rendering logic into the kernel.
+Run `./build/neo --gui neo/cube.neo cube --template neo/software-renderer.neo` for the rotating wireframe cube. Optional trailing template paths are copied into the selected actor before execution; the actor owns its fields and behavior. See [software renderer](software-renderer.md) for the line-rendering contract, local calls, and bootstrap limitations. `buffer-fill` provides bounded byte clearing without putting rendering logic into the kernel.

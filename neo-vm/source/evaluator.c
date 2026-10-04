@@ -88,7 +88,7 @@ static bool neo_equal(neo_value a, neo_value b) {
 
 bool neo_primitive_known(const char *op) {
     static const char *const primitives[] = {
-        "array-get", "array-set", "array-size", "call", "do", "if", "while", "return", "fail", "read", "write", "message", "send",
+        "platform-info", "array-get", "array-set", "array-size", "call", "do", "if", "while", "return", "fail", "read", "write", "message", "send",
         "not", "and", "or", "eq", "add", "sub", "mul", "div", "rem", "lt", "le", "gt", "ge",
         "buffer-fill", "buffer-read", "buffer-write", "buffer-size", "window-present", "window-poll",
         "window-width", "window-height", "stream-read", "stream-write",
@@ -309,6 +309,36 @@ static neo_status neo_run_operation(neo_activation *a, neo_object *node,
     const char *op = node->value.text;
     if (!neo_primitive_known(op)) { return NEO_UNSUPPORTED; }
 
+    if (strcmp(op, "platform-info") == 0) {
+        neo_value field = {0};
+        neo_status status = neo_operand(a, node, "field", depth, &field);
+        if (status == NEO_OK && !a->returning) {
+            neo_platform_info info;
+            status = field.kind == NEO_TEXT ? neo_vm_platform_info(a->vm, &info) : NEO_WRONG_KIND;
+            if (status == NEO_OK) {
+                const char *text = NULL;
+                unsigned service = 0;
+                if (strcmp(field.text, "environment") == 0) { text = neo_environment_name(info.environment); }
+                else if (strcmp(field.text, "virtualization") == 0) { text = neo_virtualization_name(info.virtualization); }
+                else if (strcmp(field.text, "architecture") == 0) { text = info.architecture; }
+                else if (strcmp(field.text, "host-os") == 0) { text = info.host_os; }
+                else if (strcmp(field.text, "backend") == 0) { text = info.backend; }
+                else if (strcmp(field.text, "byte-streams") == 0) { service = NEO_PLATFORM_BYTE_STREAMS; }
+                else if (strcmp(field.text, "host-files") == 0) { service = NEO_PLATFORM_HOST_FILES; }
+                else if (strcmp(field.text, "pixel-windows") == 0) { service = NEO_PLATFORM_PIXEL_WINDOWS; }
+                else if (strcmp(field.text, "wait") == 0) { service = NEO_PLATFORM_WAIT; }
+                else if (strcmp(field.text, "input-events") == 0) { service = NEO_PLATFORM_INPUT_EVENTS; }
+                else { status = NEO_INVALID; }
+                if (text != NULL) {
+                    status = neo_value_copy(a->vm, (neo_value){.kind = NEO_TEXT, .text = text}, out);
+                } else if (status == NEO_OK) {
+                    *out = (neo_value){.kind = NEO_BOOLEAN, .boolean = (info.services & service) != 0};
+                }
+            }
+        }
+        neo_value_free(a->vm, field);
+        return status;
+    }
     if (strncmp(op, "array-", 6) == 0) { return neo_array_operation(a, node, depth, out); }
     if (strncmp(op, "stream-", 7) == 0) {
         return neo_stream_operation(a, node, depth, out);

@@ -3,6 +3,7 @@
 
 #include "neo.h"
 #include "neo_message.h"
+#include "neo_platform.h"
 
 /* Collision chains preserve exact identity/parent checks. These indexes are
  * host bookkeeping, maintained only on node publication and destruction. */
@@ -52,6 +53,10 @@ typedef struct neo_registration neo_registration;
 
 struct neo_vm {
     neo_allocator allocator;
+    neo_platform_info platform;
+    neo_platform_backend platform_backend;
+    void *platform_context;
+    bool platform_configured;
     neo_object_id next_id;
     neo_object *objects;
     neo_object *id_index[NEO_INDEX_BUCKETS];

@@ -148,3 +148,48 @@ preserves entries, including empty arrays and signed integer limits. The C API's
 Matrix dimensions and operations belong to neo code. The cube treats its vertex
 array as eight rows of three coordinates, using `row * 3 + column`; the kernel
 only stores and accesses integers. There is no native matrix or rendering primitive.
+
+## Platform metadata
+
+`(platform-info (field "environment"))` queries the VM's host-configured platform.
+Text fields: `environment`, `host-os`, `architecture`, `virtualization`, `backend`.
+Boolean provider fields: `host-files`, `byte-streams`, `pixel-windows`, `input-events`, `wait`.
+These are informational, never resource grants. An unconfigured VM reports
+unavailable; unknown fields are invalid. See [platform contract](platform-interface.md).
+
+## Launch modes
+
+One `neo` process owns one VM. The same executable handles CLI, GUI, or both:
+
+```sh
+make
+./build/neo --cli neo/terminal.neo terminal greet
+./build/neo --gui neo/cube.neo cube --template neo/software-renderer.neo
+./build/neo --cli --gui neo/cube.neo cube --template neo/software-renderer.neo
+```
+
+Syntax: `neo [--cli] [--gui] IMAGE ACTOR [HANDLER] [--template IMAGE]...`.
+Mode flags precede the image. Without mode flags, CLI is selected. `ACTOR` is an
+immediate child name or `.` for the image root. The default handler is `main` in
+CLI-only mode, `frame` when GUI is selected. An explicit handler overrides it.
+
+CLI grants standard streams and invokes the handler once. GUI grants a fixed
+640×480 pixel buffer and a window, invoking the handler until window close or
+failure, with the existing host pacing. Both flags grant both resource sets to
+the same receiver and use the GUI loop; they do not create a second VM or run a
+second handler. There is no interactive command shell yet. Blocking stream reads
+can block the frame loop. Each invocation currently has a one-million-step budget.
+
+Templates are optional explicit bootstrap composition in that same VM, not a
+requirement to split the OS image. Application output is emitted only through its
+granted streams. No result/state banner is added by launch mode.
+
+`help`, `platform`, `check`, `format`, `clone`, `run`, and `tick` remain utility
+arguments of the same executable. `run` retains its diagnostic result/state output
+and grants no streams. `platform` reports compiled providers, not object grants or
+a guarantee that a display server is currently reachable.
+
+Linux builds include X11 by default; `make WITH_X11=0` builds the same binary path
+without it, making GUI requests fail as unsupported. GUI mode currently exposes
+the existing display interface, not the future dimensional OS GUI. Universal
+spatial packages must precede that GUI's implementation.

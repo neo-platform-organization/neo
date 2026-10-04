@@ -53,3 +53,16 @@ The user prioritizes abstracting terminal/general I/O and display access before 
 A sequential neo pixel/line renderer and rotating wireframe cube now exercise the platform-independent buffer interface. Local handler calls, byte-buffer clearing, and explicit host template composition support reuse. This is the initial software path, not a completed GUI renderer or automatic fallback selector. Filled triangles, depth, text, and GPU work remain deferred. See [software renderer](../reference/software-renderer.md).
 
 Profiling-driven identity/parent indexes and packed integer arrays are now implemented. The cube uses array loops; general matrix libraries remain neo-level work. See the build guide for measurements and validation.
+
+## Current priority: OS foundation
+
+The next work is organized into [bounded OS sessions](os-sessions.md). Start with the platform contract for hosted Linux x86_64, before structural primitives. Duplication stays in the kernel under the revised user decision; move retains duplicate-then-delete semantics. Universal dimensionality and maths/spatial protocols will be the first OS packages, with non-graphical validation before GUI implementation. See the [spatial decision](../design/decisions/0002-universal-dimensionality.md). Other platform implementations and self-hosting remain deferred.
+
+OS Session 1 is implemented: portable platform description, hosted Linux x86_64 bootstrap, and metadata queries. Next is service extraction; see [session checkpoint](os-sessions.md#current-checkpoint).
+
+OS Session 2 is implemented: runner loading, standard stream creation, waiting, and optional window creation use platform callbacks. Next is consolidation into one CLI; see [session checkpoint](os-sessions.md#current-checkpoint).
+
+Session 3 launch model was corrected by the user: one `neo` executable, one VM per
+process, optional CLI/GUI modes including both together. The updated binary
+compiles; further tests were explicitly deferred. Next is reference/structural
+protocol design serving the first universal-dimensionality packages.

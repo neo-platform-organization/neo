@@ -257,3 +257,22 @@ identity to each component. This is the current executable storage choice, not a
 completed universal matrix/type system. Shape and maths remain in neo. Private
 identity/parent bucket indexes accelerate lookup without changing graph contents,
 authority, copy semantics, or ordered execution. See the runtime and build references.
+
+## OS implementation boundary clarification
+
+**Agreed, revised by the user.** Object duplication stays in the C kernel, alongside the evaluator and protected mechanisms. This supersedes the earlier plan to implement deep duplication in neo. Keep authority checks, internal-reference remapping, safe publication, and failure cleanup; `move` still means duplicate then delete, not identity-preserving reparenting. The revision does not settle where move orchestration lives. Self-hosting is deferred. The OS and applications share one image; package files are an optional external representation. See [the decision record](decisions/0001-kernel-duplication.md) and [OS sessions](../planning/os-sessions.md).
+
+## Universal dimensionality before GUI
+
+**Agreed direction.** Universal dimensionality is a foundational image-level protocol. Its maths and spatial packages are the first OS libraries, before further graphical work. The GUI is a 1:1 representation of the live graph: UI elements are graph objects, not a separate model of those objects. A 2D element has a location and vertex geometry along two axes; the common model must extend beyond two or three dimensions and accommodate objects with no spatial extent. See [the spatial decision](decisions/0002-universal-dimensionality.md) for the distinction between agreed intent and still-open representation and projection contracts. This is not yet implemented by the cube demo.
+
+## Host-agnostic platform contract
+
+**Agreed.** Image I/O and windowing depend on generic resource contracts, not
+Win32, X11, or an OS-specific filesystem convention. Native adapters stay below
+that boundary. Session 1 implements an immutable platform descriptor and read-only
+query, with one hosted Linux x86_64 adapter. Service flags describe bootstrap
+providers and never confer authority. Virtualization is independently reported as
+unknown; no hardware detection is invented. Runner service extraction is implemented in Session 2 through a portable
+callback table; native file loading, standard streams, waits, and window opening
+stay inside the adapters. The executable now uses common CLI/GUI mode arguments and a single VM per process. See [platform interface](../reference/platform-interface.md).

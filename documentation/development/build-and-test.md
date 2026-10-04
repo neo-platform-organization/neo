@@ -88,38 +88,35 @@ Keep these limits visible when extending the system. Do not claim complete image
 
 ## Optional X11 window interface
 
-`make window` builds `build/neo-window` with Xlib; run `./build/neo-window neo/window.neo display` for the blank presentation image. No renderer is provided. Xlib development files and pkg-config are required for this optional target only. The default runtime and tests remain headless.
+`make` builds `build/neo` with Xlib; run `./build/neo --gui neo/window.neo display` for the blank presentation image. No renderer is provided. The default build requires Xlib development files and pkg-config. The normal executable supports both CLI and GUI modes; `make WITH_X11=0` omits the X11 provider.
 
 `make test` includes fake-backend window/buffer tests, authority and bounds checks, neo primitive invocation, and allocation-failure rollback. `make test-window` explicitly opens a short-lived window and checks pixel readback, resize, and close events. `build/sanitize_display` covers the headless resource boundary; its verified sandbox run disabled leak detection, with allocation-fault tests separately checking balanced VM ownership.
 
 New modules: `neo_display.h`/`display.c` define resource ownership and buffer operations; `neo_window_x11.h`/`window_x11.c` implement the optional backend. Live resources block copy/move/serialization. Xlib connection-loss recovery is not implemented; the basic normalized event subset is described below. See [window interface](../reference/window-interface.md).
 
-The neo-only triangle example runs with `./build/neo-window neo/triangle.neo triangle`. `make test` executes its actual image through a headless backend, checks every RGBA pixel against the triangle boundaries, checks per-frame execution budgets and completed-frame behavior, and writes `build/triangle.ppm` for inspection.
+The neo-only triangle example runs with `./build/neo --gui neo/triangle.neo triangle`. `make test` executes its actual image through a headless backend, checks every RGBA pixel against the triangle boundaries, checks per-frame execution budgets and completed-frame behavior, and writes `build/triangle.ppm` for inspection.
 
 ## Streams and normalized events
 
-`make io` builds `build/neo-io`; run `./build/neo-io neo/terminal.neo terminal greet` to write through a granted stdout stream. The optional POSIX adapter lives in `io_posix.c`, while `io.c`/`neo_io.h` define the portable stream boundary. `make test` now builds this runner for output-redirection checks and tests EOF, partial writes, would-block, broken pipes, rights, lifetime, and allocation rollback.
+`make` builds `build/neo`; run `./build/neo --cli neo/terminal.neo terminal greet` to write through a granted stdout stream. The optional POSIX adapter lives in `io_posix.c`, while `io.c`/`neo_io.h` define the portable stream boundary. `make test` now builds this runner for output-redirection checks and tests EOF, partial writes, would-block, broken pipes, rights, lifetime, and allocation rollback.
 
 The window callback interface now optionally exposes normalized input events. X11 translates native input into a bounded queue with explicit overflow reporting. Fake-backend tests cover event snapshots and buffer dimensions; `make test-window` covers real translation and queue overflow. ASan/UBSan runs of `sanitize_io` and `sanitize_display` passed with leak detection disabled in the sandbox. See [I/O interface](../reference/io-interface.md) for remaining blocking, text-input, and graph-state limitations.
 
 ## Software renderer and cube
 
-`./build/neo-window neo/cube.neo cube neo/software-renderer.neo` runs the neo software line renderer. `make test` includes actual-image renderer/projection checks and local-call execution limits. Sanitizer targets `sanitize_renderer`, `sanitize_runtime`, and `sanitize_display` cover the new paths; verified sandbox runs use `ASAN_OPTIONS=detect_leaks=0`.
+`./build/neo --gui neo/cube.neo cube --template neo/software-renderer.neo` runs the neo software line renderer. `make test` includes actual-image renderer/projection checks and local-call execution limits. Sanitizer targets `sanitize_renderer`, `sanitize_runtime`, and `sanitize_display` cover the new paths; verified sandbox runs use `ASAN_OPTIONS=detect_leaks=0`.
 
 `bootstrap.c` implements explicit host-only copying of inert template fields and handlers before startup; it is not a runtime module loader. On bootstrap failure, discard the partially composed image. `buffer-fill` is a byte-storage operation; the rendering algorithms remain in neo. Exact immutable capability grants are reused to avoid per-pixel handle growth. See [software renderer](../reference/software-renderer.md).
 
 ## Lookup performance and packed arrays
 
-`make release-window` builds an optimized window runner separately in
-`build/release/neo-window`. Run:
+The single executable uses a debug build by default. To rebuild it optimized:
 
 ```sh
-make release-window
-./build/release/neo-window neo/cube.neo cube neo/software-renderer.neo
+make clean
+make CFLAGS='-std=c17 -O2 -g'
+./build/neo --gui neo/cube.neo cube --template neo/software-renderer.neo
 ```
-
-The default remains a debug build. Release uses C17, `-O2`, and debug symbols.
-Use `make BUILD=build/release CFLAGS='-std=c17 -O2 -g' test` to validate it.
 
 The identity and parent indexes have 1024 collision buckets each. Publication and
 freeing maintain them for ordinary creation, parsing, duplication, messages, and
@@ -141,3 +138,45 @@ setup, seven frames, auxiliary checks, and file output—not window FPS guarante
 The array-based cube reproduced all four saved reference poses byte-for-byte.
 
 The updated renderer test also reports average frame CPU time separately from setup. A local optimized run averaged about 20 ms over seven frames; this excludes X11 presentation and the host pause. Debug/release suites and ASan/UBSan suites pass (sandbox leak detection disabled).
+
+## Platform descriptor (OS Session 1)
+
+`./build/neo platform` reports the selected backend and provider flags.
+`platform.c` is portable core code; `platform_linux.c` is linked only into native
+runners and its dedicated test. `PLATFORM=linux-x86_64` is the sole build selection;
+other values fail explicitly. The core archive remains independent of X11. The single CLI now includes the
+window provider by default; `WITH_X11=0` can omit it. Provider extraction and
+single-executable consolidation are implemented; see [platform contract](../reference/platform-interface.md).
+
+`make test` includes `test_platform` and CLI query checks. The CLI regression image
+is now `neo-vm/tests/fixtures/counter.neo`, recovered from the former counter
+example after that example was removed from `neo/`. This keeps tests independent
+of user image files. `build/sanitize_platform` exercises the descriptor and evaluator
+query under ASan/UBSan.
+
+### Platform service validation (Session 2)
+
+`test_platform_services` exercises fake source, stream, window, and wait providers
+without linking a native adapter. It covers bounded/inert loading, invalid callback
+results, missing providers, errors, allocation rollback, resource authority,
+partial transfers, normalized events, and cleanup. `test_platform` additionally
+checks the native factory's unsupported-window result in a headless build and a
+zero-duration native wait. CLI tests cover exact 1 MiB loading and excess rejection.
+
+`make test` and the platform ASan/UBSan binaries pass; `make test-window` passes
+through the new platform window-opening path. `libneo.a` contains only portable
+core code. Linux stdio, POSIX stream creation, waiting, and optional X11 selection
+live in `platform_linux.c` and its adapters. The portable archive has no X11 dependency; the default executable includes the adapter.
+
+## Single executable and modes
+
+`make` now builds only `build/neo`. The former `neo-io` and `neo-window` runners
+and their `io`, `window`, and `release-window` build targets are retired. Old
+binaries left in an existing build directory are obsolete; `make clean` removes
+build output before rebuilding. No runtime tests were run after the user's
+mode-model correction; the revised executable compiled with strict warnings.
+
+Use `neo --cli IMAGE ACTOR [HANDLER]` for terminal execution, `neo --gui ...` for
+window execution, or both flags together for both resource sets in one VM. See
+[launch contract](../reference/runtime-format.md#launch-modes). This is a new
+launch interface, not a complete OS shell or GUI.

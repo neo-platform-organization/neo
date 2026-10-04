@@ -9,12 +9,12 @@ The image talks to granted stream, window, and buffer objects. It does not name 
 From the repository root:
 
 ```sh
-make io
-./build/neo-io neo/terminal.neo terminal greet
-./build/neo-io neo/terminal.neo terminal greet > greeting.txt
+make
+./build/neo --cli neo/terminal.neo terminal greet
+./build/neo --cli neo/terminal.neo terminal greet > greeting.txt
 ```
 
-The example writes `hello from neo` followed by a newline. `neo-io IMAGE ACTOR HANDLER` loads an image and grants the selected actor `stdin` (READ), `stdout` (WRITE), and `stderr` (WRITE) connections. It invokes the handler once, with a one-million-step budget. Application output goes only to the granted streams; host diagnostics go to stderr. The handler's return value is not printed. Loading with the ordinary CLI grants no streams.
+The example writes `hello from neo` followed by a newline. `neo --cli IMAGE ACTOR HANDLER` loads an image and grants the selected actor `stdin` (READ), `stdout` (WRITE), and `stderr` (WRITE) connections. It invokes the handler once, with a one-million-step budget. Application output goes only to the granted streams; host diagnostics go to stderr. The handler's return value is not printed. Loading with the ordinary CLI grants no streams.
 
 The [example image](../../neo/terminal.neo) tracks its byte offset and handles partial writes. It explicitly fails if output would block; a different object can choose a different policy. The standalone launcher has no automatic retry loop.
 

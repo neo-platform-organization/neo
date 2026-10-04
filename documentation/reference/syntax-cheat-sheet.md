@@ -191,3 +191,11 @@ See the [runtime reference](runtime-format.md) for authority restrictions, failu
 Arrays have fixed length and checked zero-based indices. Whole-payload `write`
 can replace an array. Matrix shape is an image-level convention; see
 [packed arrays](runtime-format.md#packed-integer-arrays).
+
+### Platform metadata
+
+| Primitive | Syntax | Meaning |
+| --- | --- | --- |
+| `platform-info` | `(platform-info (field "environment"))` | Read host-configured metadata; returns text or a provider boolean. Never grants I/O authority. |
+
+See [platform fields and errors](platform-interface.md).

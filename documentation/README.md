@@ -21,6 +21,7 @@ documentation/
     syntax-cheat-sheet.md
     window-interface.md
     io-interface.md
+    platform-interface.md
     software-renderer.md
   development/
     build-and-test.md
@@ -58,10 +59,11 @@ Do not create empty subject folders in advance. Split a long guide when the new 
 | Authority and ETHER messages | [Architecture](design/architecture.md) | [Runtime format and lifecycle](reference/runtime-format.md) |
 | Execution, control flow, scheduling, failures | [Code tour](learning/code-tour.md) | [Primitive and scheduler rules](reference/runtime-format.md) |
 | Images and persistence | [Architecture](design/architecture.md) | [Graph format and persistence boundary](reference/runtime-format.md) |
+| Host platform and services | [OS sessions](planning/os-sessions.md) | [Platform contract](reference/platform-interface.md) |
 | Streams, terminal, and input | [I/O design](design/io-and-display.md) | [I/O interface](reference/io-interface.md) |
 | Windows and pixel buffers | [I/O and display design](design/io-and-display.md), [code tour](learning/code-tour.md) | [Window interface](reference/window-interface.md) |
 | Software rendering | [Code tour](learning/code-tour.md) | [Renderer and cube](reference/software-renderer.md) |
-| Spatial model and long-term vision | [Whitepaper](design/whitepaper.md), [plan](planning/implementation-plan.md) | Not implemented; do not infer support from the vision. |
+| Spatial model and long-term vision | [Universal dimensionality](design/decisions/0002-universal-dimensionality.md), [whitepaper](design/whitepaper.md), [plan](planning/implementation-plan.md) | Not implemented; do not infer support from the vision. |
 
 ## Status and authority
 
@@ -72,3 +74,5 @@ The whitepaper is an unchanged reference copy of the original workspace document
 Later explicit user decisions take precedence. A planned or proposed feature is not implemented merely because it appears in documentation. Record consequential choices through the [decision-record process](design/decisions/README.md).
 
 README.md remains at the repository root as a concise landing page. Applicable AGENTS.md files remain at their discovery roots rather than inside this documentation tree. See [writing documentation](development/writing-docs.md) before adding or reorganizing pages.
+
+For current OS-layer work and bounded session handoffs, start with [OS sessions](planning/os-sessions.md).

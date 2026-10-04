@@ -38,7 +38,7 @@ Loading does not execute the last three steps. That separation lets you inspect,
 
 ## 2. Find the front door: main.c
 
-Read [neo-vm/source/main.c](../../neo-vm/source/main.c), starting with main. Ignore the details of parsing and evaluation on your first pass. Notice its job is ordinary C orchestration:
+Read [cli.c](../../neo-vm/source/cli.c), starting with neo_cli_run. The small main.c forwards process arguments to it. Ignore the details of parsing and evaluation on your first pass. Notice its job is ordinary C orchestration:
 
 ```c
 neo_vm *vm = NULL;
@@ -163,13 +163,13 @@ It is a small runnable interpreter, not yet a spatial OS. It has no geometry or 
 
 ## Following pixels to a window
 
-Start with [window.neo](../../neo/window.neo). Its frame handler asks the window to present the buffer; it does not draw anything. The [C launcher](../../neo-vm/examples/window.c) supplies both resources and grants connections before invoking that handler.
+Start with [window.neo](../../neo/window.neo). Its frame handler asks the window to present the buffer; it does not draw anything. The [C launcher](../../neo-vm/source/launch.c) supplies both resources and grants connections before invoking that handler.
 
 [display.c](../../neo-vm/source/display.c) owns byte storage, checks permissions and bounds, and calls a small backend interface. [window_x11.c](../../neo-vm/source/window_x11.c) translates completed pixel bytes into X11's native image layout and sends them to the window. Rendering algorithms belong on the neo side of that boundary. Native handles stay private to C. See the [interface reference](../reference/window-interface.md) for the byte layout and primitive table.
 
 ## A triangle rendered by neo
 
-Run `make window`, then `./build/neo-window neo/triangle.neo triangle` from the repository root. Open [triangle.neo](../../neo/triangle.neo) to follow the renderer. No C drawing code is involved.
+Run `make`, then `./build/neo --gui neo/triangle.neo triangle` from the repository root. Open [triangle.neo](../../neo/triangle.neo) to follow the renderer. No C drawing code is involved.
 
 The triangle has a top vertex and a horizontal bottom edge. Each row widens the filled span: its half-width is `(y - 80) / 2`, centered at x = 320. neo computes the first and last pixel addresses, loops over that span, and writes four channel bytes per pixel. Eight rows are drawn per invocation so each frame stays within the launcher's execution budget. The `y` field remembers progress between invocations. Once y passes 400, the loops stop and subsequent frames only present the completed buffer (plus updating the batch boundary).
 
@@ -177,7 +177,7 @@ This is a deliberately simple scanline renderer for one fixed triangle, not yet 
 
 ## Following terminal I/O
 
-[terminal.neo](../../neo/terminal.neo) knows only the connection name `stdout`. Its write returns a byte count, and the image advances its offset by that count. [io.c](../../neo-vm/source/io.c) checks authority and calls a backend; [io_posix.c](../../neo-vm/source/io_posix.c) owns the OS-specific descriptor operations. [terminal.c](../../neo-vm/examples/terminal.c) grants the standard streams before invoking the image. This is the same boundary used for windows: neo names capabilities, and the kernel adapter knows the platform.
+[terminal.neo](../../neo/terminal.neo) knows only the connection name `stdout`. Its write returns a byte count, and the image advances its offset by that count. [io.c](../../neo-vm/source/io.c) checks authority and calls a backend; [io_posix.c](../../neo-vm/source/io_posix.c) owns the OS-specific descriptor operations. [launch.c](../../neo-vm/source/launch.c) grants the standard streams before invoking the image. This is the same boundary used for windows: neo names capabilities, and the kernel adapter knows the platform.
 
 See the [I/O reference](../reference/io-interface.md) for input bytes, partial writes, event snapshots, and limitations. The snapshot/queue implementation is still native scaffolding; this is not yet the fully graph-resident execution model.
 
@@ -209,3 +209,40 @@ indexes; `neo_object_free` removes it. Searches inspect a bucket rather than
 walking every object in the VM. Collisions still compare actual identities and
 names. The ordered child iterator still selects by ordinal, so execution order
 has not changed. These indexes are disposable host bookkeeping, not image state.
+
+## Platform information without platform coupling
+
+`neo_platform.h` describes the environment using ordinary C values. `platform.c`
+knows no Linux or X11 APIs. The selected `platform_linux.c` adapter supplies
+`hosted`, `linux`, and `x86_64`; virtualization stays `unknown`. The runner copies
+that descriptor into the VM before loading an image. `platform-info` reads it.
+
+Knowing a stream provider exists is like knowing the machine has a door: it does
+not give an object the key. Access still comes from a granted stream/window
+capability and the usual rights checks. The descriptor remains informational. Resource opening now goes through a
+separate platform callback table. See the [platform reference](../reference/platform-interface.md).
+
+## Opening resources through the platform
+
+`neo_platform_services` combines metadata, a callback table, and a host-owned
+context. The runner requests providers from `neo_platform_native_services` and
+installs them before loading the image. The core then calls `read_source`,
+`open_stream`, `open_window`, or `wait` without knowing native handles or APIs.
+
+For example, the terminal runner asks for `NEO_STANDARD_OUTPUT`; the Linux adapter
+maps it to a native descriptor and creates the existing stream resource. The runner
+then explicitly grants a WRITE connection to the actor. A different backend can
+supply the same stream contract without changing that actor's neo code.
+
+The fake-platform test uses memory as its image source and callbacks as its display.
+This makes host independence executable and testable, rather than merely naming
+an interface. The single executable now uses this boundary for both modes.
+
+## One process, one VM, two interfaces
+
+[main.c](../../neo-vm/source/main.c) passes arguments to the dispatcher in
+[cli.c](../../neo-vm/source/cli.c). [launch.c](../../neo-vm/source/launch.c) parses
+the mode flags and owns a single VM from creation to destruction. CLI and GUI
+are resource choices, not separate runtimes. Combining them grants terminal
+streams and window/buffer connections to the same actor in the same loaded image.
+The current graphical loop is bootstrap scaffolding, not the future OS scheduler.

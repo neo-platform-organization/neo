@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
-#include "neo_window_x11.h"
+#include "neo_display.h"
+#include "neo_platform.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -39,13 +40,16 @@ int main(void) {
     neo_vm *vm;
     const neo_capability *root, *buffer, *window;
     OK(neo_vm_create(NULL, &vm));
+    neo_platform_services platform;
+    OK(neo_platform_native_services(NEO_PLATFORM_PIXEL_WINDOWS | NEO_PLATFORM_INPUT_EVENTS, &platform));
+    OK(neo_vm_install_platform(vm, &platform));
     OK(neo_image_create(vm, "test", &root));
     OK(neo_buffer_create(vm, root, "pixels", 32, 32, &buffer));
     const uint8_t pixels[] = {255, 0, 0, 255, 0, 255, 0, 255};
     OK(neo_buffer_write(vm, buffer, (16u * 32u + 16u) * 4u, pixels, sizeof(pixels)));
     char title[80];
     (void)snprintf(title, sizeof(title), "neo X11 interface test %ld", (long)getpid());
-    OK(neo_window_x11_create(vm, root, "window", title, 64, 64, &window));
+    OK(neo_platform_open_window(vm, root, "window", title, 64, 64, &window));
     Window native = None;
     const struct timespec delay = {.tv_nsec = 20000000};
     for (unsigned i = 0; i < 100; ++i) {
