@@ -1,9 +1,0 @@
-(image
-  (hello
-    (said "")
-    (handlers
-      (tick (body (write (slot "said") (value "Hello, World!"))))))
-  (goodbye
-    (said "")
-    (handlers
-      (tick (body (write (slot "said") (value "Goodbye, World!")))))))
