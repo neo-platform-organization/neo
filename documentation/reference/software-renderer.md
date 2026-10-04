@@ -62,6 +62,19 @@ Repeated connection lookups now reuse an existing immutable capability with the 
 
 `make test` loads the actual cube and renderer files, copies the template, removes its source image, and executes the copied behavior against a headless presentation callback. It tests renderer invariants, cardinal sine values, angle changes, known perspective coordinates, multiple orientations, and clearing old frames. Selected frames are written to `build/cube-0.ppm` through `build/cube-3.ppm` for inspection.
 
-Tested poses stayed below 200,000 steps per frame, within the launcher's one-million-step budget. Local-call tests separately cover nested returns, missing handlers, invalid selectors, recursion limits, and shared-budget enforcement. Renderer, evaluator, and display sanitizer tests pass with leak detection disabled in the sandbox.
+Tested poses stayed below 201,000 steps per frame, within the launcher's one-million-step budget. Local-call tests separately cover nested returns, missing handlers, invalid selectors, recursion limits, and shared-budget enforcement. Renderer, evaluator, and display sanitizer tests pass with leak detection disabled in the sandbox.
 
 This establishes the software path for a future common drawing interface. Extending it to filled triangles, depth testing, text, and GUI composition remains image-level work; a GPU implementation is intentionally deferred.
+
+## Compact geometry and faster execution
+
+The cube owns a packed `vertices` array (8 × 3), `edges` array (12 × 2),
+`projected` array (8 × 2), and three RGB colors. Matrix rows are a neo convention
+on contiguous integer storage. Two loops replace the previous per-vertex and
+per-edge instruction blocks. See [array primitives](runtime-format.md#packed-integer-arrays).
+
+Use `make release-window`, then
+`./build/release/neo-window neo/cube.neo cube neo/software-renderer.neo`
+for the optimized C build. The default debug build also benefits from indexed
+graph lookup. The 16 ms host pause and per-frame rotation increments remain;
+this demo still does not use elapsed-time animation.

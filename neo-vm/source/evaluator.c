@@ -78,6 +78,9 @@ static bool neo_equal(neo_value a, neo_value b) {
         case NEO_BOOLEAN: return a.boolean == b.boolean;
         case NEO_TEXT: return strcmp(a.text, b.text) == 0;
         case NEO_OBJECT: return true; /* unit payload only */
+        case NEO_INTEGERS:
+            return a.count == b.count && (a.count == 0 ||
+                memcmp(a.integers, b.integers, a.count * sizeof(int64_t)) == 0);
         case NEO_PRIMITIVE: return false;
     }
     return false;
@@ -85,7 +88,7 @@ static bool neo_equal(neo_value a, neo_value b) {
 
 bool neo_primitive_known(const char *op) {
     static const char *const primitives[] = {
-        "call", "do", "if", "while", "return", "fail", "read", "write", "message", "send",
+        "array-get", "array-set", "array-size", "call", "do", "if", "while", "return", "fail", "read", "write", "message", "send",
         "not", "and", "or", "eq", "add", "sub", "mul", "div", "rem", "lt", "le", "gt", "ge",
         "buffer-fill", "buffer-read", "buffer-write", "buffer-size", "window-present", "window-poll",
         "window-width", "window-height", "stream-read", "stream-write",
@@ -253,11 +256,60 @@ done:
     return status;
 }
 
+static neo_status neo_array_operation(neo_activation *a, neo_object *node,
+                                       size_t depth, neo_value *out) {
+    const char *op = node->value.text;
+    bool size = strcmp(op, "array-size") == 0;
+    bool writing = strcmp(op, "array-set") == 0;
+    neo_value slot = {0}, index = {0}, value = {0};
+    neo_status status = neo_operand(a, node, "slot", depth, &slot);
+    if (status != NEO_OK || a->returning) { goto done; }
+    if (slot.kind != NEO_TEXT) { status = NEO_WRONG_KIND; goto done; }
+    if (!size) {
+        status = neo_operand(a, node, "index", depth, &index);
+        if (status != NEO_OK || a->returning) { goto done; }
+        if (index.kind != NEO_INTEGER) { status = NEO_WRONG_KIND; goto done; }
+        if (index.integer < 0 || (uint64_t)index.integer > SIZE_MAX) { status = NEO_INVALID; goto done; }
+    }
+    if (writing) {
+        if ((a->authority->rights & NEO_WRITE) == 0 || strcmp(slot.text, "handlers") == 0) {
+            status = NEO_DENIED; goto done;
+        }
+        status = neo_operand(a, node, "value", depth, &value);
+        if (status != NEO_OK || a->returning) { goto done; }
+        if (value.kind != NEO_INTEGER) { status = NEO_WRONG_KIND; goto done; }
+    }
+    const neo_capability *target = NULL;
+    status = neo_object_child(a->vm, a->authority, slot.text, &target);
+    if (status != NEO_OK) { goto done; }
+    if (writing) {
+        neo_object *field = neo_child_named(a->vm, a->receiver->id, slot.text);
+        if (neo_inside(a->vm, a->body, field->id)) { status = NEO_DENIED; goto done; }
+        status = neo_array_set(a->vm, target, (size_t)index.integer, value.integer);
+        if (status == NEO_OK) { *out = value; }
+    } else if (size) {
+        size_t count = 0;
+        status = neo_array_size(a->vm, target, &count);
+        if (status == NEO_OK && count > INT64_MAX) { status = NEO_OVERFLOW; }
+        if (status == NEO_OK) { *out = (neo_value){.kind = NEO_INTEGER, .integer = (int64_t)count}; }
+    } else {
+        int64_t number = 0;
+        status = neo_array_get(a->vm, target, (size_t)index.integer, &number);
+        if (status == NEO_OK) { *out = (neo_value){.kind = NEO_INTEGER, .integer = number}; }
+    }
+done:
+    neo_value_free(a->vm, slot);
+    neo_value_free(a->vm, index);
+    neo_value_free(a->vm, value);
+    return status;
+}
+
 static neo_status neo_run_operation(neo_activation *a, neo_object *node,
                                     size_t depth, neo_value *out) {
     const char *op = node->value.text;
     if (!neo_primitive_known(op)) { return NEO_UNSUPPORTED; }
 
+    if (strncmp(op, "array-", 6) == 0) { return neo_array_operation(a, node, depth, out); }
     if (strncmp(op, "stream-", 7) == 0) {
         return neo_stream_operation(a, node, depth, out);
     }
@@ -439,7 +491,7 @@ static neo_status neo_evaluate(neo_activation *a, neo_object *node,
     ++a->report->steps;
     neo_status status;
     if (node->value.kind != NEO_PRIMITIVE) {
-        neo_object *child = neo_child_after(a->vm, node->id, 0);
+        neo_object *child = node->value.kind == NEO_OBJECT ? neo_child_after(a->vm, node->id, 0) : NULL;
         if (node->value.kind == NEO_OBJECT && child != NULL &&
             child->value.kind == NEO_PRIMITIVE &&
             neo_child_after(a->vm, node->id, child->order) == NULL) {

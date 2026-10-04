@@ -4,6 +4,10 @@
 #include "neo.h"
 #include "neo_message.h"
 
+/* Collision chains preserve exact identity/parent checks. These indexes are
+ * host bookkeeping, maintained only on node publication and destruction. */
+#define NEO_INDEX_BUCKETS 1024u
+
 /* Private implementation types; never expose these to image code. */
 typedef struct neo_edge {
     char *name;
@@ -33,6 +37,9 @@ typedef struct neo_object {
     neo_message *inbox_last;
     neo_message *active_message;
     struct neo_object *next;
+    struct neo_object *id_next;
+    struct neo_object *parent_next;
+    bool published;
 } neo_object;
 
 struct neo_capability {
@@ -47,6 +54,8 @@ struct neo_vm {
     neo_allocator allocator;
     neo_object_id next_id;
     neo_object *objects;
+    neo_object *id_index[NEO_INDEX_BUCKETS];
+    neo_object *parent_index[NEO_INDEX_BUCKETS];
     neo_capability *capabilities;
     neo_context *contexts;
     neo_message *messages;
@@ -57,6 +66,7 @@ struct neo_vm {
 
 void *neo_alloc(neo_vm *vm, size_t size);
 void neo_free(neo_vm *vm, void *memory);
+void neo_node_publish(neo_vm *vm, neo_object *node);
 neo_object *neo_lookup(neo_vm *vm, neo_object_id id);
 neo_status neo_resolve(neo_vm *vm, const neo_capability *cap, unsigned rights, neo_object **out);
 neo_status neo_issue(neo_vm *vm, neo_object_id id, unsigned rights, const neo_capability **out);

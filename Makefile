@@ -7,7 +7,7 @@ BUILD = build
 SOURCES = neo-vm/source/object.c neo-vm/source/message.c neo-vm/source/image.c neo-vm/source/evaluator.c neo-vm/source/scheduler.c neo-vm/source/display.c neo-vm/source/io.c neo-vm/source/bootstrap.c
 HEADERS = neo-vm/include/neo_bootstrap.h neo-vm/include/neo_io.h neo-vm/include/neo.h neo-vm/include/neo_display.h neo-vm/include/neo_message.h neo-vm/include/neo_image.h neo-vm/include/neo_execution.h neo-vm/source/internal.h
 OBJECTS = $(SOURCES:neo-vm/source/%.c=$(BUILD)/%.o)
-TEST_NAMES = objects messages runtime display triangle io renderer
+TEST_NAMES = objects messages runtime display triangle io renderer arrays
 TESTS = $(addprefix $(BUILD)/test_,$(TEST_NAMES))
 SANITIZERS = $(addprefix $(BUILD)/sanitize_,$(TEST_NAMES))
 
@@ -80,3 +80,8 @@ $(BUILD)/test_io: neo-vm/tests/test_io.c neo-vm/source/io_posix.c neo-vm/include
 
 $(BUILD)/sanitize_io: neo-vm/tests/test_io.c neo-vm/source/io_posix.c neo-vm/include/neo_io_posix.h $(SOURCES) $(HEADERS) | $(BUILD)
 	$(CC) $(CPPFLAGS) -std=c17 -O1 -g $(WARNINGS) -fsanitize=address,undefined -fno-omit-frame-pointer $(SOURCES) neo-vm/source/io_posix.c neo-vm/tests/test_io.c -o $@
+
+# Keep optimized artifacts separate from the default debug build.
+.PHONY: release-window
+release-window:
+	$(MAKE) BUILD=build/release CFLAGS='-std=c17 -O2 -g' window

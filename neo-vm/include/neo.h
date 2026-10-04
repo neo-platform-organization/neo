@@ -35,7 +35,8 @@ typedef enum neo_kind {
     NEO_INTEGER,
     NEO_BOOLEAN,
     NEO_TEXT,
-    NEO_PRIMITIVE
+    NEO_PRIMITIVE,
+    NEO_INTEGERS
 } neo_kind;
 
 typedef enum neo_right {
@@ -59,6 +60,8 @@ typedef struct neo_value {
     int64_t integer;
     bool boolean;
     const char *text;
+    const int64_t *integers;
+    size_t count;
 } neo_value;
 
 typedef void *(*neo_allocate_fn)(void *context, size_t size);
@@ -129,5 +132,11 @@ neo_status neo_object_delete(neo_vm *vm, const neo_capability *object);
 neo_status neo_object_name(neo_vm *vm, const neo_capability *object, const char **out_name);
 neo_status neo_object_child_at(neo_vm *vm, const neo_capability *object,
                                size_t index, const neo_capability **out_child);
+
+/* Packed signed-integer payload. Inputs are copied; read pointers are borrowed.
+ * Element operations preserve payload length and enforce the object's rights. */
+neo_status neo_array_get(neo_vm *vm, const neo_capability *object, size_t index, int64_t *out);
+neo_status neo_array_set(neo_vm *vm, const neo_capability *object, size_t index, int64_t value);
+neo_status neo_array_size(neo_vm *vm, const neo_capability *object, size_t *out);
 
 #endif

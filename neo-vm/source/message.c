@@ -239,8 +239,7 @@ neo_status neo_message_create(neo_vm *vm, const neo_context *context,
     message->sender = actor->id;
     message->receiver = recipient->id;
     message->state = NEO_MESSAGE_CREATED;
-    node->next = vm->objects;
-    vm->objects = node;
+    neo_node_publish(vm, node);
     message->next = vm->messages;
     vm->messages = message;
     *out_message = message;
@@ -374,8 +373,7 @@ neo_status neo_message_field_create(neo_vm *vm, const neo_context *context,
     if (status == NEO_OK) {
         field->parent = parent->id;
         field->image = parent->image;
-        field->next = vm->objects;
-        vm->objects = field;
+        neo_node_publish(vm, field);
     }
     return status;
 }

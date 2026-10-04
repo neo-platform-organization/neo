@@ -50,6 +50,9 @@ bool neo_valid_value(neo_value value) {
         case NEO_INTEGER:
         case NEO_BOOLEAN:
             return true;
+        case NEO_INTEGERS:
+            return value.count <= SIZE_MAX / sizeof(int64_t) &&
+                (value.count == 0 || value.integers != NULL);
         case NEO_TEXT:
         case NEO_PRIMITIVE:
             return value.text != NULL;
@@ -73,6 +76,16 @@ neo_status neo_value_copy(neo_vm *vm, neo_value source, neo_value *out) {
                 return NEO_OUT_OF_MEMORY;
             }
             break;
+        case NEO_INTEGERS:
+            if (!neo_valid_value(source)) { return NEO_INVALID; }
+            if (source.count != 0) {
+                int64_t *data = neo_alloc(vm, source.count * sizeof(*data));
+                if (data == NULL) { return NEO_OUT_OF_MEMORY; }
+                memcpy(data, source.integers, source.count * sizeof(*data));
+                out->integers = data;
+            }
+            out->count = source.count;
+            break;
         case NEO_OBJECT:
             break;
     }
@@ -80,13 +93,26 @@ neo_status neo_value_copy(neo_vm *vm, neo_value source, neo_value *out) {
 }
 
 void neo_value_free(neo_vm *vm, neo_value value) {
+    if (value.kind == NEO_INTEGERS) { neo_free(vm, (void *)value.integers); }
     if (value.kind == NEO_TEXT || value.kind == NEO_PRIMITIVE) {
         neo_free(vm, (void *)value.text);
     }
 }
 
+void neo_node_publish(neo_vm *vm, neo_object *node) {
+    size_t id_bucket = node->id % NEO_INDEX_BUCKETS;
+    size_t parent_bucket = node->parent % NEO_INDEX_BUCKETS;
+    node->id_next = vm->id_index[id_bucket];
+    vm->id_index[id_bucket] = node;
+    node->parent_next = vm->parent_index[parent_bucket];
+    vm->parent_index[parent_bucket] = node;
+    node->next = vm->objects;
+    vm->objects = node;
+    node->published = true;
+}
+
 neo_object *neo_lookup(neo_vm *vm, neo_object_id id) {
-    for (neo_object *object = vm->objects; object != NULL; object = object->next) {
+    for (neo_object *object = vm->id_index[id % NEO_INDEX_BUCKETS]; object != NULL; object = object->id_next) {
         if (object->id == id) {
             return object;
         }
@@ -156,6 +182,14 @@ neo_status neo_issue(neo_vm *vm, neo_object_id id, unsigned rights,
 }
 
 void neo_object_free(neo_vm *vm, neo_object *object) {
+    if (object->published) {
+        neo_object **link = &vm->id_index[object->id % NEO_INDEX_BUCKETS];
+        while (*link != object) { link = &(*link)->id_next; }
+        *link = object->id_next;
+        link = &vm->parent_index[object->parent % NEO_INDEX_BUCKETS];
+        while (*link != object) { link = &(*link)->parent_next; }
+        *link = object->parent_next;
+    }
     neo_stream_release(vm, object);
     neo_display_release(vm, object);
     neo_edge *edge = object->edges;
@@ -192,7 +226,7 @@ neo_status neo_node_new(neo_vm *vm, const char *name, neo_value value,
 }
 
 static bool neo_name_exists(neo_vm *vm, neo_object_id parent, const char *name) {
-    for (neo_object *node = vm->objects; node != NULL; node = node->next) {
+    for (neo_object *node = vm->parent_index[parent % NEO_INDEX_BUCKETS]; node != NULL; node = node->parent_next) {
         if (node->parent == parent && strcmp(node->name, name) == 0) {
             return true;
         }
@@ -320,8 +354,7 @@ neo_status neo_image_create(neo_vm *vm, const char *name,
         return NEO_OUT_OF_MEMORY;
     }
     root->image = root->id;
-    root->next = vm->objects;
-    vm->objects = root;
+    neo_node_publish(vm, root);
     neo_cap_publish(vm, cap);
     *out_root = cap;
     return NEO_OK;
@@ -374,8 +407,7 @@ neo_status neo_object_create(neo_vm *vm, const neo_capability *parent,
     }
     node->parent = container->id;
     node->image = container->image;
-    node->next = vm->objects;
-    vm->objects = node;
+    neo_node_publish(vm, node);
     neo_cap_publish(vm, cap);
     *out_object = cap;
     return NEO_OK;
@@ -395,7 +427,7 @@ neo_status neo_object_child(neo_vm *vm, const neo_capability *parent,
     if (status != NEO_OK) {
         return status;
     }
-    for (neo_object *node = vm->objects; node != NULL; node = node->next) {
+    for (neo_object *node = vm->parent_index[container->id % NEO_INDEX_BUCKETS]; node != NULL; node = node->parent_next) {
         if (node->parent == container->id && strcmp(node->name, name) == 0) {
             return neo_issue(vm, node->id, parent->rights, out_child);
         }
@@ -619,8 +651,7 @@ static neo_status neo_duplicate(neo_vm *vm, neo_object *source,
         goto cleanup;
     }
     for (size_t i = 0; i < count; ++i) {
-        map[i].copy->next = vm->objects;
-        vm->objects = map[i].copy;
+        neo_node_publish(vm, map[i].copy);
     }
     neo_cap_publish(vm, cap);
     *out = cap;
@@ -742,7 +773,7 @@ neo_status neo_image_unload(neo_vm *vm, const neo_capability *root) {
 /* Ordered traversal uses an ordinal, not storage-list order. Duplication may
  * rearrange allocation links without changing the order of behavior steps. */
 neo_object *neo_child_named(neo_vm *vm, neo_object_id parent, const char *name) {
-    for (neo_object *node = vm->objects; node != NULL; node = node->next) {
+    for (neo_object *node = vm->parent_index[parent % NEO_INDEX_BUCKETS]; node != NULL; node = node->parent_next) {
         if (node->parent == parent && strcmp(node->name, name) == 0) {
             return node;
         }
@@ -752,7 +783,7 @@ neo_object *neo_child_named(neo_vm *vm, neo_object_id parent, const char *name) 
 
 neo_object *neo_child_after(neo_vm *vm, neo_object_id parent, uint64_t order) {
     neo_object *found = NULL;
-    for (neo_object *node = vm->objects; node != NULL; node = node->next) {
+    for (neo_object *node = vm->parent_index[parent % NEO_INDEX_BUCKETS]; node != NULL; node = node->parent_next) {
         if (node->parent == parent && node->order > order &&
             (found == NULL || node->order < found->order)) {
             found = node;
@@ -796,4 +827,37 @@ neo_status neo_object_child_at(neo_vm *vm, const neo_capability *object,
         }
         order = child->order;
     }
+}
+
+neo_status neo_array_size(neo_vm *vm, const neo_capability *object, size_t *out) {
+    if (out == NULL) { return NEO_INVALID; }
+    *out = 0;
+    neo_object *node = NULL;
+    neo_status status = neo_resolve(vm, object, NEO_READ, &node);
+    if (status != NEO_OK) { return status; }
+    if (node->value.kind != NEO_INTEGERS) { return NEO_WRONG_KIND; }
+    *out = node->value.count;
+    return NEO_OK;
+}
+
+neo_status neo_array_get(neo_vm *vm, const neo_capability *object, size_t index, int64_t *out) {
+    if (out == NULL) { return NEO_INVALID; }
+    *out = 0;
+    neo_object *node = NULL;
+    neo_status status = neo_resolve(vm, object, NEO_READ, &node);
+    if (status != NEO_OK) { return status; }
+    if (node->value.kind != NEO_INTEGERS) { return NEO_WRONG_KIND; }
+    if (index >= node->value.count) { return NEO_INVALID; }
+    *out = node->value.integers[index];
+    return NEO_OK;
+}
+
+neo_status neo_array_set(neo_vm *vm, const neo_capability *object, size_t index, int64_t value) {
+    neo_object *node = NULL;
+    neo_status status = neo_resolve(vm, object, NEO_WRITE, &node);
+    if (status != NEO_OK) { return status; }
+    if (node->value.kind != NEO_INTEGERS) { return NEO_WRONG_KIND; }
+    if (index >= node->value.count) { return NEO_INVALID; }
+    ((int64_t *)node->value.integers)[index] = value;
+    return NEO_OK;
 }

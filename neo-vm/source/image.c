@@ -87,7 +87,7 @@ static neo_status neo_token(neo_reader *reader, char *out) {
             out[length] = '\0';
             return NEO_OK;
         }
-        if (!quoted && (isspace((unsigned char)c) || c == '(' || c == ')' || (c == '/' && reader->cursor[1] == '/'))) {
+        if (!quoted && (isspace((unsigned char)c) || c == '(' || c == ')' || c == '[' || c == ']' || (c == '/' && reader->cursor[1] == '/'))) {
             break;
         }
         if (!quoted && c == '"') {
@@ -129,6 +129,40 @@ static neo_status neo_bare_token(neo_reader *reader, char *out) {
         return neo_parse_fail(reader, NEO_PARSE_ERROR, "expected bare token; quoted text is a payload");
     }
     return neo_token(reader, out);
+}
+
+/* A bracket literal is one packed payload, not a child per component. */
+static neo_status neo_read_array(neo_reader *reader, neo_value *out) {
+    (void)neo_advance(reader);
+    int64_t *data = NULL;
+    size_t count = 0, capacity = 0;
+    neo_status status = NEO_OK;
+    for (;;) {
+        neo_space(reader);
+        if (*reader->cursor == ']') { (void)neo_advance(reader); break; }
+        char token[NEO_TOKEN_LIMIT + 1];
+        status = neo_bare_token(reader, token);
+        if (status != NEO_OK) { break; }
+        char *end = NULL;
+        errno = 0;
+        intmax_t number = strtoimax(token, &end, 10);
+        if (end == token || *end != '\0' || errno != 0 || number < INT64_MIN || number > INT64_MAX) {
+            status = neo_parse_fail(reader, NEO_PARSE_ERROR, "expected array integer or ]"); break;
+        }
+        if (count == capacity) {
+            size_t next = capacity == 0 ? 16 : capacity * 2;
+            if (next > NEO_SOURCE_LIMIT / sizeof(*data)) { status = NEO_LIMIT; break; }
+            int64_t *grown = neo_alloc(reader->vm, next * sizeof(*data));
+            if (grown == NULL) { status = NEO_OUT_OF_MEMORY; break; }
+            if (count != 0) { memcpy(grown, data, count * sizeof(*data)); }
+            neo_free(reader->vm, data);
+            data = grown; capacity = next;
+        }
+        data[count++] = (int64_t)number;
+    }
+    if (status != NEO_OK) { neo_free(reader->vm, data); return status; }
+    *out = (neo_value){.kind = NEO_INTEGERS, .integers = data, .count = count};
+    return NEO_OK;
 }
 
 static neo_status neo_read_edge(neo_reader *reader, neo_object *owner) {
@@ -293,6 +327,13 @@ static neo_status neo_read_node(neo_reader *reader, neo_object *parent,
         }
     }
     neo_space(reader);
+    if (*reader->cursor == '[') {
+        if (tagged) { return neo_parse_fail(reader, NEO_PARSE_ERROR, "unexpected array payload"); }
+        status = neo_read_array(reader, &node->value);
+        if (status != NEO_OK) { return status; }
+        tagged = true; /* A second payload is forbidden, including another array. */
+        neo_space(reader);
+    }
     if (*reader->cursor != '(' && *reader->cursor != ')' &&
         *reader->cursor != '@' && *reader->cursor != '\0') {
         /* Inferred literals are values, never permanent field declarations. */
@@ -398,8 +439,7 @@ neo_status neo_image_parse(neo_vm *vm, const char *source,
         neo_load_node *entry = reader.nodes;
         reader.nodes = entry->next;
         if (status == NEO_OK) {
-            entry->object->next = vm->objects;
-            vm->objects = entry->object;
+            neo_node_publish(vm, entry->object);
         } else {
             neo_object_free(vm, entry->object);
         }
@@ -483,7 +523,7 @@ static neo_status neo_write_bare(neo_writer *writer, const char *text) {
     if (length == 0) { return NEO_UNSUPPORTED; }
     if (length > NEO_TOKEN_LIMIT) { return NEO_LIMIT; }
     for (const unsigned char *p = (const unsigned char *)text; *p != 0; ++p) {
-        if (isspace(*p) || *p < 32u || *p == '(' || *p == ')' || *p == '"' ||
+        if (isspace(*p) || *p < 32u || *p == '(' || *p == ')' || *p == '[' || *p == ']' || *p == '"' ||
             (*p == '/' && p[1] == '/')) {
             return NEO_UNSUPPORTED;
         }
@@ -518,6 +558,13 @@ static neo_status neo_write_node(neo_writer *writer, neo_object *node, size_t de
                 NEO_WRITE(neo_append(writer, " :object"));
             }
             break;
+        case NEO_INTEGERS:
+            NEO_WRITE(neo_append(writer, " ["));
+            for (size_t i = 0; i < node->value.count; ++i) {
+                (void)snprintf(buffer, sizeof(buffer), "%s%" PRId64, i == 0 ? "" : " ", node->value.integers[i]);
+                NEO_WRITE(neo_append(writer, buffer));
+            }
+            NEO_WRITE(neo_append(writer, "]")); break;
         case NEO_INTEGER:
             (void)snprintf(buffer, sizeof(buffer), " %" PRId64, node->value.integer);
             NEO_WRITE(neo_append(writer, buffer)); break;

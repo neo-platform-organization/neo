@@ -10,7 +10,7 @@ The CLI accepts one rooted object graph per file:
 
 ```text
 object := '(' name [ '#' label ] [ payload ] { object | edge } ')'
-payload := signed_decimal | 'true' | 'false' | string
+payload := signed_decimal | 'true' | 'false' | string | '[' { signed_decimal } ']'
          | ':primitive'
          | legacy_tagged_payload
 edge := '@' name '#' label decimal_rights_mask
@@ -41,7 +41,7 @@ Edges are named separately from contained fields. The final integer records thes
 
 Combine bits by addition when writing the file. A receiver connection for sending only therefore has mask 128. These links cannot identify an object outside the new image or grant filesystem/process authority. Loading an image is a host operation that establishes its internal grants; ordinary running code cannot forge them by manufacturing integer IDs.
 
-The serializer writes bare names, inferred scalar literals, and generated labels. Host-created names or primitive bindings that cannot be represented as bare tokens report unsupported rather than being quoted or renamed. For known primitives whose names match their bindings it omits `:primitive`; legacy/host-created objects with different names retain an explicit binding to preserve their meaning. Ordinary empty objects with reserved names retain `:object`, so formatting cannot turn data into executable primitives. Re-reading preserves payloads, containment order, connection targets, and rights. It does not preserve numeric object IDs, source spelling, comments, or formatting. Dangling edges are rejected on serialization rather than silently dropped. Version selection is currently implicit in this prototype; a versioned envelope is needed before compatibility is promised.
+The serializer writes bare names, inferred literals (including packed arrays), and generated labels. Host-created names or primitive bindings that cannot be represented as bare tokens report unsupported rather than being quoted or renamed. For known primitives whose names match their bindings it omits `:primitive`; legacy/host-created objects with different names retain an explicit binding to preserve their meaning. Ordinary empty objects with reserved names retain `:object`, so formatting cannot turn data into executable primitives. Re-reading preserves payloads, containment order, connection targets, and rights. It does not preserve numeric object IDs, source spelling, comments, or formatting. Dangling edges are rejected on serialization rather than silently dropped. Version selection is currently implicit in this prototype; a versioned envelope is needed before compatibility is promised.
 
 Limits: 1 MiB source/output, 4096 nodes, 128 levels of containment, and 4096 decoded bytes per token. Out-of-memory or parse failure leaves no published partial image. Failed allocations may consume identity numbers; identity continuity is not a language guarantee.
 
@@ -58,11 +58,11 @@ actor
         named argument objects
 ```
 
-A named container with an ordinary empty payload and exactly one primitive child forwards evaluation to that child. This supports `(body (if ...))`, `(condition (lt ...))`, and `(value (read (slot "count")))`. It applies only during evaluation; merely containing operations does not execute them. Other nonprimitive objects retain their scalar/unit behavior. Use `do` for sequences.
+A named container with an ordinary empty payload and exactly one primitive child forwards evaluation to that child. This supports `(body (if ...))`, `(condition (lt ...))`, and `(value (read (slot "count")))`. It applies only during evaluation; merely containing operations does not execute them. Other nonprimitive objects evaluate to copies of their payloads. Use `do` for sequences.
 
 Only an explicitly invoked body is evaluated. An object named add with an explicit literal payload or `:object` is data; `(add ...)` with no explicit payload is a primitive. A primitive-tagged object whose binding is add invokes the evaluator's addition rule when evaluated. An unknown primitive fails before evaluating operands.
 
-Nonprimitive payload objects evaluate as scalar values. The ordinary empty payload acts as unit. Composite values, first-class closures, identity-observable intermediate results, and fully graph-resident activations are not implemented yet. Temporary values and activations currently use private C storage. This is an executable subset, not the full homoiconic execution model.
+Nonprimitive payload objects evaluate as scalar or packed-array values. The ordinary empty payload acts as unit. General composite values, first-class closures, identity-observable intermediate results, and fully graph-resident activations are not implemented yet. Temporary values and activations currently use private C storage. This is an executable subset, not the full homoiconic execution model.
 
 ## Implemented primitive objects
 
@@ -115,3 +115,36 @@ The CLI's format/clone commands write text to stdout; neither unload nor formatt
 ## Software renderer templates
 
 The [software renderer](software-renderer.md) uses the local `call` primitive and `buffer-fill` memory operation. The window launcher can copy explicitly supplied template fields/handlers into an actor before execution. This host-only bootstrap facility does not establish language import syntax or permit ordinary cross-image object copies.
+
+## Packed integer arrays
+
+`(vertices [-80 -80 -80 80 -80 -80])` creates one object with a contiguous signed
+64-bit integer payload. Components have no separate identity or child objects.
+`[]` is empty; whitespace and `//` comments separate entries. Strings, nested
+arrays, and noninteger components are rejected. Brackets are now token delimiters
+and cannot appear in bare names. The reader limits each array to 131,072 elements,
+subject also to its existing source-size limit.
+
+| Operation | Example | Result |
+| --- | --- | --- |
+| Read an element | `(array-get (slot "vertices") (index 2))` | Integer at zero-based index 2. |
+| Write an element | `(array-set (slot "vertices") (index 2) (value 80))` | Store and return 80; requires WRITE. |
+| Element count | `(array-size (slot "vertices"))` | Integer count; requires READ. |
+
+These primitives address immediate receiver fields and retain containment authority
+checks. Negative/out-of-range indices fail with `NEO_INVALID`; noninteger indices,
+values, or nonarray targets fail with `NEO_WRONG_KIND`. Missing fields are unavailable.
+Active behavior cannot be changed through array writes. Operand evaluation and early
+returns follow the other primitives. Arrays have fixed length; ordinary `write`
+can replace the whole payload, including changing its kind or length.
+
+Ordinary `read`, `write`, returned values, messages, object copying, and template
+installation copy array contents where values are duplicated; they do not introduce
+shared mutable backing storage. `eq` compares array contents. Parsing/formatting
+preserves entries, including empty arrays and signed integer limits. The C API's
+`neo_object_read` returns borrowed storage, as it does for text; `neo_array_get`,
+`neo_array_set`, and `neo_array_size` provide checked element access.
+
+Matrix dimensions and operations belong to neo code. The cube treats its vertex
+array as eight rows of three coordinates, using `row * 3 + column`; the kernel
+only stores and accesses integers. There is no native matrix or rendering primitive.

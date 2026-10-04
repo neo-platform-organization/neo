@@ -64,7 +64,7 @@ An output parameter is not a second return mechanism with hidden behavior. It is
 
 Read [neo-vm/source/internal.h](../../neo-vm/source/internal.h). Each neo_object has identity, image membership, a parent identity, a name, a payload, connections, and runtime bookkeeping. None of those field names causes behavior by itself.
 
-The VM's object collection currently is a linked chain. Each object records its container ID; it does not allocate a separate child list. Looking for children scans the collection. This makes the code understandable but will not scale well to huge images. The next performance step should be measurement and indexing, not an undocumented change in semantics.
+The VM retains a linked chain for whole-image operations and maintains bucket indexes for identities and parents. Each object records its container ID; looking for children scans the matching parent bucket instead of the whole VM. Child order remains an explicit ordinal. These indexes accelerate lookup without changing the graph's meaning.
 
 Read these functions in [neo-vm/source/object.c](../../neo-vm/source/object.c), in order:
 
@@ -188,3 +188,24 @@ See the [I/O reference](../reference/io-interface.md) for input bytes, partial w
 [cube.neo](../../neo/cube.neo) supplies eight vertices, fixed-point sine/cosine, two-axis rotation, and perspective projection. Its frame handler clears the old image, projects the vertices, asks `r-line` to draw twelve edges, presents the buffer, and advances the angles. The renderer never needs to understand a cube; the cube never needs to understand X11.
 
 The launcher copies the renderer's fields and handlers into the cube at startup. `(call (selector "r-line"))` then invokes that owned behavior. This initial API uses receiver fields for inputs and scratch storage, so it is sequential rather than reentrant. See the [renderer reference](../reference/software-renderer.md) for commands and limits.
+
+## Why the cube now uses arrays
+
+Open `neo/cube.neo`: `vertices` owns 24 integers, interpreted as eight rows of
+three coordinates. `edges` owns pairs of vertex indices. `projected` holds eight
+pairs of screen coordinates. One loop transforms the vertices, another draws the
+edges. The cube remains one actor; vertices and edges are data, not independent
+actors or repeated instruction blocks.
+
+In C terms, the vertex payload is like an owned `int64_t vertices[24]`. Accessing
+row `r`, column `c` means `vertices[r * 3 + c]`. neo's `array-get` and `array-set`
+perform checked element access. The C runtime supplies storage; the rotation,
+projection, and line algorithm still run as neo behavior. Duplicating the object
+copies its array, so changing a duplicate cannot change the original.
+
+Object lookup also changed: `internal.h` has private bucket indexes for identity
+and immediate parent. `neo_node_publish` inserts a fully prepared node into both
+indexes; `neo_object_free` removes it. Searches inspect a bucket rather than
+walking every object in the VM. Collisions still compare actual identities and
+names. The ordered child iterator still selects by ordinal, so execution order
+has not changed. These indexes are disposable host bookkeeping, not image state.

@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "FAIL %d: %s\n", __LINE__, #x); exit(EXIT_FAILURE); } } while (0)
 #define OK(x) CHECK((x) == NEO_OK)
@@ -36,9 +37,22 @@ static int64_t neo_get(neo_vm *vm, const neo_capability *actor, const char *name
     CHECK(value.kind == NEO_INTEGER);
     return value.integer;
 }
+static int64_t neo_projected(neo_vm *vm, const neo_capability *actor, size_t index) {
+    int64_t value;
+    OK(neo_array_get(vm, neo_field(vm, actor, "projected"), index, &value));
+    return value;
+}
+static double neo_frame_seconds;
+static size_t neo_frame_count;
 static size_t neo_run(neo_vm *vm, const neo_capability *actor, const char *handler) {
     neo_execution report;
+    clock_t start = clock();
     neo_status status = neo_behavior_run(vm, actor, handler, NULL, 1000000, &report);
+    clock_t end = clock();
+    if (strcmp(handler, "frame") == 0 && start != (clock_t)-1 && end != (clock_t)-1) {
+        neo_frame_seconds += (double)(end - start) / CLOCKS_PER_SEC;
+        ++neo_frame_count;
+    }
     if (status != NEO_OK) { fprintf(stderr, "%s: %s after %zu steps\n", handler, neo_status_name(status), report.steps); }
     CHECK(status == NEO_OK);
     size_t steps = report.steps;
@@ -116,8 +130,8 @@ int main(void) {
     }
     neo_set(vm, actor, "c-yaw", 0); neo_set(vm, actor, "c-pitch", 0);
     size_t steps = neo_run(vm, actor, "frame");
-    CHECK(neo_get(vm, actor, "c-x0") == 245 && neo_get(vm, actor, "c-y0") == 315);
-    CHECK(neo_get(vm, actor, "c-x4") == 270 && neo_get(vm, actor, "c-y4") == 290);
+    CHECK(neo_projected(vm, actor, 0) == 245 && neo_projected(vm, actor, 1) == 315);
+    CHECK(neo_projected(vm, actor, 8) == 270 && neo_projected(vm, actor, 9) == 290);
     CHECK(neo_get(vm, actor, "c-yaw") == 3 && neo_get(vm, actor, "c-pitch") == 2);
     memcpy(previous, pixels, 640u * 480u * 4);
     (void)neo_run(vm, actor, "frame");
@@ -131,11 +145,8 @@ int main(void) {
         size_t frame_steps = neo_run(vm, actor, "frame");
         if (frame_steps > steps) { steps = frame_steps; }
         for (size_t i = 0; i < 8; ++i) {
-            char name[32];
-            (void)snprintf(name, sizeof(name), "c-x%zu", i);
-            CHECK(neo_get(vm, actor, name) >= 0 && neo_get(vm, actor, name) < 640);
-            (void)snprintf(name, sizeof(name), "c-y%zu", i);
-            CHECK(neo_get(vm, actor, name) >= 0 && neo_get(vm, actor, name) < 480);
+            CHECK(neo_projected(vm, actor, 2 * i) >= 0 && neo_projected(vm, actor, 2 * i) < 640);
+            CHECK(neo_projected(vm, actor, 2 * i + 1) >= 0 && neo_projected(vm, actor, 2 * i + 1) < 480);
         }
         char path[80];
         (void)snprintf(path, sizeof(path), "build/cube-%zu.ppm", pose);
@@ -144,5 +155,9 @@ int main(void) {
     neo_vm_destroy(vm);
     free(pixels); free(previous);
     printf("PASS: software line renderer, clipping, fixed-point rotation, perspective, clear/redraw; max %zu steps/frame\n", steps);
+    if (neo_frame_count != 0) {
+        printf("Headless frame CPU time: %.2f ms average over %zu frames (no pacing or X11)\n",
+               1000 * neo_frame_seconds / (double)neo_frame_count, neo_frame_count);
+    }
     return EXIT_SUCCESS;
 }

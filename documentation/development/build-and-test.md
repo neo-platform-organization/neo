@@ -34,7 +34,7 @@ Sanitizer targets compile separate instrumented binaries for AddressSanitizer an
 
 ## Dynamic payloads and syntax
 
-The reader infers integers, booleans, and quoted text from literals. Payload kinds can change on write; operand kinds are checked during execution. Primitives can bind through their own names, as in `(if ...)`, with named containers forwarding to a sole primitive child. The writer emits inferred literals; legacy explicit tags remain accepted. Tests cover inferred literals, text-versus-number distinction, kind-changing writes, invalid literals, runtime type errors, and serialization.
+The reader infers integers, booleans, quoted text, and packed integer arrays from literals. Payload kinds can change on write; operand kinds are checked during execution. Primitives can bind through their own names, as in `(if ...)`, with named containers forwarding to a sole primitive child. The writer emits inferred literals; legacy explicit tags remain accepted. Tests cover inferred literals, text-versus-number distinction, kind-changing writes, invalid literals, runtime type errors, and serialization.
 
 ## Modules
 
@@ -71,13 +71,13 @@ Strict-warning builds, unit suites, and CLI integration checks pass. Sanitizer s
 
 These are implementation defaults and gaps, not additional agreed language semantics:
 
-- Object storage and ancestry queries use linear scans. Child ordering is an ordinal, so copy/serialization can preserve execution order without a separate child-list allocation per object. Large images need measurement and indexed storage.
+- Identity and parent queries use bucket indexes; ancestry follows indexed parent identities. Whole-region operations and capability validation still use scans. Child ordering remains an ordinal. Fixed bucket counts are not a claim of constant-time lookup for arbitrarily large images.
 - Container capabilities cover the subtree. Child lookup preserves rights. Creating contained values preserves destination rights; copying returns the source/destination rights intersection. Named connections carry explicitly delegated rights. Native C callers remain trusted.
 - Contexts authenticate an acting object and are cached per identity. Capability and context handles remain until VM destruction. Object identities are never reused inside a VM. Individual handle reclamation is future work.
 - ETHER requires explicit host creation/access. Recipient connections need SEND permission. Message policy is fixed at submission; authorized content edits remain possible until acceptance. Accepted payloads are currently immutable to everyone.
 - Messages remain contained in ETHER after acceptance and processing. Generic payload access is denied. Individual message reclamation/cancellation and post-acceptance receiver edits remain unimplemented.
 - Images containing ETHER, messages, active queues, or enabled/failed registrations cannot yet be duplicated or serialized. The runtime reports unsupported rather than silently dropping state. Ordinary graphs, including behavior objects, round-trip and duplicate.
-- The evaluator is a limited scalar subset. Primitive bodies are objects, but activations, temporary values, and failure reports still use private C storage. Full reflective activation objects and language-level recovery policies remain future work.
+- The evaluator supports scalars and packed integer arrays, with a limited operation vocabulary. Primitive bodies are objects, but activations, temporary values, and failure reports still use private C storage. Full reflective activation objects and language-level recovery policies remain future work.
 - Reads/writes target the receiver's immediate contained fields. Active behavior cannot overwrite its own containing code subtree. There is no arbitrary native-code escape or implicit I/O.
 - The scheduler has one thread. Registration and primitive behavior do not mutate concurrently. Turns run to completion within a host-provided instruction budget; budget exhaustion is a reported failure, not resumable preemption.
 - A failure pauses its receiver. Explicit recovery may retry from the beginning or discard. Prior effects remain, and retry can repeat them. This host mechanism is provisional pending language-level handlers.
@@ -107,3 +107,37 @@ The window callback interface now optionally exposes normalized input events. X1
 `./build/neo-window neo/cube.neo cube neo/software-renderer.neo` runs the neo software line renderer. `make test` includes actual-image renderer/projection checks and local-call execution limits. Sanitizer targets `sanitize_renderer`, `sanitize_runtime`, and `sanitize_display` cover the new paths; verified sandbox runs use `ASAN_OPTIONS=detect_leaks=0`.
 
 `bootstrap.c` implements explicit host-only copying of inert template fields and handlers before startup; it is not a runtime module loader. On bootstrap failure, discard the partially composed image. `buffer-fill` is a byte-storage operation; the rendering algorithms remain in neo. Exact immutable capability grants are reused to avoid per-pixel handle growth. See [software renderer](../reference/software-renderer.md).
+
+## Lookup performance and packed arrays
+
+`make release-window` builds an optimized window runner separately in
+`build/release/neo-window`. Run:
+
+```sh
+make release-window
+./build/release/neo-window neo/cube.neo cube neo/software-renderer.neo
+```
+
+The default remains a debug build. Release uses C17, `-O2`, and debug symbols.
+Use `make BUILD=build/release CFLAGS='-std=c17 -O2 -g' test` to validate it.
+
+The identity and parent indexes have 1024 collision buckets each. Publication and
+freeing maintain them for ordinary creation, parsing, duplication, messages, and
+unload. They add bounded bucket storage per VM and two links per object; dense
+buckets still take linear search. They neither skip capability checks nor change
+creation/serialization order. No new per-lookup allocation or cached value is used.
+
+`test_objects` exercises more live identities/parents than buckets, ordered child
+lookup, and deletion with stale handles. `test_arrays` covers integer limits,
+empty literals, bounds, permissions, independent copies, dynamic replacement,
+serialization, invalid syntax, and allocation-failure cleanup. The existing
+message and runtime tests also exercise indexed publication and rollback.
+
+A local `-O0 -pg` profile of the old cube spent about 79% in `neo_child_after`,
+10% in `neo_lookup`, and 9% in `neo_child_named`. The original uninstrumented
+renderer suite took 10.4 seconds; with indexes it took about 0.21 seconds, before
+changing geometry storage. These are whole headless test-suite times, including
+setup, seven frames, auxiliary checks, and file output—not window FPS guarantees.
+The array-based cube reproduced all four saved reference poses byte-for-byte.
+
+The updated renderer test also reports average frame CPU time separately from setup. A local optimized run averaged about 20 ms over seven frames; this excludes X11 presentation and the host pause. Debug/release suites and ASan/UBSan suites pass (sandbox leak detection disabled).

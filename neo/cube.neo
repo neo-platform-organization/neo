@@ -26,22 +26,16 @@
     (c-depth 0)
     (c-px 0)
     (c-py 0)
-    (c-x0 0)
-    (c-y0 0)
-    (c-x1 0)
-    (c-y1 0)
-    (c-x2 0)
-    (c-y2 0)
-    (c-x3 0)
-    (c-y3 0)
-    (c-x4 0)
-    (c-y4 0)
-    (c-x5 0)
-    (c-y5 0)
-    (c-x6 0)
-    (c-y6 0)
-    (c-x7 0)
-    (c-y7 0)
+    // Row-major 8 x 3 coordinates and 12 x 2 edge indices. Each is one payload.
+    (vertices [-80 -80 -80  80 -80 -80  80 80 -80  -80 80 -80
+               -80 -80 80   80 -80 80   80 80 80   -80 80 80])
+    (edges [0 1  1 2  2 3  3 0  4 5  5 6  6 7  7 4  0 4  1 5  2 6  3 7])
+    (projected [0 0  0 0  0 0  0 0  0 0  0 0  0 0  0 0])
+    (colors [255 150 75  75 205 255  160 235 170])
+    (c-i 0)
+    (c-a 0)
+    (c-b 0)
+    (c-color 0)
     (handlers
       (c-sine
         (body
@@ -157,190 +151,33 @@
                 (angle (write (slot "c-angle") (value (add (left (read (slot "c-pitch"))) (right 90)))))
                 (evaluate (call (selector "c-sine")))
                 (save (write (slot "c-cos-pitch") (value (read (slot "c-trig")))))))
-            (vertex-0
-              (do
-                (x (write (slot "c-vx") (value -80)))
-                (y (write (slot "c-vy") (value -80)))
-                (z (write (slot "c-vz") (value -80)))
-                (project (call (selector "c-project")))
-                (save-x (write (slot "c-x0") (value (read (slot "c-px")))))
-                (save-y (write (slot "c-y0") (value (read (slot "c-py")))))))
-            (vertex-1
-              (do
-                (x (write (slot "c-vx") (value 80)))
-                (y (write (slot "c-vy") (value -80)))
-                (z (write (slot "c-vz") (value -80)))
-                (project (call (selector "c-project")))
-                (save-x (write (slot "c-x1") (value (read (slot "c-px")))))
-                (save-y (write (slot "c-y1") (value (read (slot "c-py")))))))
-            (vertex-2
-              (do
-                (x (write (slot "c-vx") (value 80)))
-                (y (write (slot "c-vy") (value 80)))
-                (z (write (slot "c-vz") (value -80)))
-                (project (call (selector "c-project")))
-                (save-x (write (slot "c-x2") (value (read (slot "c-px")))))
-                (save-y (write (slot "c-y2") (value (read (slot "c-py")))))))
-            (vertex-3
-              (do
-                (x (write (slot "c-vx") (value -80)))
-                (y (write (slot "c-vy") (value 80)))
-                (z (write (slot "c-vz") (value -80)))
-                (project (call (selector "c-project")))
-                (save-x (write (slot "c-x3") (value (read (slot "c-px")))))
-                (save-y (write (slot "c-y3") (value (read (slot "c-py")))))))
-            (vertex-4
-              (do
-                (x (write (slot "c-vx") (value -80)))
-                (y (write (slot "c-vy") (value -80)))
-                (z (write (slot "c-vz") (value 80)))
-                (project (call (selector "c-project")))
-                (save-x (write (slot "c-x4") (value (read (slot "c-px")))))
-                (save-y (write (slot "c-y4") (value (read (slot "c-py")))))))
-            (vertex-5
-              (do
-                (x (write (slot "c-vx") (value 80)))
-                (y (write (slot "c-vy") (value -80)))
-                (z (write (slot "c-vz") (value 80)))
-                (project (call (selector "c-project")))
-                (save-x (write (slot "c-x5") (value (read (slot "c-px")))))
-                (save-y (write (slot "c-y5") (value (read (slot "c-py")))))))
-            (vertex-6
-              (do
-                (x (write (slot "c-vx") (value 80)))
-                (y (write (slot "c-vy") (value 80)))
-                (z (write (slot "c-vz") (value 80)))
-                (project (call (selector "c-project")))
-                (save-x (write (slot "c-x6") (value (read (slot "c-px")))))
-                (save-y (write (slot "c-y6") (value (read (slot "c-py")))))))
-            (vertex-7
-              (do
-                (x (write (slot "c-vx") (value -80)))
-                (y (write (slot "c-vy") (value 80)))
-                (z (write (slot "c-vz") (value 80)))
-                (project (call (selector "c-project")))
-                (save-x (write (slot "c-x7") (value (read (slot "c-px")))))
-                (save-y (write (slot "c-y7") (value (read (slot "c-py")))))))
-            (edge-0
-              (do
-                (x0 (write (slot "r-x0") (value (read (slot "c-x0")))))
-                (y0 (write (slot "r-y0") (value (read (slot "c-y0")))))
-                (x1 (write (slot "r-x1") (value (read (slot "c-x1")))))
-                (y1 (write (slot "r-y1") (value (read (slot "c-y1")))))
-                (red (write (slot "r-red") (value 255)))
-                (green (write (slot "r-green") (value 150)))
-                (blue (write (slot "r-blue") (value 75)))
-                (rasterize (call (selector "r-line")))))
-            (edge-1
-              (do
-                (x0 (write (slot "r-x0") (value (read (slot "c-x1")))))
-                (y0 (write (slot "r-y0") (value (read (slot "c-y1")))))
-                (x1 (write (slot "r-x1") (value (read (slot "c-x2")))))
-                (y1 (write (slot "r-y1") (value (read (slot "c-y2")))))
-                (red (write (slot "r-red") (value 255)))
-                (green (write (slot "r-green") (value 150)))
-                (blue (write (slot "r-blue") (value 75)))
-                (rasterize (call (selector "r-line")))))
-            (edge-2
-              (do
-                (x0 (write (slot "r-x0") (value (read (slot "c-x2")))))
-                (y0 (write (slot "r-y0") (value (read (slot "c-y2")))))
-                (x1 (write (slot "r-x1") (value (read (slot "c-x3")))))
-                (y1 (write (slot "r-y1") (value (read (slot "c-y3")))))
-                (red (write (slot "r-red") (value 255)))
-                (green (write (slot "r-green") (value 150)))
-                (blue (write (slot "r-blue") (value 75)))
-                (rasterize (call (selector "r-line")))))
-            (edge-3
-              (do
-                (x0 (write (slot "r-x0") (value (read (slot "c-x3")))))
-                (y0 (write (slot "r-y0") (value (read (slot "c-y3")))))
-                (x1 (write (slot "r-x1") (value (read (slot "c-x0")))))
-                (y1 (write (slot "r-y1") (value (read (slot "c-y0")))))
-                (red (write (slot "r-red") (value 255)))
-                (green (write (slot "r-green") (value 150)))
-                (blue (write (slot "r-blue") (value 75)))
-                (rasterize (call (selector "r-line")))))
-            (edge-4
-              (do
-                (x0 (write (slot "r-x0") (value (read (slot "c-x4")))))
-                (y0 (write (slot "r-y0") (value (read (slot "c-y4")))))
-                (x1 (write (slot "r-x1") (value (read (slot "c-x5")))))
-                (y1 (write (slot "r-y1") (value (read (slot "c-y5")))))
-                (red (write (slot "r-red") (value 75)))
-                (green (write (slot "r-green") (value 205)))
-                (blue (write (slot "r-blue") (value 255)))
-                (rasterize (call (selector "r-line")))))
-            (edge-5
-              (do
-                (x0 (write (slot "r-x0") (value (read (slot "c-x5")))))
-                (y0 (write (slot "r-y0") (value (read (slot "c-y5")))))
-                (x1 (write (slot "r-x1") (value (read (slot "c-x6")))))
-                (y1 (write (slot "r-y1") (value (read (slot "c-y6")))))
-                (red (write (slot "r-red") (value 75)))
-                (green (write (slot "r-green") (value 205)))
-                (blue (write (slot "r-blue") (value 255)))
-                (rasterize (call (selector "r-line")))))
-            (edge-6
-              (do
-                (x0 (write (slot "r-x0") (value (read (slot "c-x6")))))
-                (y0 (write (slot "r-y0") (value (read (slot "c-y6")))))
-                (x1 (write (slot "r-x1") (value (read (slot "c-x7")))))
-                (y1 (write (slot "r-y1") (value (read (slot "c-y7")))))
-                (red (write (slot "r-red") (value 75)))
-                (green (write (slot "r-green") (value 205)))
-                (blue (write (slot "r-blue") (value 255)))
-                (rasterize (call (selector "r-line")))))
-            (edge-7
-              (do
-                (x0 (write (slot "r-x0") (value (read (slot "c-x7")))))
-                (y0 (write (slot "r-y0") (value (read (slot "c-y7")))))
-                (x1 (write (slot "r-x1") (value (read (slot "c-x4")))))
-                (y1 (write (slot "r-y1") (value (read (slot "c-y4")))))
-                (red (write (slot "r-red") (value 75)))
-                (green (write (slot "r-green") (value 205)))
-                (blue (write (slot "r-blue") (value 255)))
-                (rasterize (call (selector "r-line")))))
-            (edge-8
-              (do
-                (x0 (write (slot "r-x0") (value (read (slot "c-x0")))))
-                (y0 (write (slot "r-y0") (value (read (slot "c-y0")))))
-                (x1 (write (slot "r-x1") (value (read (slot "c-x4")))))
-                (y1 (write (slot "r-y1") (value (read (slot "c-y4")))))
-                (red (write (slot "r-red") (value 160)))
-                (green (write (slot "r-green") (value 235)))
-                (blue (write (slot "r-blue") (value 170)))
-                (rasterize (call (selector "r-line")))))
-            (edge-9
-              (do
-                (x0 (write (slot "r-x0") (value (read (slot "c-x1")))))
-                (y0 (write (slot "r-y0") (value (read (slot "c-y1")))))
-                (x1 (write (slot "r-x1") (value (read (slot "c-x5")))))
-                (y1 (write (slot "r-y1") (value (read (slot "c-y5")))))
-                (red (write (slot "r-red") (value 160)))
-                (green (write (slot "r-green") (value 235)))
-                (blue (write (slot "r-blue") (value 170)))
-                (rasterize (call (selector "r-line")))))
-            (edge-10
-              (do
-                (x0 (write (slot "r-x0") (value (read (slot "c-x2")))))
-                (y0 (write (slot "r-y0") (value (read (slot "c-y2")))))
-                (x1 (write (slot "r-x1") (value (read (slot "c-x6")))))
-                (y1 (write (slot "r-y1") (value (read (slot "c-y6")))))
-                (red (write (slot "r-red") (value 160)))
-                (green (write (slot "r-green") (value 235)))
-                (blue (write (slot "r-blue") (value 170)))
-                (rasterize (call (selector "r-line")))))
-            (edge-11
-              (do
-                (x0 (write (slot "r-x0") (value (read (slot "c-x3")))))
-                (y0 (write (slot "r-y0") (value (read (slot "c-y3")))))
-                (x1 (write (slot "r-x1") (value (read (slot "c-x7")))))
-                (y1 (write (slot "r-y1") (value (read (slot "c-y7")))))
-                (red (write (slot "r-red") (value 160)))
-                (green (write (slot "r-green") (value 235)))
-                (blue (write (slot "r-blue") (value 170)))
-                (rasterize (call (selector "r-line")))))
+            (reset-vertices (write (slot "c-i") (value 0)))
+            (vertices-loop
+              (while (condition (lt (left (read (slot "c-i"))) (right 8)))
+                (body (do
+                    (x (write (slot "c-vx") (value (array-get (slot "vertices") (index (mul (left (read (slot "c-i"))) (right 3)))))))
+                    (y (write (slot "c-vy") (value (array-get (slot "vertices") (index (add (left (mul (left (read (slot "c-i"))) (right 3))) (right 1)))))))
+                    (z (write (slot "c-vz") (value (array-get (slot "vertices") (index (add (left (mul (left (read (slot "c-i"))) (right 3))) (right 2)))))))
+                    (project (call (selector "c-project")))
+                    (save-x (array-set (slot "projected") (index (mul (left (read (slot "c-i"))) (right 2))) (value (read (slot "c-px")))))
+                    (save-y (array-set (slot "projected") (index (add (left (mul (left (read (slot "c-i"))) (right 2))) (right 1))) (value (read (slot "c-py")))))
+                    (advance (write (slot "c-i") (value (add (left (read (slot "c-i"))) (right 1)))))))))
+            (reset-edges (write (slot "c-i") (value 0)))
+            (edges-loop
+              (while (condition (lt (left (read (slot "c-i"))) (right 24)))
+                (body (do
+                    (first (write (slot "c-a") (value (mul (left (array-get (slot "edges") (index (read (slot "c-i"))))) (right 2)))))
+                    (second (write (slot "c-b") (value (mul (left (array-get (slot "edges") (index (add (left (read (slot "c-i"))) (right 1))))) (right 2)))))
+                    (x0 (write (slot "r-x0") (value (array-get (slot "projected") (index (read (slot "c-a")))))))
+                    (y0 (write (slot "r-y0") (value (array-get (slot "projected") (index (add (left (read (slot "c-a"))) (right 1)))))))
+                    (x1 (write (slot "r-x1") (value (array-get (slot "projected") (index (read (slot "c-b")))))))
+                    (y1 (write (slot "r-y1") (value (array-get (slot "projected") (index (add (left (read (slot "c-b"))) (right 1)))))))
+                    (color-group (write (slot "c-color") (value (mul (left (div (left (read (slot "c-i"))) (right 8))) (right 3)))))
+                    (red (write (slot "r-red") (value (array-get (slot "colors") (index (read (slot "c-color")))))))
+                    (green (write (slot "r-green") (value (array-get (slot "colors") (index (add (left (read (slot "c-color"))) (right 1)))))))
+                    (blue (write (slot "r-blue") (value (array-get (slot "colors") (index (add (left (read (slot "c-color"))) (right 2)))))))
+                    (rasterize (call (selector "r-line")))
+                    (advance (write (slot "c-i") (value (add (left (read (slot "c-i"))) (right 2)))))))))
             (present (window-present (target "window") (buffer "buffer")))
             (yaw
               (write (slot "c-yaw")

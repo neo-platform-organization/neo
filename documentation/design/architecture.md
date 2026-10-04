@@ -249,3 +249,11 @@ The platform-independent capability boundary is now explicitly accepted by the u
 ## Initial software rendering implementation
 
 The user requested software rendering first and deferred GPU work. The first reusable implementation lives in neo, with a rotating wireframe cube as its test program. A local `call` invokes receiver-owned handlers using the same authority and a shared execution budget. Native `buffer-fill` only fills storage bytes. Explicit host startup composition copies inert template fields/handlers; this is provisional bootstrap machinery, not agreed language import syntax. See [software renderer](../reference/software-renderer.md).
+
+## Implemented storage optimization
+
+Packed integer array payloads let an object own numeric data without assigning an
+identity to each component. This is the current executable storage choice, not a
+completed universal matrix/type system. Shape and maths remain in neo. Private
+identity/parent bucket indexes accelerate lookup without changing graph contents,
+authority, copy semantics, or ordered execution. See the runtime and build references.

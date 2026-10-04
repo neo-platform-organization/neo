@@ -51,3 +51,5 @@ The user prioritizes abstracting terminal/general I/O and display access before 
 ## First software rendering option
 
 A sequential neo pixel/line renderer and rotating wireframe cube now exercise the platform-independent buffer interface. Local handler calls, byte-buffer clearing, and explicit host template composition support reuse. This is the initial software path, not a completed GUI renderer or automatic fallback selector. Filled triangles, depth, text, and GPU work remain deferred. See [software renderer](../reference/software-renderer.md).
+
+Profiling-driven identity/parent indexes and packed integer arrays are now implemented. The cube uses array loops; general matrix libraries remain neo-level work. See the build guide for measurements and validation.

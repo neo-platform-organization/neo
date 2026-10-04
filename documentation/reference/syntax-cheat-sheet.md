@@ -177,3 +177,17 @@ An explicit unknown primitive binding can load but fails when evaluated. Unknown
 | Format limits | 1 MiB source/output, 4096 objects, 128 containment levels, 4096 decoded bytes per token. |
 
 See the [runtime reference](runtime-format.md) for authority restrictions, failure behavior, scheduler details, and persistence guarantees.
+
+### Packed numeric storage
+
+| Object or primitive | Syntax | Meaning |
+| --- | --- | --- |
+| Integer array object | `(vertices [1 2 3 4 5 6])` | One object with packed signed 64-bit entries, not six child objects. |
+| Empty array object | `(values [])` | Zero entries. |
+| `array-get` | `(array-get (slot "vertices") (index 0))` | Read one entry from a receiver field. |
+| `array-set` | `(array-set (slot "vertices") (index 0) (value 7))` | Write and return an integer; requires WRITE. |
+| `array-size` | `(array-size (slot "vertices"))` | Number of entries. |
+
+Arrays have fixed length and checked zero-based indices. Whole-payload `write`
+can replace an array. Matrix shape is an image-level convention; see
+[packed arrays](runtime-format.md#packed-integer-arrays).

@@ -73,6 +73,10 @@ static void neo_print_value(neo_value value) {
         case NEO_INTEGER: printf("%" PRId64, value.integer); break;
         case NEO_BOOLEAN: printf("%s", value.boolean ? "true" : "false"); break;
         case NEO_TEXT: printf("\"%s\"", value.text); break;
+        case NEO_INTEGERS:
+            printf("[");
+            for (size_t i = 0; i < value.count; ++i) { printf("%s%" PRId64, i == 0 ? "" : " ", value.integers[i]); }
+            printf("]"); break;
         case NEO_PRIMITIVE: printf("primitive(%s)", value.text); break;
     }
 }

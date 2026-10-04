@@ -261,7 +261,36 @@ static void neo_test_invalid_and_payloads(void) {
     neo_vm_destroy(NULL);
 }
 
+/* More live identities/parents than buckets: collisions must remain invisible. */
+static void neo_test_index_collisions(void) {
+    neo_vm *vm;
+    const neo_capability *root, *parents[1100], *leaves[1100], *found;
+    OK(neo_vm_create(NULL, &vm));
+    OK(neo_image_create(vm, "root", &root));
+    for (size_t i = 0; i < 1100; ++i) {
+        char name[32];
+        (void)snprintf(name, sizeof(name), "parent%zu", i);
+        OK(neo_object_create(vm, root, name, (neo_value){0}, &parents[i]));
+        OK(neo_object_create(vm, parents[i], "leaf", neo_integer((int64_t)i), &leaves[i]));
+    }
+    for (size_t i = 0; i < 1100; ++i) {
+        OK(neo_object_child_at(vm, root, i, &found));
+        CHECK(neo_id(vm, found) == neo_id(vm, parents[i]));
+        OK(neo_object_child(vm, parents[i], "leaf", &found));
+        CHECK(neo_id(vm, found) == neo_id(vm, leaves[i]));
+    }
+    for (size_t i = 0; i < 1100; i += 2) { OK(neo_object_delete(vm, parents[i])); }
+    for (size_t i = 0; i < 1100; ++i) {
+        neo_value value;
+        neo_status status = neo_object_read(vm, leaves[i], &value);
+        CHECK(status == (i % 2 == 0 ? NEO_UNAVAILABLE : NEO_OK));
+        if (status == NEO_OK) { CHECK(value.integer == (int64_t)i); }
+    }
+    neo_vm_destroy(vm);
+}
+
 int main(void) {
+    neo_test_index_collisions();
     neo_test_copy_move();
     neo_test_authority_and_images();
     neo_test_allocation_rollback();
