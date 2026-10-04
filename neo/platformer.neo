@@ -1,0 +1,1094 @@
+// Platformer on the Project Substrate OS image. The packages, workspace and browser below are the
+// unmodified OS image; the `platformer` actor at the end is the game.
+// Run: ./build/x86_64/Linux/neo --gui neo/platformer.neo platformer
+// Keys: left/right or a/d to run, up/space/w to jump. Collect all six coins (the bar at the top fills);
+// falling into the pit respawns you. Close the window to quit.
+// Package reuse: spatial/point is copied into the workspace to validate the spawn point; maths/vector is
+// copied in and its `dot` handler scores coins as dot(coin values, coins taken).
+// The level is a 20x15 tile array, drawn a few tiles per frame; after that each frame only erases and
+// redraws the player (pixel writes dominate the step budget, so nothing is redrawn needlessly).
+// Project Substrate: one image, owned packages/prototypes, and a terminal browser.
+// Run: ./build/x86_64/Linux/neo --cli neo/neo-os/image.neo browser demo
+// The initial spatial convention checks coordinate count; it is not a full space/transform model.
+(image #world
+  (packages #packages
+    (maths
+      (vector #vector
+        (left-values [1 2 3])
+        (right-values [4 5 6])
+        (index 0)
+        (sum 0)
+        (handlers
+          (dot
+            (body
+              (do
+                (step1
+                  (if (condition (!= (left (array-size (slot "left-values"))) (right (array-size (slot "right-values")))))
+                    (then (fail))
+                    (else)))
+                (step2 (write (slot "index") (value 0)))
+                (step3 (write (slot "sum") (value 0)))
+                (step4
+                  (while
+                    (condition (< (left (read (slot "index"))) (right (array-size (slot "left-values")))))
+                    (body
+                      (do
+                        (step1
+                          (write
+                            (slot "sum")
+                            (value
+                              (add
+                                (left (read (slot "sum")))
+                                (right
+                                  (mul
+                                    (left (array-get (slot "left-values") (index (read (slot "index")))))
+                                    (right (array-get (slot "right-values") (index (read (slot "index")))))))))))
+                        (step2 (write (slot "index") (value (add (left (read (slot "index"))) (right 1)))))))))
+                (step5 (return (value (read (slot "sum")))))))))))
+    (spatial
+      (point #point
+        (dimensions 3)
+        (coordinates [0 0 0])
+        (handlers
+          (valid
+            (body
+              (return
+                (value
+                  (and
+                    (left (>= (left (read (slot "dimensions"))) (right 0)))
+                    (right (== (left (read (slot "dimensions"))) (right (array-size (slot "coordinates"))))))))))))))
+  (workspace #workspace)
+  (browser @packages #packages 1 @workspace #workspace 255 @vector #vector 9 @point #point 9
+    (package-index 0)
+    (prototype-index 0)
+    (output "")
+    (offset 0)
+    (written 0)
+    (finished false)
+    (handlers
+      (main
+        (body
+          (do
+            (step1
+              (do
+                (step1
+                  (do
+                    (step1 (write (slot "output") (value "Project Substrate - live prototype browser")))
+                    (step2 (call (selector "emit")))))
+                (step2 (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit")))))))
+            (step2 (write (slot "package-index") (value 0)))
+            (step3
+              (while
+                (condition
+                  (<
+                    (left (read (slot "package-index")))
+                    (right (child-count (target (connection (target (self)) (name "packages")))))))
+                (body
+                  (do
+                    (step1 (do (step1 (write (slot "output") (value "package "))) (step2 (call (selector "emit")))))
+                    (step2
+                      (do
+                        (step1
+                          (do
+                            (step1
+                              (write
+                                (slot "output")
+                                (value
+                                  (object-name
+                                    (target
+                                      (child-at
+                                        (target (connection (target (self)) (name "packages")))
+                                        (index (read (slot "package-index")))))))))
+                            (step2 (call (selector "emit")))))
+                        (step2 (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit")))))))
+                    (step3 (write (slot "prototype-index") (value 0)))
+                    (step4
+                      (while
+                        (condition
+                          (<
+                            (left (read (slot "prototype-index")))
+                            (right
+                              (child-count
+                                (target
+                                  (child-at
+                                    (target (connection (target (self)) (name "packages")))
+                                    (index (read (slot "package-index")))))))))
+                        (body
+                          (do
+                            (step1
+                              (do
+                                (step1 (write (slot "output") (value "  prototype ")))
+                                (step2 (call (selector "emit")))))
+                            (step2
+                              (do
+                                (step1
+                                  (write
+                                    (slot "output")
+                                    (value
+                                      (object-name
+                                        (target
+                                          (child-at
+                                            (target
+                                              (child-at
+                                                (target (connection (target (self)) (name "packages")))
+                                                (index (read (slot "package-index")))))
+                                            (index (read (slot "prototype-index")))))))))
+                                (step2 (call (selector "emit")))))
+                            (step3
+                              (do
+                                (step1 (write (slot "output") (value " | children: ")))
+                                (step2 (call (selector "emit")))))
+                            (step4
+                              (do
+                                (step1
+                                  (do
+                                    (step1
+                                      (write
+                                        (slot "output")
+                                        (value
+                                          (to-text
+                                            (value
+                                              (child-count
+                                                (target
+                                                  (child-at
+                                                    (target
+                                                      (child-at
+                                                        (target (connection (target (self)) (name "packages")))
+                                                        (index (read (slot "package-index")))))
+                                                    (index (read (slot "prototype-index")))))))))))
+                                    (step2 (call (selector "emit")))))
+                                (step2
+                                  (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit")))))))
+                            (step5
+                              (write
+                                (slot "prototype-index")
+                                (value (add (left (read (slot "prototype-index"))) (right 1)))))))))
+                    (step5
+                      (write (slot "package-index") (value (add (left (read (slot "package-index"))) (right 1)))))))))
+            (step4
+              (do (step1 (write (slot "output") (value "Workspace objects: "))) (step2 (call (selector "emit")))))
+            (step5
+              (do
+                (step1
+                  (do
+                    (step1
+                      (write
+                        (slot "output")
+                        (value
+                          (to-text (value (child-count (target (connection (target (self)) (name "workspace")))))))))
+                    (step2 (call (selector "emit")))))
+                (step2 (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit"))))))))))
+      (demo
+        (body
+          (do
+            (step1 (call (selector "main")))
+            (step2
+              (do
+                (step1
+                  (if (condition (has-child (target (connection (target (self)) (name "workspace"))) (name "vector-copy")))
+                    (then
+                      (object-delete
+                        (target (child (target (connection (target (self)) (name "workspace"))) (name "vector-copy")))))
+                    (else)))
+                (step2
+                  (object-copy
+                    (target (connection (target (self)) (name "vector")))
+                    (destination (connection (target (self)) (name "workspace")))
+                    (name "vector-copy")))))
+            (step3
+              (do
+                (step1
+                  (if (condition (has-child (target (connection (target (self)) (name "workspace"))) (name "point-copy")))
+                    (then
+                      (object-delete
+                        (target (child (target (connection (target (self)) (name "workspace"))) (name "point-copy")))))
+                    (else)))
+                (step2
+                  (object-copy
+                    (target (connection (target (self)) (name "point")))
+                    (destination (connection (target (self)) (name "workspace")))
+                    (name "point-copy")))))
+            (step4
+              (object-write
+                (target
+                  (child
+                    (target (child (target (connection (target (self)) (name "workspace"))) (name "vector-copy")))
+                    (name "left-values")))
+                (value [1 2 3 4])))
+            (step5
+              (object-write
+                (target
+                  (child
+                    (target (child (target (connection (target (self)) (name "workspace"))) (name "vector-copy")))
+                    (name "right-values")))
+                (value [5 6 7 8])))
+            (step6 (do (step1 (write (slot "output") (value "4D dot product: "))) (step2 (call (selector "emit")))))
+            (step7
+              (do
+                (step1
+                  (do
+                    (step1
+                      (write
+                        (slot "output")
+                        (value
+                          (to-text
+                            (value
+                              (invoke
+                                (target
+                                  (child
+                                    (target (connection (target (self)) (name "workspace")))
+                                    (name "vector-copy")))
+                                (selector "dot")))))))
+                    (step2 (call (selector "emit")))))
+                (step2 (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit")))))))
+            (step8
+              (object-write
+                (target
+                  (child
+                    (target (child (target (connection (target (self)) (name "workspace"))) (name "point-copy")))
+                    (name "dimensions")))
+                (value 4)))
+            (step9
+              (object-write
+                (target
+                  (child
+                    (target (child (target (connection (target (self)) (name "workspace"))) (name "point-copy")))
+                    (name "coordinates")))
+                (value [10 20 30 40])))
+            (step10
+              (do (step1 (write (slot "output") (value "4D point shape valid: "))) (step2 (call (selector "emit")))))
+            (step11
+              (do
+                (step1
+                  (do
+                    (step1
+                      (write
+                        (slot "output")
+                        (value
+                          (to-text
+                            (value
+                              (invoke
+                                (target
+                                  (child (target (connection (target (self)) (name "workspace"))) (name "point-copy")))
+                                (selector "valid")))))))
+                    (step2 (call (selector "emit")))))
+                (step2 (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit")))))))
+            (step12
+              (do
+                (step1 (write (slot "output") (value "Original point dimension: ")))
+                (step2 (call (selector "emit")))))
+            (step13
+              (do
+                (step1
+                  (do
+                    (step1
+                      (write
+                        (slot "output")
+                        (value
+                          (to-text
+                            (value
+                              (inspect
+                                (target
+                                  (child (target (connection (target (self)) (name "point"))) (name "dimensions")))))))))
+                    (step2 (call (selector "emit")))))
+                (step2 (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit")))))))
+            (step14
+              (do
+                (step1 (write (slot "output") (value "Independent workspace copies: ")))
+                (step2 (call (selector "emit")))))
+            (step15
+              (do
+                (step1
+                  (do
+                    (step1
+                      (write
+                        (slot "output")
+                        (value
+                          (to-text (value (child-count (target (connection (target (self)) (name "workspace")))))))))
+                    (step2 (call (selector "emit")))))
+                (step2 (do (step1 (write (slot "output") (value "\n"))) (step2 (call (selector "emit"))))))))))
+      (emit
+        (body
+          (do
+            (step1 (write (slot "offset") (value 0)))
+            (step2 (write (slot "finished") (value false)))
+            (step3
+              (while
+                (condition (not (value (read (slot "finished")))))
+                (body
+                  (do
+                    (step1
+                      (write
+                        (slot "written")
+                        (value
+                          (stream-write
+                            (target "stdout")
+                            (value (read (slot "output")))
+                            (offset (read (slot "offset")))))))
+                    (step2
+                      (if (condition (== (left (read (slot "written"))) (right "would-block")))
+                        (then (fail))
+                        (else
+                          (if (condition (== (left (read (slot "written"))) (right 0)))
+                            (then (write (slot "finished") (value true)))
+                            (else
+                              (write
+                                (slot "offset")
+                                (value (add (left (read (slot "offset"))) (right (read (slot "written"))))))))))))))))))))
+  (platformer
+    @workspace
+    #workspace
+    255
+    @vector
+    #vector
+    9
+    @point
+    #point
+    9
+    (phase 0)
+    (headless false)
+    (x 40)
+    (y 432)
+    (ox -100)
+    (oy -100)
+    (vx 0)
+    (vy 0)
+    (on-ground 0)
+    (k-left 0)
+    (k-right 0)
+    (k-jump 0)
+    (score 0)
+    (deaths 0)
+    (dt 0)
+    (drawn 0)
+    (tcol 0)
+    (trow 0)
+    (ci 0)
+    (cx 0)
+    (cy 0)
+    (changed false)
+    (hit false)
+    (sres false)
+    (sx 0)
+    (sy 0)
+    (bx 0)
+    (by 0)
+    (nx 0)
+    (ny 0)
+    (fx 0)
+    (fy 0)
+    (fw 0)
+    (fh 0)
+    (fr 0)
+    (fg 0)
+    (fb 0)
+    (fyy 0)
+    (fidx 0)
+    (fend 0)
+    (ev "")
+    (key "")
+    (down 0)
+    (t 0)
+    (level
+      [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 0 0 1 1 1 1 1 1 1 1 1])
+    (coin-col [4 9 11 14 16 18])
+    (coin-row [11 9 9 7 7 5])
+    (coin-got [0 0 0 0 0 0])
+    (handlers
+      (frame
+        (body
+          (do
+            (init
+              (if
+                (condition (== (left (read (slot "phase"))) (right 0)))
+                (then (do (setup (call (selector "setup-window"))) (next (write (slot "phase") (value 1)))))
+                (else)))
+            (play
+              (if
+                (condition (== (left (read (slot "phase"))) (right 1)))
+                (then (call (selector "draw-level")))
+                (else
+                  (do
+                    (input (call (selector "read-input")))
+                    (physics (call (selector "update")))
+                    (coins (call (selector "coins")))
+                    (player (call (selector "draw-player")))))))
+            (present (window-present (target "window") (buffer "buffer"))))))
+      (setup-window
+        (body (do (background (buffer-fill (target "buffer") (value 24))) (packages (call (selector "setup"))))))
+      (setup
+        (body
+          (do
+            (point
+              (do
+                (old
+                  (if
+                    (condition
+                      (has-child (target (connection (target (self)) (name "workspace"))) (name "spawn-point")))
+                    (then
+                      (object-delete
+                        (target
+                          (child (target (connection (target (self)) (name "workspace"))) (name "spawn-point")))))
+                    (else)))
+                (copy
+                  (object-copy
+                    (target (connection (target (self)) (name "point")))
+                    (destination (connection (target (self)) (name "workspace")))
+                    (name "spawn-point")))))
+            (vector
+              (do
+                (old
+                  (if
+                    (condition
+                      (has-child (target (connection (target (self)) (name "workspace"))) (name "scorer")))
+                    (then
+                      (object-delete
+                        (target
+                          (child (target (connection (target (self)) (name "workspace"))) (name "scorer")))))
+                    (else)))
+                (copy
+                  (object-copy
+                    (target (connection (target (self)) (name "vector")))
+                    (destination (connection (target (self)) (name "workspace")))
+                    (name "scorer")))))
+            (dims
+              (object-write
+                (target
+                  (child
+                    (target
+                      (child (target (connection (target (self)) (name "workspace"))) (name "spawn-point")))
+                    (name "dimensions")))
+                (value 2)))
+            (where
+              (object-write
+                (target
+                  (child
+                    (target
+                      (child (target (connection (target (self)) (name "workspace"))) (name "spawn-point")))
+                    (name "coordinates")))
+                (value [40 432])))
+            (valid
+              (if
+                (condition
+                  (not
+                    (value
+                      (invoke
+                        (target
+                          (child (target (connection (target (self)) (name "workspace"))) (name "spawn-point")))
+                        (selector "valid")))))
+                (then (fail))
+                (else)))
+            (weights
+              (object-write
+                (target
+                  (child
+                    (target (child (target (connection (target (self)) (name "workspace"))) (name "scorer")))
+                    (name "left-values")))
+                (value [1 1 1 2 2 3])))
+            (taken
+              (object-write
+                (target
+                  (child
+                    (target (child (target (connection (target (self)) (name "workspace"))) (name "scorer")))
+                    (name "right-values")))
+                (value [0 0 0 0 0 0]))))))
+      (draw-level
+        (body
+          (do
+            (reset (write (slot "drawn") (value 0)))
+            (tiles
+              (while
+                (condition
+                  (and
+                    (left (< (left (read (slot "dt"))) (right 300)))
+                    (right (< (left (read (slot "drawn"))) (right 8)))))
+                (body
+                  (do
+                    (tile
+                      (if
+                        (condition (== (left (array-get (slot "level") (index (read (slot "dt"))))) (right 1)))
+                        (then
+                          (do
+                            (col (write (slot "tcol") (value (rem (left (read (slot "dt"))) (right 20)))))
+                            (row (write (slot "trow") (value (div (left (read (slot "dt"))) (right 20)))))
+                            (draw (call (selector "draw-tile")))
+                            (count (write (slot "drawn") (value (add (left (read (slot "drawn"))) (right 1)))))))
+                        (else)))
+                    (next (write (slot "dt") (value (add (left (read (slot "dt"))) (right 1)))))))))
+            (finish
+              (if
+                (condition (>= (left (read (slot "dt"))) (right 300)))
+                (then
+                  (do
+                    (coins
+                      (do
+                        (start (write (slot "ci") (value 0)))
+                        (each
+                          (while
+                            (condition (< (left (read (slot "ci"))) (right 6)))
+                            (body
+                              (do
+                                (draw
+                                  (if
+                                    (condition
+                                      (==
+                                        (left (array-get (slot "coin-got") (index (read (slot "ci")))))
+                                        (right 0)))
+                                    (then
+                                      (do
+                                        (x
+                                          (write
+                                            (slot "fx")
+                                            (value
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left
+                                                      (array-get (slot "coin-col") (index (read (slot "ci")))))
+                                                    (right 32)))
+                                                (right 8)))))
+                                        (y
+                                          (write
+                                            (slot "fy")
+                                            (value
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left
+                                                      (array-get (slot "coin-row") (index (read (slot "ci")))))
+                                                    (right 32)))
+                                                (right 8)))))
+                                        (w (write (slot "fw") (value 16)))
+                                        (h (write (slot "fh") (value 16)))
+                                        (r (write (slot "fr") (value 250)))
+                                        (g (write (slot "fg") (value 210)))
+                                        (b (write (slot "fb") (value 40)))
+                                        (go (call (selector "fill-rect")))))
+                                    (else)))
+                                (next (write (slot "ci") (value (add (left (read (slot "ci"))) (right 1)))))))))))
+                    (hud (call (selector "hud")))
+                    (run (write (slot "phase") (value 2)))))
+                (else))))))
+      (draw-tile
+        (body
+          (do
+            (x (write (slot "fx") (value (mul (left (read (slot "tcol"))) (right 32)))))
+            (y (write (slot "fy") (value (mul (left (read (slot "trow"))) (right 32)))))
+            (brick
+              (do
+                (x (write (slot "fx") (value (read (slot "fx")))))
+                (y (write (slot "fy") (value (read (slot "fy")))))
+                (w (write (slot "fw") (value 32)))
+                (h (write (slot "fh") (value 32)))
+                (r (write (slot "fr") (value 150)))
+                (g (write (slot "fg") (value 96)))
+                (b (write (slot "fb") (value 54)))
+                (go (call (selector "fill-rect")))))
+            (grass
+              (if
+                (condition
+                  (or
+                    (left (== (left (read (slot "trow"))) (right 0)))
+                    (right
+                      (==
+                        (left
+                          (array-get
+                            (slot "level")
+                            (index
+                              (add
+                                (left (mul (left (sub (left (read (slot "trow"))) (right 1))) (right 20)))
+                                (right (read (slot "tcol")))))))
+                        (right 0)))))
+                (then
+                  (do
+                    (x (write (slot "fx") (value (mul (left (read (slot "tcol"))) (right 32)))))
+                    (y (write (slot "fy") (value (mul (left (read (slot "trow"))) (right 32)))))
+                    (w (write (slot "fw") (value 32)))
+                    (h (write (slot "fh") (value 5)))
+                    (r (write (slot "fr") (value 96)))
+                    (g (write (slot "fg") (value 176)))
+                    (b (write (slot "fb") (value 72)))
+                    (go (call (selector "fill-rect")))))
+                (else))))))
+      (hud
+        (body
+          (do
+            (track
+              (do
+                (x (write (slot "fx") (value 8)))
+                (y (write (slot "fy") (value 8)))
+                (w (write (slot "fw") (value 200)))
+                (h (write (slot "fh") (value 8)))
+                (r (write (slot "fr") (value 60)))
+                (g (write (slot "fg") (value 60)))
+                (b (write (slot "fb") (value 60)))
+                (go (call (selector "fill-rect")))))
+            (bar
+              (if
+                (condition (> (left (read (slot "score"))) (right 0)))
+                (then
+                  (do
+                    (plain
+                      (if
+                        (condition (== (left (read (slot "score"))) (right 10)))
+                        (then
+                          (do
+                            (x (write (slot "fx") (value 8)))
+                            (y (write (slot "fy") (value 8)))
+                            (w (write (slot "fw") (value (mul (left (read (slot "score"))) (right 20)))))
+                            (h (write (slot "fh") (value 8)))
+                            (r (write (slot "fr") (value 250)))
+                            (g (write (slot "fg") (value 210)))
+                            (b (write (slot "fb") (value 40)))
+                            (go (call (selector "fill-rect")))))
+                        (else
+                          (do
+                            (x (write (slot "fx") (value 8)))
+                            (y (write (slot "fy") (value 8)))
+                            (w (write (slot "fw") (value (mul (left (read (slot "score"))) (right 20)))))
+                            (h (write (slot "fh") (value 8)))
+                            (r (write (slot "fr") (value 70)))
+                            (g (write (slot "fg") (value 200)))
+                            (b (write (slot "fb") (value 90)))
+                            (go (call (selector "fill-rect")))))))))
+                (else))))))
+      (read-input
+        (body
+          (do
+            (first (write (slot "ev") (value (window-next-event (target "window")))))
+            (drain
+              (while
+                (condition (!= (left (read (slot "ev"))) (right "none")))
+                (body
+                  (do
+                    (kind
+                      (if
+                        (condition (== (left (read (slot "ev"))) (right "key")))
+                        (then
+                          (do
+                            (name (write (slot "key") (value (window-event (target "window") (field "key")))))
+                            (state
+                              (write
+                                (slot "down")
+                                (value
+                                  (if
+                                    (condition (window-event (target "window") (field "pressed")))
+                                    (then 1)
+                                    (else 0)))))
+                            (k-left
+                              (if
+                                (condition
+                                  (or
+                                    (left (== (left (read (slot "key"))) (right "left")))
+                                    (right (== (left (read (slot "key"))) (right "a")))))
+                                (then (write (slot "k-left") (value (read (slot "down")))))
+                                (else)))
+                            (k-right
+                              (if
+                                (condition
+                                  (or
+                                    (left (== (left (read (slot "key"))) (right "right")))
+                                    (right (== (left (read (slot "key"))) (right "d")))))
+                                (then (write (slot "k-right") (value (read (slot "down")))))
+                                (else)))
+                            (k-jump
+                              (if
+                                (condition
+                                  (or
+                                    (left
+                                      (or
+                                        (left (== (left (read (slot "key"))) (right "up")))
+                                        (right (== (left (read (slot "key"))) (right "space")))))
+                                    (right (== (left (read (slot "key"))) (right "w")))))
+                                (then (write (slot "k-jump") (value (read (slot "down")))))
+                                (else)))))
+                        (else)))
+                    (next (write (slot "ev") (value (window-next-event (target "window"))))))))))))
+      (update
+        (body
+          (do
+            (gravity
+              (write
+                (slot "vy")
+                (value
+                  (if
+                    (condition (> (left (add (left (read (slot "vy"))) (right 1))) (right 12)))
+                    (then 12)
+                    (else (add (left (read (slot "vy"))) (right 1)))))))
+            (jump
+              (if
+                (condition
+                  (and
+                    (left (== (left (read (slot "k-jump"))) (right 1)))
+                    (right (== (left (read (slot "on-ground"))) (right 1)))))
+                (then (do (up (write (slot "vy") (value -13))) (air (write (slot "on-ground") (value 0)))))
+                (else)))
+            (run
+              (write
+                (slot "vx")
+                (value
+                  (mul (left (sub (left (read (slot "k-right"))) (right (read (slot "k-left"))))) (right 4)))))
+            (horizontal
+              (do
+                (target (write (slot "nx") (value (add (left (read (slot "x"))) (right (read (slot "vx")))))))
+                (test
+                  (do
+                    (bx (write (slot "bx") (value (read (slot "nx")))))
+                    (by (write (slot "by") (value (read (slot "y")))))
+                    (ask (call (selector "box-hit")))))
+                (resolve
+                  (if
+                    (condition
+                      (and (left (!= (left (read (slot "vx"))) (right 0))) (right (read (slot "hit")))))
+                    (then
+                      (if
+                        (condition (> (left (read (slot "vx"))) (right 0)))
+                        (then
+                          (write
+                            (slot "nx")
+                            (value
+                              (sub
+                                (left
+                                  (mul
+                                    (left (div (left (add (left (read (slot "nx"))) (right 11))) (right 32)))
+                                    (right 32)))
+                                (right 12)))))
+                        (else
+                          (if
+                            (condition (< (left (read (slot "nx"))) (right 0)))
+                            (then (write (slot "nx") (value 0)))
+                            (else
+                              (write
+                                (slot "nx")
+                                (value
+                                  (mul
+                                    (left (add (left (div (left (read (slot "nx"))) (right 32))) (right 1)))
+                                    (right 32)))))))))
+                    (else)))
+                (commit (write (slot "x") (value (read (slot "nx")))))))
+            (vertical
+              (do
+                (target (write (slot "ny") (value (add (left (read (slot "y"))) (right (read (slot "vy")))))))
+                (test
+                  (do
+                    (bx (write (slot "bx") (value (read (slot "x")))))
+                    (by (write (slot "by") (value (read (slot "ny")))))
+                    (ask (call (selector "box-hit")))))
+                (resolve
+                  (if
+                    (condition (read (slot "hit")))
+                    (then
+                      (do
+                        (snap
+                          (if
+                            (condition (> (left (read (slot "vy"))) (right 0)))
+                            (then
+                              (do
+                                (floor
+                                  (write
+                                    (slot "ny")
+                                    (value
+                                      (sub
+                                        (left
+                                          (mul
+                                            (left
+                                              (div (left (add (left (read (slot "ny"))) (right 15))) (right 32)))
+                                            (right 32)))
+                                        (right 16)))))
+                                (ground (write (slot "on-ground") (value 1)))))
+                            (else
+                              (write
+                                (slot "ny")
+                                (value
+                                  (mul
+                                    (left (add (left (div (left (read (slot "ny"))) (right 32))) (right 1)))
+                                    (right 32)))))))
+                        (stop (write (slot "vy") (value 0)))))
+                    (else (write (slot "on-ground") (value 0)))))
+                (commit (write (slot "y") (value (read (slot "ny")))))))
+            (pit
+              (if
+                (condition (> (left (read (slot "y"))) (right 470)))
+                (then (call (selector "respawn")))
+                (else))))))
+      (respawn
+        (body
+          (do
+            (x (write (slot "x") (value 40)))
+            (y (write (slot "y") (value 432)))
+            (vx (write (slot "vx") (value 0)))
+            (vy (write (slot "vy") (value 0)))
+            (ground (write (slot "on-ground") (value 0)))
+            (count (write (slot "deaths") (value (add (left (read (slot "deaths"))) (right 1))))))))
+      (box-hit
+        (body
+          (do
+            (clear (write (slot "hit") (value false)))
+            (tl
+              (do
+                (sx (write (slot "sx") (value (add (left (read (slot "bx"))) (right 0)))))
+                (sy (write (slot "sy") (value (add (left (read (slot "by"))) (right 0)))))
+                (ask (call (selector "solid")))
+                (any (if (condition (read (slot "sres"))) (then (write (slot "hit") (value true))) (else)))))
+            (tr
+              (do
+                (sx (write (slot "sx") (value (add (left (read (slot "bx"))) (right 11)))))
+                (sy (write (slot "sy") (value (add (left (read (slot "by"))) (right 0)))))
+                (ask (call (selector "solid")))
+                (any (if (condition (read (slot "sres"))) (then (write (slot "hit") (value true))) (else)))))
+            (bl
+              (do
+                (sx (write (slot "sx") (value (add (left (read (slot "bx"))) (right 0)))))
+                (sy (write (slot "sy") (value (add (left (read (slot "by"))) (right 15)))))
+                (ask (call (selector "solid")))
+                (any (if (condition (read (slot "sres"))) (then (write (slot "hit") (value true))) (else)))))
+            (br
+              (do
+                (sx (write (slot "sx") (value (add (left (read (slot "bx"))) (right 11)))))
+                (sy (write (slot "sy") (value (add (left (read (slot "by"))) (right 15)))))
+                (ask (call (selector "solid")))
+                (any (if (condition (read (slot "sres"))) (then (write (slot "hit") (value true))) (else))))))))
+      (solid
+        (body
+          (if
+            (condition (< (left (read (slot "sx"))) (right 0)))
+            (then (write (slot "sres") (value true)))
+            (else
+              (if
+                (condition (>= (left (read (slot "sx"))) (right 640)))
+                (then (write (slot "sres") (value true)))
+                (else
+                  (if
+                    (condition (< (left (read (slot "sy"))) (right 0)))
+                    (then (write (slot "sres") (value false)))
+                    (else
+                      (if
+                        (condition (>= (left (read (slot "sy"))) (right 480)))
+                        (then (write (slot "sres") (value false)))
+                        (else
+                          (write
+                            (slot "sres")
+                            (value
+                              (==
+                                (left
+                                  (array-get
+                                    (slot "level")
+                                    (index
+                                      (add
+                                        (left
+                                          (mul (left (div (left (read (slot "sy"))) (right 32))) (right 20)))
+                                        (right (div (left (read (slot "sx"))) (right 32)))))))
+                                (right 1))))))))))))))
+      (coins
+        (body
+          (do
+            (reset (write (slot "changed") (value false)))
+            (start (write (slot "ci") (value 0)))
+            (each
+              (while
+                (condition (< (left (read (slot "ci"))) (right 6)))
+                (body
+                  (do
+                    (look
+                      (if
+                        (condition
+                          (== (left (array-get (slot "coin-got") (index (read (slot "ci"))))) (right 0)))
+                        (then
+                          (do
+                            (cx
+                              (write
+                                (slot "cx")
+                                (value
+                                  (add
+                                    (left
+                                      (mul
+                                        (left (array-get (slot "coin-col") (index (read (slot "ci")))))
+                                        (right 32)))
+                                    (right 8)))))
+                            (cy
+                              (write
+                                (slot "cy")
+                                (value
+                                  (add
+                                    (left
+                                      (mul
+                                        (left (array-get (slot "coin-row") (index (read (slot "ci")))))
+                                        (right 32)))
+                                    (right 8)))))
+                            (hit
+                              (if
+                                (condition
+                                  (and
+                                    (left
+                                      (and
+                                        (left
+                                          (<
+                                            (left (read (slot "x")))
+                                            (right (add (left (read (slot "cx"))) (right 16)))))
+                                        (right
+                                          (>
+                                            (left (add (left (read (slot "x"))) (right 12)))
+                                            (right (read (slot "cx")))))))
+                                    (right
+                                      (and
+                                        (left
+                                          (<
+                                            (left (read (slot "y")))
+                                            (right (add (left (read (slot "cy"))) (right 16)))))
+                                        (right
+                                          (>
+                                            (left (add (left (read (slot "y"))) (right 16)))
+                                            (right (read (slot "cy")))))))))
+                                (then
+                                  (do
+                                    (take (array-set (slot "coin-got") (index (read (slot "ci"))) (value 1)))
+                                    (erase
+                                      (do
+                                        (x (write (slot "fx") (value (read (slot "cx")))))
+                                        (y (write (slot "fy") (value (read (slot "cy")))))
+                                        (w (write (slot "fw") (value 16)))
+                                        (h (write (slot "fh") (value 16)))
+                                        (r (write (slot "fr") (value 24)))
+                                        (g (write (slot "fg") (value 24)))
+                                        (b (write (slot "fb") (value 24)))
+                                        (go (call (selector "fill-rect")))))
+                                    (flag (write (slot "changed") (value true)))))
+                                (else)))))
+                        (else)))
+                    (next (write (slot "ci") (value (add (left (read (slot "ci"))) (right 1)))))))))
+            (update
+              (if
+                (condition (read (slot "changed")))
+                (then
+                  (do
+                    (push
+                      (object-write
+                        (target
+                          (child
+                            (target
+                              (child (target (connection (target (self)) (name "workspace"))) (name "scorer")))
+                            (name "right-values")))
+                        (value (read (slot "coin-got")))))
+                    (dot
+                      (write
+                        (slot "score")
+                        (value
+                          (invoke
+                            (target
+                              (child (target (connection (target (self)) (name "workspace"))) (name "scorer")))
+                            (selector "dot")))))
+                    (hud (call (selector "hud")))))
+                (else))))))
+      (draw-player
+        (body
+          (if
+            (condition
+              (or
+                (left (!= (left (read (slot "x"))) (right (read (slot "ox")))))
+                (right (!= (left (read (slot "y"))) (right (read (slot "oy")))))))
+            (then
+              (do
+                (erase
+                  (do
+                    (x (write (slot "fx") (value (read (slot "ox")))))
+                    (y (write (slot "fy") (value (read (slot "oy")))))
+                    (w (write (slot "fw") (value 12)))
+                    (h (write (slot "fh") (value 16)))
+                    (r (write (slot "fr") (value 24)))
+                    (g (write (slot "fg") (value 24)))
+                    (b (write (slot "fb") (value 24)))
+                    (go (call (selector "fill-rect")))))
+                (draw
+                  (do
+                    (x (write (slot "fx") (value (read (slot "x")))))
+                    (y (write (slot "fy") (value (read (slot "y")))))
+                    (w (write (slot "fw") (value 12)))
+                    (h (write (slot "fh") (value 16)))
+                    (r (write (slot "fr") (value 230)))
+                    (g (write (slot "fg") (value 70)))
+                    (b (write (slot "fb") (value 60)))
+                    (go (call (selector "fill-rect")))))
+                (ox (write (slot "ox") (value (read (slot "x")))))
+                (oy (write (slot "oy") (value (read (slot "y")))))))
+            (else))))
+      (fill-rect
+        (body
+          (do
+            (guard
+              (if
+                (condition
+                  (and
+                    (left (not (value (read (slot "headless")))))
+                    (right
+                      (and
+                        (left (>= (left (read (slot "fx"))) (right 0)))
+                        (right
+                          (<= (left (add (left (read (slot "fx"))) (right (read (slot "fw"))))) (right 640)))))))
+                (then
+                  (do
+                    (top (write (slot "fyy") (value (read (slot "fy")))))
+                    (rows
+                      (while
+                        (condition
+                          (<
+                            (left (read (slot "fyy")))
+                            (right (add (left (read (slot "fy"))) (right (read (slot "fh")))))))
+                        (body
+                          (do
+                            (check
+                              (if
+                                (condition
+                                  (and
+                                    (left (>= (left (read (slot "fyy"))) (right 0)))
+                                    (right (< (left (read (slot "fyy"))) (right 480)))))
+                                (then
+                                  (do
+                                    (start
+                                      (write
+                                        (slot "fidx")
+                                        (value
+                                          (mul
+                                            (left
+                                              (add
+                                                (left (mul (left (read (slot "fyy"))) (right 640)))
+                                                (right (read (slot "fx")))))
+                                            (right 4)))))
+                                    (stop
+                                      (write
+                                        (slot "fend")
+                                        (value
+                                          (add
+                                            (left (read (slot "fidx")))
+                                            (right (mul (left (read (slot "fw"))) (right 4)))))))
+                                    (row
+                                      (while
+                                        (condition (< (left (read (slot "fidx"))) (right (read (slot "fend")))))
+                                        (body
+                                          (do
+                                            (r
+                                              (buffer-write
+                                                (target "buffer")
+                                                (index (read (slot "fidx")))
+                                                (value (read (slot "fr")))))
+                                            (g
+                                              (buffer-write
+                                                (target "buffer")
+                                                (index (add (left (read (slot "fidx"))) (right 1)))
+                                                (value (read (slot "fg")))))
+                                            (b
+                                              (buffer-write
+                                                (target "buffer")
+                                                (index (add (left (read (slot "fidx"))) (right 2)))
+                                                (value (read (slot "fb")))))
+                                            (a
+                                              (buffer-write
+                                                (target "buffer")
+                                                (index (add (left (read (slot "fidx"))) (right 3)))
+                                                (value 255)))
+                                            (next
+                                              (write
+                                                (slot "fidx")
+                                                (value (add (left (read (slot "fidx"))) (right 4)))))))))))
+                                (else)))
+                            (down (write (slot "fyy") (value (add (left (read (slot "fyy"))) (right 1)))))))))))
+                (else)))))))))
