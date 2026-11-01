@@ -3,6 +3,8 @@
 #include "platform/posix/streams.h"
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
 #ifdef NEO_PLATFORM_WITH_X11
@@ -44,6 +46,28 @@ static neo_status neo_linux_read_source(void *context, const char *location, cha
     return NEO_OK;
 }
 
+static neo_status neo_linux_write_source(void *context, const char *location, const char *text) {
+    (void)context;
+    size_t length = strlen(location);
+    if (length > SIZE_MAX - 16) { return NEO_LIMIT; }
+    char *temporary = malloc(length + 16);
+    if (temporary == NULL) { return NEO_OUT_OF_MEMORY; }
+    (void)snprintf(temporary, length + 16, "%s.tmp.XXXXXX", location);
+    int descriptor = mkstemp(temporary);
+    if (descriptor < 0) { free(temporary); return NEO_IO_ERROR; }
+    FILE *file = fdopen(descriptor, "wb");
+    bool okay = false;
+    if (file != NULL) {
+        okay = fputs(text, file) >= 0;
+        if (fflush(file) != 0 || fsync(descriptor) != 0) { okay = false; }
+        if (fclose(file) != 0) { okay = false; }
+    } else { (void)close(descriptor); }
+    if (okay && rename(temporary, location) != 0) { okay = false; }
+    if (!okay) { (void)unlink(temporary); }
+    free(temporary);
+    return okay ? NEO_OK : NEO_IO_ERROR;
+}
+
 static neo_status neo_linux_open_stream(void *context, neo_vm *vm, const neo_capability *parent,
                                         const char *name, neo_standard_stream stream,
                                         const neo_capability **out) {
@@ -76,6 +100,7 @@ static neo_status neo_linux_open_window(void *context, neo_vm *vm, const neo_cap
 neo_status neo_platform_native_services(unsigned requested, neo_platform_services *out) {
     if (out == NULL) { return NEO_INVALID; }
     *out = (neo_platform_services){0};
+    if ((requested & NEO_PLATFORM_NETWORK) != 0) { return NEO_UNSUPPORTED; }
     neo_platform_services selected = {0};
     neo_status status = neo_platform_native(requested, &selected.info);
     if (status != NEO_OK) { return status; }
@@ -89,7 +114,7 @@ neo_status neo_platform_native_services(unsigned requested, neo_platform_service
     }
     if ((requested & NEO_PLATFORM_PIXEL_WINDOWS) != 0) { selected.backend.open_window = neo_linux_open_window; }
 #endif
-    if ((requested & NEO_PLATFORM_HOST_FILES) != 0) { selected.backend.read_source = neo_linux_read_source; }
+    if ((requested & NEO_PLATFORM_HOST_FILES) != 0) { selected.backend.read_source = neo_linux_read_source; selected.backend.write_source = neo_linux_write_source; }
     if ((requested & NEO_PLATFORM_BYTE_STREAMS) != 0) { selected.backend.open_stream = neo_linux_open_stream; }
     if ((requested & NEO_PLATFORM_WAIT) != 0) { selected.backend.wait = neo_linux_wait; }
     *out = selected;

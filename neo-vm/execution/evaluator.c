@@ -15,6 +15,13 @@ static neo_status neo_evaluate(neo_activation *activation, neo_object *expressio
 neo_status neo_operand(neo_activation *activation, neo_object *operation,
                               const char *name, size_t depth, neo_value *out) {
     neo_object *child = neo_child_named(activation->vm, operation->id, name);
+    if (child == NULL && strcmp(name, "condition") == 0 &&
+        operation->value.kind == NEO_PRIMITIVE &&
+        (strcmp(operation->value.text, "if") == 0 || strcmp(operation->value.text, "while") == 0)) {
+        child = neo_child_after(activation->vm, operation->id, 0);
+        if (child != NULL && (strcmp(child->name, "then") == 0 ||
+            strcmp(child->name, "else") == 0 || strcmp(child->name, "body") == 0)) { child = NULL; }
+    }
     if (child == NULL) {
         return NEO_INVALID;
     }
@@ -77,13 +84,16 @@ static bool neo_equal(neo_value a, neo_value b) {
 }
 
 bool neo_primitive_known(const char *op) {
+    if (neo_message_primitive_known(op)) { return true; }
     if (neo_graph_primitive_known(op)) { return true; }
     static const char *const primitives[] = {
-        "platform-info", "array-get", "array-set", "array-size", "call", "invoke", "do", "if", "while", "return", "fail", "read", "write", "message", "send",
+        "network-open", "network-ready", "network-port", "network-stream", "network-close",
+        "platform-info", "array-new", "array-get", "array-set", "array-size", "call", "invoke", "do", "if", "while", "return", "fail", "attempt", "failure", "rethrow", "read", "write", "message", "send",
         "not", "and", "or", "==", "!=", "add", "sub", "mul", "div", "rem", "<", "<=", ">", ">=",
         "buffer-fill", "buffer-read", "buffer-write", "buffer-size", "window-present", "window-poll",
-        "window-width", "window-height", "stream-read", "stream-write",
+        "window-width", "window-height", "window-capture", "window-state", "stream-read", "stream-write", "stream-read-text",
         "buffer-width", "buffer-height", "window-next-event", "window-event"
+        , "buffer-create", "buffer-copy", "buffer-scale-copy", "surface-create", "surface-focus", "surface-route"
     };
     bool known = false;
     for (size_t i = 0; i < sizeof(primitives) / sizeof(primitives[0]); ++i) {
@@ -93,6 +103,67 @@ bool neo_primitive_known(const char *op) {
 
 }
 
+static neo_status neo_surface_operation(neo_activation *a, neo_object *node,
+                                        size_t depth, neo_value *out) {
+    const char *op = node->value.text;
+    const char *names[8] = {"target", "source", "x", "y", "width", "height", "output-width", "output-height"};
+    size_t count = 6;
+    if (strcmp(op,"buffer-scale-copy") == 0) { count=8; }
+    bool create = strcmp(op,"buffer-create") == 0 || strcmp(op,"surface-create") == 0;
+    if (create) { names[1]="name"; names[2]="width"; names[3]="height"; count=4; }
+    else if (strcmp(op,"surface-focus") == 0) { names[1]="value"; count=2; }
+    else if (strcmp(op,"surface-route") == 0) { count=4; }
+    neo_value v[8] = {{0}};
+    neo_status status = NEO_OK;
+    for (size_t i=0; i<count && status==NEO_OK && !a->returning; ++i) {
+        status=neo_operand(a,node,names[i],depth,&v[i]);
+    }
+    if (status != NEO_OK || a->returning) { goto done; }
+    if (v[0].kind != NEO_REFERENCE) { status=NEO_WRONG_KIND; goto done; }
+    if (create) {
+        if (v[1].kind != NEO_TEXT || v[2].kind != NEO_INTEGER || v[3].kind != NEO_INTEGER) { status=NEO_WRONG_KIND; goto done; }
+        if (v[2].integer <= 0 || v[3].integer <= 0 || (uint64_t)v[2].integer > SIZE_MAX || (uint64_t)v[3].integer > SIZE_MAX) { status=NEO_LIMIT; goto done; }
+        const neo_capability *result=NULL;
+        status=neo_graph_mutable(a,v[0].reference,false,false);
+        if (status == NEO_OK) {
+            status=strcmp(op,"buffer-create") == 0 ?
+                neo_buffer_create(a->vm,v[0].reference,v[1].text,(size_t)v[2].integer,(size_t)v[3].integer,&result) :
+                neo_surface_create(a->vm,v[0].reference,v[1].text,(size_t)v[2].integer,(size_t)v[3].integer,&result);
+        }
+        if (status == NEO_OK) { *out=(neo_value){.kind=NEO_REFERENCE,.reference=result}; }
+    } else if (strcmp(op,"surface-focus") == 0) {
+        status=v[1].kind == NEO_BOOLEAN ? neo_surface_focus(a->vm,v[0].reference,v[1].boolean) : NEO_WRONG_KIND;
+    } else {
+        if (v[1].kind != NEO_REFERENCE || v[2].kind != NEO_INTEGER || v[3].kind != NEO_INTEGER) { status=NEO_WRONG_KIND; goto done; }
+        if (strcmp(op,"surface-route") == 0) {
+            status=neo_surface_route(a->vm,v[0].reference,v[1].reference,v[2].integer,v[3].integer);
+        } else {
+            if (v[4].kind != NEO_INTEGER || v[5].kind != NEO_INTEGER) { status=NEO_WRONG_KIND; goto done; }
+            if (v[4].integer < 0 || v[5].integer < 0 || (uint64_t)v[4].integer > SIZE_MAX || (uint64_t)v[5].integer > SIZE_MAX) { status=NEO_LIMIT; goto done; }
+            /* Charge bounded memory work before mutation, in64-byte units. */
+            uint64_t width=(uint64_t)v[4].integer, height=(uint64_t)v[5].integer;
+            if (width > 16777216u || height > 16777216u || width * height > 16777216u) { status=NEO_LIMIT; goto done; }
+            uint64_t output_width=width,output_height=height;
+            if (count == 8) {
+                if (v[6].kind != NEO_INTEGER || v[7].kind != NEO_INTEGER) { status=NEO_WRONG_KIND; goto done; }
+                if (v[6].integer < 0 || v[7].integer < 0) { status=NEO_LIMIT; goto done; }
+                output_width=(uint64_t)v[6].integer; output_height=(uint64_t)v[7].integer;
+                if (output_width > 16777216u || output_height > 16777216u || output_width*output_height > 16777216u) { status=NEO_LIMIT; goto done; }
+            }
+            size_t work=0;
+            status=neo_buffer_transfer_work(a->vm,v[0].reference,v[2].integer,v[3].integer,(size_t)output_width,(size_t)output_height,&work);
+            if (status != NEO_OK) { goto done; }
+            if (work > a->budget - a->report->steps) { status=NEO_LIMIT; goto done; }
+            a->report->steps += work;
+            status=count == 8 ? neo_buffer_scale_copy(a->vm,v[0].reference,v[1].reference,v[2].integer,v[3].integer,(size_t)width,(size_t)height,(size_t)output_width,(size_t)output_height) :
+                neo_buffer_copy_region(a->vm,v[0].reference,v[1].reference,v[2].integer,v[3].integer,(size_t)width,(size_t)height);
+        }
+    }
+done:
+    for (size_t i=0; i<8; ++i) { neo_value_free(a->vm,v[i]); }
+    return status;
+}
+
 static neo_status neo_display_operation(neo_activation *a, neo_object *node,
                                         size_t depth, neo_value *out) {
     const char *op = node->value.text;
@@ -100,17 +171,44 @@ static neo_status neo_display_operation(neo_activation *a, neo_object *node,
     const neo_capability *target = NULL;
     neo_status status = neo_operand(a, node, "target", depth, &target_name);
     if (status != NEO_OK || a->returning) { goto done; }
-    if (target_name.kind != NEO_TEXT) { status = NEO_WRONG_KIND; goto done; }
-    status = neo_object_connection(a->vm, a->authority, target_name.text, &target);
+    if (target_name.kind == NEO_REFERENCE) { target=target_name.reference; }
+    else if (target_name.kind == NEO_TEXT) { status = neo_object_connection(a->vm, a->authority, target_name.text, &target); }
+    else { status = NEO_WRONG_KIND; }
     if (status != NEO_OK) { goto done; }
-    if (strcmp(op, "buffer-fill") == 0) {
+    if (strcmp(op, "window-capture") == 0) {
+        status = neo_operand(a, node, "value", depth, &value);
+        if (status != NEO_OK || a->returning) { goto done; }
+        if (value.kind != NEO_BOOLEAN) { status = NEO_WRONG_KIND; goto done; }
+        status = neo_window_capture(a->vm, target, value.boolean);
+        if (status == NEO_OK) { *out = (neo_value){.kind=NEO_BOOLEAN,.boolean=value.boolean}; }
+    } else if (strcmp(op, "window-state") == 0) {
+        status = neo_operand(a, node, "field", depth, &operand);
+        if (status != NEO_OK || a->returning) { goto done; }
+        if (operand.kind != NEO_TEXT) { status = NEO_WRONG_KIND; goto done; }
+        neo_window_state state = {0};
+        status = neo_window_get_state(a->vm, target, &state);
+        if (status != NEO_OK) { goto done; }
+        if (strcmp(operand.text,"focused") == 0) { *out = (neo_value){.kind=NEO_BOOLEAN,.boolean=state.focused}; }
+        else if (strcmp(operand.text,"captured") == 0) { *out = (neo_value){.kind=NEO_BOOLEAN,.boolean=state.captured}; }
+        else if (strcmp(operand.text,"presentation-lost") == 0) { *out = (neo_value){.kind=NEO_BOOLEAN,.boolean=state.presentation_lost}; }
+        else if (strcmp(operand.text,"scale-numerator") == 0) { *out = (neo_value){.kind=NEO_INTEGER,.integer=state.scale_numerator}; }
+        else if (strcmp(operand.text,"scale-denominator") == 0) { *out = (neo_value){.kind=NEO_INTEGER,.integer=state.scale_denominator}; }
+        else if (strcmp(operand.text,"surface-epoch") == 0) {
+            if (state.surface_epoch > INT64_MAX) { status = NEO_LIMIT; }
+            else { *out = (neo_value){.kind=NEO_INTEGER,.integer=(int64_t)state.surface_epoch}; }
+        }
+        else if (strcmp(operand.text,"input-epoch") == 0) {
+            if (state.input_epoch > INT64_MAX) { status = NEO_LIMIT; }
+            else { *out = (neo_value){.kind=NEO_INTEGER,.integer=(int64_t)state.input_epoch}; }
+        } else { status = NEO_INVALID; }
+    } else if (strcmp(op, "buffer-fill") == 0) {
         status = neo_operand(a, node, "value", depth, &value);
         if (status != NEO_OK || a->returning) { goto done; }
         if (value.kind != NEO_INTEGER) { status = NEO_WRONG_KIND; goto done; }
         if (value.integer < 0 || value.integer > 255) { status = NEO_LIMIT; goto done; }
         status = neo_buffer_fill(a->vm, target, (uint8_t)value.integer);
     } else if (strcmp(op, "window-next-event") == 0) {
-        status = neo_value_copy(a->vm, (neo_value){.kind = NEO_TEXT, .text = "overflow"}, out);
+        status = neo_value_copy(a->vm, (neo_value){.kind = NEO_TEXT, .text = "input-reset"}, out);
         if (status != NEO_OK) { goto done; }
         neo_input_event event;
         status = neo_window_next_event(a->vm, target, &event);
@@ -123,11 +221,17 @@ static neo_status neo_display_operation(neo_activation *a, neo_object *node,
         status = neo_window_get_event(a->vm, target, &event);
         if (status != NEO_OK) { goto done; }
         const char *field = operand.text;
-        if (strcmp(field, "type") == 0 || strcmp(field, "key") == 0) {
+        if (strcmp(field, "type") == 0 || strcmp(field, "key") == 0 || strcmp(field, "text") == 0) {
             status = neo_value_copy(a->vm, (neo_value){.kind = NEO_TEXT,
-                .text = strcmp(field, "type") == 0 ? neo_input_kind_name(event.kind) : event.key}, out);
+                .text = strcmp(field, "type") == 0 ? neo_input_kind_name(event.kind) :
+                    strcmp(field, "text") == 0 ? event.text : event.key}, out);
+        } else if (strcmp(field, "epoch") == 0) {
+            if (event.epoch > INT64_MAX) { status = NEO_LIMIT; }
+            else { *out = (neo_value){.kind=NEO_INTEGER,.integer=(int64_t)event.epoch}; }
         } else if (strcmp(field, "pressed") == 0) {
             *out = (neo_value){.kind = NEO_BOOLEAN, .boolean = event.pressed};
+        } else if (strcmp(field,"control") == 0 || strcmp(field,"shift") == 0) {
+            *out=(neo_value){.kind=NEO_BOOLEAN,.boolean=strcmp(field,"control") == 0 ? event.control : event.shift};
         } else {
             out->kind = NEO_INTEGER;
             if (strcmp(field, "x") == 0) { out->integer = event.x; }
@@ -204,6 +308,22 @@ static neo_status neo_stream_operation(neo_activation *a, neo_object *node,
     if (target_name.kind != NEO_TEXT) { status = NEO_WRONG_KIND; goto done; }
     status = neo_object_connection(a->vm, a->authority, target_name.text, &target);
     if (status != NEO_OK) { goto done; }
+    if (strcmp(node->value.text,"stream-read-text") == 0) {
+        status=neo_operand(a,node,"limit",depth,&value);
+        if (status != NEO_OK || a->returning) { goto done; }
+        if (value.kind != NEO_INTEGER || value.integer<1 || value.integer>NEO_IMAGE_MAX_SOURCE_BYTES) { status=NEO_INVALID; goto done; }
+        size_t capacity=(size_t)value.integer;
+        if ((capacity+63u)/64u>a->budget-a->report->steps) { status=NEO_LIMIT; goto done; }
+        char *text=neo_alloc(a->vm,capacity+1u);
+        if (text == NULL) { status=NEO_OUT_OF_MEMORY; goto done; }
+        neo_io_result result={0};
+        status=neo_stream_read(a->vm,target,(uint8_t *)text,capacity,&result);
+        if (status == NEO_OK && result.state == NEO_IO_WOULD_BLOCK) { status=NEO_BUSY; }
+        if (status == NEO_OK && (memchr(text,'\0',result.count) != NULL || !neo_text_document_valid(text))) { status=NEO_INVALID; }
+        if (status == NEO_OK) { a->report->steps+=(result.count+63u)/64u; *out=(neo_value){.kind=NEO_TEXT,.text=text}; }
+        else { neo_free(a->vm,text); }
+        goto done;
+    }
     bool writing = strcmp(node->value.text, "stream-write") == 0;
     uint8_t byte = 0;
     const uint8_t *bytes = &byte;
@@ -253,7 +373,28 @@ static neo_status neo_array_operation(neo_activation *a, neo_object *node,
     bool size = strcmp(op, "array-size") == 0;
     bool writing = strcmp(op, "array-set") == 0;
     neo_value slot = {0}, index = {0}, value = {0};
-    neo_status status = neo_operand(a, node, "slot", depth, &slot);
+    neo_status status;
+    if (strcmp(op, "array-new") == 0) {
+        status = neo_operand(a, node, "size", depth, &index);
+        if (status != NEO_OK || a->returning) { goto done; }
+        status = neo_operand(a, node, "value", depth, &value);
+        if (status != NEO_OK || a->returning) { goto done; }
+        if (index.kind != NEO_INTEGER || value.kind != NEO_INTEGER) {
+            status = NEO_WRONG_KIND; goto done;
+        }
+        if (index.integer < 0 || (uint64_t)index.integer > SIZE_MAX / sizeof(int64_t)) {
+            status = NEO_LIMIT; goto done;
+        }
+        size_t count = (size_t)index.integer;
+        if (count > a->budget - a->report->steps) { status = NEO_LIMIT; goto done; }
+        int64_t *items = count == 0 ? NULL : neo_alloc(a->vm, count * sizeof(*items));
+        if (count != 0 && items == NULL) { status = NEO_OUT_OF_MEMORY; goto done; }
+        for (size_t i = 0; i < count; ++i) { items[i] = value.integer; }
+        a->report->steps += count;
+        *out = (neo_value){.kind = NEO_INTEGERS, .integers = items, .count = count};
+        goto done;
+    }
+    status = neo_operand(a, node, "slot", depth, &slot);
     if (status != NEO_OK || a->returning) { goto done; }
     if (slot.kind != NEO_TEXT) { status = NEO_WRONG_KIND; goto done; }
     if (!size) {
@@ -295,12 +436,161 @@ done:
     return status;
 }
 
+neo_status neo_invoke_behavior(neo_activation *a, const neo_capability *authority,
+                                const char *selector, const neo_message *message,
+                                size_t depth, neo_value *out) {
+    neo_object *receiver = NULL;
+    neo_status status = neo_resolve(a->vm, authority, NEO_ACT | NEO_READ, &receiver);
+    const neo_context *context = NULL;
+    if (status == NEO_OK) { status = neo_context_create(a->vm, authority, &context); }
+    if (status != NEO_OK) { return status; }
+    neo_object *handlers = neo_child_named(a->vm, receiver->id, "handlers");
+    neo_object *handler = handlers == NULL ? NULL : neo_child_named(a->vm, handlers->id, selector);
+    neo_object *body = handler == NULL ? NULL : neo_child_named(a->vm, handler->id, "body");
+    if (body == NULL) {
+        /* No instruction exists for a missing handler: locate its receiver. */
+        a->report->receiver = receiver->id;
+        a->report->operation = receiver->id;
+        return NEO_UNAVAILABLE;
+    }
+    neo_activation nested = *a;
+    nested.parent = a;
+    nested.receiver = receiver;
+    nested.authority = authority;
+    nested.context = context;
+    nested.body = body;
+    nested.message = message;
+    nested.returning = false;
+    nested.return_value = (neo_value){0};
+    status = neo_evaluate(&nested, body, depth + 1, out);
+    if (nested.returning) {
+        neo_value_free(a->vm, *out);
+        *out = nested.return_value;
+    }
+    return status;
+}
+
+static neo_status neo_network_operation(neo_activation *a, neo_object *node,
+                                         size_t depth, neo_value *out) {
+    neo_value target = {0}, name = {0};
+    const neo_capability *endpoint = NULL, *stream = NULL;
+    const char *op = node->value.text;
+    neo_status status = neo_operand(a, node, "target", depth, &target);
+    if (status != NEO_OK || a->returning) { goto done; }
+    if (target.kind != NEO_TEXT) { status = NEO_WRONG_KIND; goto done; }
+    status = neo_object_connection(a->vm, a->authority, target.text, &endpoint);
+    if (status != NEO_OK) { goto done; }
+    if (strcmp(op, "network-open") == 0) { status = neo_network_endpoint_open(a->vm, endpoint); }
+    else if (strcmp(op, "network-close") == 0) { status = neo_network_endpoint_close(a->vm, endpoint); }
+    else if (strcmp(op, "network-ready") == 0) {
+        bool ready = false;
+        status = neo_network_endpoint_ready(a->vm, endpoint, &ready);
+        *out = (neo_value){.kind=NEO_BOOLEAN,.boolean=ready};
+    } else if (strcmp(op, "network-port") == 0) {
+        uint16_t port = 0;
+        status = neo_network_endpoint_port(a->vm, endpoint, &port);
+        *out = (neo_value){.kind=NEO_INTEGER,.integer=port};
+    } else {
+        status = neo_operand(a, node, "name", depth, &name);
+        if (status != NEO_OK || a->returning) { goto done; }
+        if (name.kind != NEO_TEXT) { status = NEO_WRONG_KIND; goto done; }
+        status = neo_graph_mutable(a, a->authority, false, false);
+        if (status == NEO_OK) {
+            status = neo_network_endpoint_stream(a->vm, endpoint, a->authority, name.text, &stream);
+        }
+        *out = (neo_value){.kind=NEO_BOOLEAN,.boolean=stream != NULL};
+    }
+done:
+    neo_value_free(a->vm, target); neo_value_free(a->vm, name);
+    return status;
+}
+
 static neo_status neo_run_operation(neo_activation *a, neo_object *node,
                                     size_t depth, neo_value *out) {
     const char *op = node->value.text;
     if (!neo_primitive_known(op)) { return NEO_UNSUPPORTED; }
 
     if (neo_graph_primitive_known(op)) { return neo_graph_operation(a, node, depth, out); }
+    if (strncmp(op, "network-", 8) == 0) { return neo_network_operation(a, node, depth, out); }
+    if (neo_message_primitive_known(op)) { return neo_message_operation(a, node, depth, out); }
+    if (strcmp(op, "attempt") == 0) {
+        size_t outer_budget=a->budget;
+        bool bounded=false;
+        if (neo_child_named(a->vm,node->id,"budget") != NULL) {
+            neo_value limit={0};
+            neo_status checked=neo_operand(a,node,"budget",depth,&limit);
+            if (checked == NEO_OK && (limit.kind != NEO_INTEGER || limit.integer <= 0)) { checked=NEO_INVALID; }
+            if (checked == NEO_OK && !a->returning) {
+                uint64_t available=(uint64_t)(outer_budget-a->report->steps);
+                if ((uint64_t)limit.integer < available) { a->budget=a->report->steps+(size_t)limit.integer; bounded=true; }
+            }
+            neo_value_free(a->vm,limit);
+            if (checked != NEO_OK || a->returning) { return checked; }
+        }
+        neo_status status = neo_operand(a, node, "body", depth, out);
+        a->budget=outer_budget;
+        if (status == NEO_OK || (status == NEO_LIMIT && !bounded) || status == NEO_OUT_OF_MEMORY || a->returning) { return status; }
+        neo_value_free(a->vm, *out);
+        *out = (neo_value){0};
+        neo_status previous_status = a->caught_status;
+        neo_object_id previous_operation = a->caught_operation;
+        neo_object_id previous_receiver = a->caught_receiver;
+        a->caught_status = status;
+        a->caught_operation = a->report->operation;
+        a->caught_receiver = a->report->receiver;
+        a->report->operation = 0;
+        status = neo_operand(a, node, "recover", depth, out);
+        a->caught_status = previous_status;
+        a->caught_operation = previous_operation;
+        a->caught_receiver = previous_receiver;
+        if (status == NEO_OK) { a->report->receiver = a->receiver->id; }
+        return status;
+    }
+    if (strcmp(op, "rethrow") == 0) {
+        if (a->caught_status == NEO_OK) { return NEO_BAD_STATE; }
+        a->report->operation = a->caught_operation;
+        a->report->receiver = a->caught_receiver;
+        return a->caught_status;
+    }
+    if (strcmp(op, "failure") == 0) {
+        if (a->caught_status == NEO_OK) { return NEO_BAD_STATE; }
+        neo_value field = {0};
+        neo_status status = neo_operand(a, node, "field", depth, &field);
+        if (status == NEO_OK && !a->returning) {
+            if (field.kind != NEO_TEXT) { status = NEO_WRONG_KIND; }
+            else if (strcmp(field.text, "receiver-reference") == 0 || strcmp(field.text, "operation-reference") == 0) {
+                neo_value scope = {0};
+                status = neo_operand(a, node, "target", depth, &scope);
+                if (status == NEO_OK && !a->returning) {
+                    neo_object *container = NULL;
+                    if (scope.kind != NEO_REFERENCE) { status = NEO_WRONG_KIND; }
+                    else { status = neo_resolve(a->vm, scope.reference, NEO_READ, &container); }
+                    neo_object_id id = strcmp(field.text, "receiver-reference") == 0 ? a->caught_receiver : a->caught_operation;
+                    neo_object *location = neo_lookup(a->vm, id);
+                    if (status == NEO_OK && location == NULL) { status = NEO_UNAVAILABLE; }
+                    if (status == NEO_OK && !neo_inside(a->vm, location, container->id)) { status = NEO_DENIED; }
+                    const neo_capability *reference = NULL;
+                    if (status == NEO_OK) {
+                        status = neo_issue(a->vm, id, scope.reference->rights & (NEO_READ | NEO_DELEGATE), &reference);
+                    }
+                    if (status == NEO_OK) { *out = (neo_value){.kind=NEO_REFERENCE,.reference=reference}; }
+                }
+                neo_value_free(a->vm, scope);
+            }
+            else if (strcmp(field.text, "status") == 0) {
+                status = neo_value_copy(a->vm, (neo_value){.kind=NEO_TEXT,.text=neo_status_name(a->caught_status)}, out);
+            } else {
+                neo_object_id id = 0;
+                if (strcmp(field.text, "operation") == 0) { id = a->caught_operation; }
+                else if (strcmp(field.text, "receiver") == 0) { id = a->caught_receiver; }
+                else { status = NEO_INVALID; }
+                if (status == NEO_OK && id > INT64_MAX) { status = NEO_OVERFLOW; }
+                if (status == NEO_OK) { *out = (neo_value){.kind=NEO_INTEGER,.integer=(int64_t)id}; }
+            }
+        }
+        neo_value_free(a->vm, field);
+        return status;
+    }
     if (strcmp(op, "platform-info") == 0) {
         neo_value field = {0};
         neo_status status = neo_operand(a, node, "field", depth, &field);
@@ -335,6 +625,9 @@ static neo_status neo_run_operation(neo_activation *a, neo_object *node,
     if (strncmp(op, "stream-", 7) == 0) {
         return neo_stream_operation(a, node, depth, out);
     }
+    if (strncmp(op,"surface-",8) == 0 || strcmp(op,"buffer-create") == 0 || strcmp(op,"buffer-copy") == 0 || strcmp(op,"buffer-scale-copy") == 0) {
+        return neo_surface_operation(a,node,depth,out);
+    }
     if (strncmp(op, "buffer-", 7) == 0 || strncmp(op, "window-", 7) == 0) {
         return neo_display_operation(a, node, depth, out);
     }
@@ -347,42 +640,9 @@ static neo_status neo_run_operation(neo_activation *a, neo_object *node,
         if (cross_receiver) { status = neo_operand(a, node, "target", depth, &target); }
         if (status == NEO_OK && !a->returning) { status = neo_operand(a, node, "selector", depth, &left); }
         if (status == NEO_OK && !a->returning) {
-            neo_object *receiver = a->receiver;
-            const neo_capability *authority = a->authority;
-            const neo_context *context = a->context;
-            if (left.kind != NEO_TEXT) { status = NEO_WRONG_KIND; }
-            if (status == NEO_OK && cross_receiver) {
-                if (target.kind != NEO_REFERENCE) { status = NEO_WRONG_KIND; }
-                else {
-                    authority = target.reference;
-                    status = neo_resolve(vm, authority, NEO_ACT | NEO_READ, &receiver);
-                    if (status == NEO_OK) { status = neo_context_create(vm, authority, &context); }
-                }
-            }
-            if (status == NEO_OK) {
-                neo_object *handlers = neo_child_named(vm, receiver->id, "handlers");
-                neo_object *handler = handlers == NULL ? NULL : neo_child_named(vm, handlers->id, left.text);
-                neo_object *body = handler == NULL ? NULL : neo_child_named(vm, handler->id, "body");
-                if (body == NULL) { status = NEO_UNAVAILABLE; }
-                else {
-                    /* Shared report/budget; separate return scope and receiver
-                     * authority. Protect suspended callers through parent links. */
-                    neo_activation nested = *a;
-                    nested.parent = a;
-                    nested.receiver = receiver;
-                    nested.authority = authority;
-                    nested.context = context;
-                    nested.body = body;
-                    if (cross_receiver) { nested.message = NULL; }
-                    nested.returning = false;
-                    nested.return_value = (neo_value){0};
-                    status = neo_evaluate(&nested, body, depth + 1, out);
-                    if (nested.returning) {
-                        neo_value_free(vm, *out);
-                        *out = nested.return_value;
-                    }
-                }
-            }
+            if (left.kind != NEO_TEXT || (cross_receiver && target.kind != NEO_REFERENCE)) { status = NEO_WRONG_KIND; }
+            else { status = neo_invoke_behavior(a, cross_receiver ? target.reference : a->authority,
+                                               left.text, cross_receiver ? NULL : a->message, depth, out); }
         }
         neo_value_free(vm, target);
         neo_value_free(vm, left);
@@ -540,6 +800,7 @@ static neo_status neo_evaluate(neo_activation *a, neo_object *node,
     *out = (neo_value){0};
     if (depth > NEO_EVAL_DEPTH || a->report->steps == a->budget) {
         a->report->operation = node->id;
+        a->report->receiver = a->receiver->id;
         return NEO_LIMIT;
     }
     ++a->report->steps;
@@ -559,6 +820,7 @@ static neo_status neo_evaluate(neo_activation *a, neo_object *node,
     }
     if (status != NEO_OK && a->report->operation == 0) {
         a->report->operation = node->id;
+        a->report->receiver = a->receiver->id;
     }
     return status;
 }
@@ -591,8 +853,11 @@ neo_status neo_behavior_run(neo_vm *vm, const neo_capability *actor,
     }
     if (status == NEO_OK) {
         neo_activation activation = {.vm = vm, .authority = actor, .receiver = receiver,
-            .body = body, .context = context, .message = message, .report = out_report, .budget = budget};
+            .body = body, .context = context, .message = message, .report = out_report, .budget = budget,
+            .submission_cutoff = vm->next_submission};
+        ++vm->active_invocations;
         status = neo_evaluate(&activation, body, 1, &out_report->result);
+        --vm->active_invocations;
         if (activation.returning) {
             neo_value_free(vm, out_report->result);
             out_report->result = activation.return_value;

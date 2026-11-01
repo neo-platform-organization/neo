@@ -18,7 +18,8 @@ typedef enum neo_message_right {
     NEO_MESSAGE_READ = 1u << 0,
     NEO_MESSAGE_EDIT = 1u << 1,
     NEO_MESSAGE_INSPECT = 1u << 2,
-    NEO_MESSAGE_ALL = (1u << 3) - 1u
+    NEO_MESSAGE_RELEASE = 1u << 3,
+    NEO_MESSAGE_ALL = (1u << 4) - 1u
 } neo_message_right;
 
 typedef struct neo_message_info {
@@ -28,6 +29,7 @@ typedef struct neo_message_info {
     neo_message_state state;
     uint64_t submission;
     bool receiver_available;
+    bool sender_available;
 } neo_message_info;
 
 /** Trusted host/bootstrap functions. An evaluator obtains contexts from its
@@ -40,12 +42,14 @@ neo_status neo_ether_create(neo_vm *vm, const neo_capability *image,
                             const neo_capability **out_ether);
 
 /** Make requires an ETHER capability with READ and a receiver capability with
- * SEND. No discovery of the ETHER is implicit. Maker gets READ|EDIT|INSPECT;
- * receiver gets READ|INSPECT. Policy can grant additional actors a subset of
+ * SEND. No discovery of the ETHER is implicit. Maker gets all message rights;
+ * receiver gets READ|INSPECT|RELEASE (release is state-restricted). Policy can
+ * grant additional actors a subset of
  * these rights before submission. Recipient is fixed. Only the recipient can
  * accept, begin, and finish; only the maker can submit or specialize policy.
  *
- * Proposed v0: accepted payloads are immutable for everyone. No cancellation,
+ * Proposed v0: accepted payloads are immutable for everyone. Explicit release
+ * reclaims only safe/abandoned payloads; it is not delivery success. No cancellation,
  * automatic retry, automatic failure completion, or concurrent C calls yet. */
 neo_status neo_message_create(neo_vm *vm, const neo_context *context,
                               const neo_capability *ether,
@@ -59,7 +63,7 @@ neo_status neo_message_inspect(neo_vm *vm, const neo_context *context,
 
 /** Paths are relative names separated by '/', with "" denoting the payload
  * root. No empty segments, '.' or '..' traversal. Fields are contained objects.
- * Read text is borrowed until that payload is edited or the image unloaded.
+ * Read text is borrowed until that payload is edited/released or the image unloaded.
  * Reads do not return a raw capability that could bypass message policy. */
 neo_status neo_message_read(neo_vm *vm, const neo_context *context,
                             const neo_message *message, const char *path,
@@ -79,4 +83,22 @@ neo_status neo_message_begin(neo_vm *vm, const neo_context *context,
 neo_status neo_message_finish(neo_vm *vm, const neo_context *context,
                               const neo_message *message);
 
+/** Explicit payload reclamation, not successful delivery or cancellation.
+ * Maker/receiver and actors granted RELEASE may release processed requests;
+ * the maker/grantee may also release an unsubmitted request or one whose receiver
+ * is gone. A live pending/accepted/processing request returns BUSY. A stale
+ * message returns UNAVAILABLE. Old links are not removed or redirected.
+ * Metadata handles remain tombstones until VM teardown; payload/grants are freed. */
+neo_status neo_message_release(neo_vm *vm, const neo_context *context,
+                               const neo_message *message);
+
+/** Reachable named links carry no payload rights; all use rechecks policy. */
+neo_status neo_message_link(neo_vm *vm, const neo_context *context,
+                             const neo_capability *owner, const char *name,
+                             const neo_message *message);
+/** Oldest pending request addressed to the authenticated actor in this ETHER. */
+neo_status neo_message_pending(neo_vm *vm, const neo_context *context,
+                                const neo_capability *ether, const neo_message **out);
+neo_status neo_message_active(neo_vm *vm, const neo_context *context, const neo_message **out);
+const char *neo_message_state_name(neo_message_state state);
 #endif

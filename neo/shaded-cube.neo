@@ -12,6 +12,7 @@
 // colors (RGB per triangle), projected (2 ints per vertex, scratch).
 // Fill costs about 60 evaluator steps per pixel, so the 1,000,000 step frame budget limits coverage.
 (image
+  (entry "cube")
   (cube
     (m-yaw 0)
     (m-pitch 20)

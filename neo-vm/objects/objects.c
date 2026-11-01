@@ -101,6 +101,29 @@ void neo_value_free(neo_vm *vm, neo_value value) {
     }
 }
 
+size_t neo_name_bucket(neo_object_id parent, const char *name) {
+    uint64_t hash=parent ^ UINT64_C(14695981039346656037);
+    for (const unsigned char *p=(const unsigned char *)name; *p != 0; ++p) {
+        hash=(hash ^ *p) * UINT64_C(1099511628211);
+    }
+    return (size_t)(hash % NEO_INDEX_BUCKETS);
+}
+
+void neo_node_rename_owned(neo_vm *vm, neo_object *node, char *name) {
+    if (node->published) {
+        neo_object **link=&vm->name_index[neo_name_bucket(node->parent,node->name)];
+        while (*link != node) { link=&(*link)->name_next; }
+        *link=node->name_next;
+    }
+    neo_free(vm,node->name);
+    node->name=name;
+    if (node->published) {
+        size_t bucket=neo_name_bucket(node->parent,name);
+        node->name_next=vm->name_index[bucket];
+        vm->name_index[bucket]=node;
+    }
+}
+
 void neo_node_publish(neo_vm *vm, neo_object *node) {
     size_t id_bucket = node->id % NEO_INDEX_BUCKETS;
     size_t parent_bucket = node->parent % NEO_INDEX_BUCKETS;
@@ -108,9 +131,26 @@ void neo_node_publish(neo_vm *vm, neo_object *node) {
     vm->id_index[id_bucket] = node;
     node->parent_next = vm->parent_index[parent_bucket];
     vm->parent_index[parent_bucket] = node;
+    size_t name_bucket=neo_name_bucket(node->parent,node->name);
+    node->name_next=vm->name_index[name_bucket];
+    vm->name_index[name_bucket]=node;
     node->next = vm->objects;
     vm->objects = node;
     node->published = true;
+}
+
+void neo_node_reparent_staged(neo_vm *vm, neo_object *node, neo_object_id parent, neo_object_id image) {
+    neo_object **link=&vm->parent_index[node->parent % NEO_INDEX_BUCKETS];
+    while (*link != node) { link=&(*link)->parent_next; }
+    *link=node->parent_next;
+    link=&vm->name_index[neo_name_bucket(node->parent,node->name)];
+    while (*link != node) { link=&(*link)->name_next; }
+    *link=node->name_next;
+    node->parent=parent; node->image=image;
+    size_t bucket=parent % NEO_INDEX_BUCKETS;
+    node->parent_next=vm->parent_index[bucket]; vm->parent_index[bucket]=node;
+    bucket=neo_name_bucket(parent,node->name);
+    node->name_next=vm->name_index[bucket]; vm->name_index[bucket]=node;
 }
 
 neo_object *neo_lookup(neo_vm *vm, neo_object_id id) {
@@ -122,16 +162,29 @@ neo_object *neo_lookup(neo_vm *vm, neo_object_id id) {
     return NULL;
 }
 
+static size_t neo_cap_pointer_bucket(const neo_capability *cap) {
+    return ((uintptr_t)cap >> 4u) % NEO_CAP_BUCKETS;
+}
+
+static size_t neo_cap_grant_bucket(neo_object_id id, unsigned rights) {
+    return (size_t)((id * UINT64_C(11400714819323198485) ^ rights) % NEO_CAP_BUCKETS);
+}
+
+const neo_capability *neo_capability_known(neo_vm *vm, const neo_capability *candidate) {
+    if (vm == NULL || candidate == NULL) { return NULL; }
+    /* Hash the supplied address, but never dereference it before membership. */
+    const neo_capability *known=vm->cap_pointer_index[neo_cap_pointer_bucket(candidate)];
+    while (known != NULL && known != candidate) { known=known->pointer_next; }
+    return known;
+}
+
 neo_status neo_resolve(neo_vm *vm, const neo_capability *cap,
                                unsigned rights, neo_object **out) {
     if (vm == NULL || cap == NULL) {
         return NEO_INVALID;
     }
     /* Compare before dereferencing caller-supplied capability pointers. */
-    const neo_capability *known = vm->capabilities;
-    while (known != NULL && known != cap) {
-        known = known->next;
-    }
+    const neo_capability *known = neo_capability_known(vm,cap);
     if (known == NULL) {
         return NEO_DENIED;
     }
@@ -165,13 +218,20 @@ static neo_capability *neo_cap_new(neo_vm *vm, neo_object_id target, unsigned ri
 static void neo_cap_publish(neo_vm *vm, neo_capability *cap) {
     cap->next = vm->capabilities;
     vm->capabilities = cap;
+    size_t pointer_bucket=neo_cap_pointer_bucket(cap);
+    size_t grant_bucket=neo_cap_grant_bucket(cap->target,cap->rights);
+    cap->pointer_next=vm->cap_pointer_index[pointer_bucket];
+    vm->cap_pointer_index[pointer_bucket]=cap;
+    cap->grant_next=vm->cap_grant_index[grant_bucket];
+    vm->cap_grant_index[grant_bucket]=cap;
 }
 
 neo_status neo_issue(neo_vm *vm, neo_object_id id, unsigned rights,
                             const neo_capability **out) {
     /* Capabilities are immutable. Reuse an exact grant instead of allocating
      * another permanent handle on every connection lookup (e.g. each pixel). */
-    for (neo_capability *known = vm->capabilities; known != NULL; known = known->next) {
+    size_t bucket=neo_cap_grant_bucket(id,rights);
+    for (neo_capability *known = vm->cap_grant_index[bucket]; known != NULL; known = known->grant_next) {
         if (known->target == id && known->rights == rights) { *out = known; return NEO_OK; }
     }
     neo_capability *cap = neo_cap_new(vm, id, rights);
@@ -191,6 +251,9 @@ void neo_object_free(neo_vm *vm, neo_object *object) {
         link = &vm->parent_index[object->parent % NEO_INDEX_BUCKETS];
         while (*link != object) { link = &(*link)->parent_next; }
         *link = object->parent_next;
+        link=&vm->name_index[neo_name_bucket(object->parent,object->name)];
+        while (*link != object) { link=&(*link)->name_next; }
+        *link=object->name_next;
     }
     neo_stream_release(vm, object);
     neo_display_release(vm, object);
@@ -228,7 +291,10 @@ neo_status neo_node_new(neo_vm *vm, const char *name, neo_value value,
 }
 
 static bool neo_name_exists(neo_vm *vm, neo_object_id parent, const char *name) {
-    for (neo_object *node = vm->parent_index[parent % NEO_INDEX_BUCKETS]; node != NULL; node = node->parent_next) {
+    neo_object *container = neo_lookup(vm, parent);
+    if (container != NULL && container->value.kind == NEO_PRIMITIVE &&
+        strcmp(container->value.text, "do") == 0) { return false; }
+    for (neo_object *node = vm->name_index[neo_name_bucket(parent,name)]; node != NULL; node = node->name_next) {
         if (node->parent == parent && strcmp(node->name, name) == 0) {
             return true;
         }
@@ -248,7 +314,7 @@ bool neo_inside(neo_vm *vm, neo_object *node, neo_object_id ancestor) {
 
 /* Mark first while all ancestry exists; unlink the complete region from the
  * environment listing before freeing any of its nodes. No callbacks or yields. */
-static void neo_delete_region(neo_vm *vm, neo_object_id root) {
+void neo_delete_region(neo_vm *vm, neo_object_id root) {
     for (neo_object *node = vm->objects; node != NULL; node = node->next) {
         node->deleting = neo_inside(vm, node, root);
     }
@@ -429,11 +495,14 @@ neo_status neo_object_child(neo_vm *vm, const neo_capability *parent,
     if (status != NEO_OK) {
         return status;
     }
-    for (neo_object *node = vm->parent_index[container->id % NEO_INDEX_BUCKETS]; node != NULL; node = node->parent_next) {
+    neo_object *found = NULL;
+    for (neo_object *node = vm->name_index[neo_name_bucket(container->id,name)]; node != NULL; node = node->name_next) {
         if (node->parent == container->id && strcmp(node->name, name) == 0) {
-            return neo_issue(vm, node->id, parent->rights, out_child);
+            if (found != NULL) { return NEO_CONFLICT; }
+            found = node;
         }
     }
+    if (found != NULL) { return neo_issue(vm, found->id, parent->rights, out_child); }
     return NEO_UNAVAILABLE;
 }
 
@@ -543,6 +612,25 @@ neo_status neo_object_connect(neo_vm *vm, const neo_capability *object,
     edge->next = node->edges;
     node->edges = edge;
     return NEO_OK;
+}
+
+neo_status neo_object_disconnect(neo_vm *vm, const neo_capability *object, const char *name) {
+    if (name == NULL || *name == '\0') { return NEO_INVALID; }
+    neo_object *node = NULL;
+    neo_status status = neo_resolve(vm, object, NEO_WRITE, &node);
+    if (status != NEO_OK) { return status; }
+    neo_edge **link = &node->edges;
+    while (*link != NULL) {
+        neo_edge *edge = *link;
+        if (strcmp(edge->name, name) == 0) {
+            *link = edge->next;
+            neo_free(vm, edge->name);
+            neo_free(vm, edge);
+            return NEO_OK;
+        }
+        link = &edge->next;
+    }
+    return NEO_UNAVAILABLE;
 }
 
 neo_status neo_object_connection(neo_vm *vm, const neo_capability *object,
@@ -715,10 +803,72 @@ neo_status neo_object_copy(neo_vm *vm, const neo_capability *source,
     return neo_transfer(vm, source, destination, name, false, out_copy);
 }
 
+static neo_status neo_closed_region(neo_vm *vm, neo_object *source) {
+    for (neo_object *node = vm->objects; node != NULL; node = node->next) {
+        if (!neo_inside(vm, node, source->id)) { continue; }
+        for (neo_edge *edge = node->edges; edge != NULL; edge = edge->next) {
+            neo_object *target = neo_lookup(vm, edge->target);
+            if (target == NULL || !neo_inside(vm, target, source->id)) { return NEO_WRONG_IMAGE; }
+        }
+    }
+    return NEO_OK;
+}
+
+neo_status neo_object_import(neo_vm *vm, const neo_capability *source,
+                             const neo_capability *destination, const char *name,
+                             const neo_capability **out) {
+    if (out == NULL) { return NEO_INVALID; }
+    *out = NULL;
+    if (name == NULL || *name == '\0') { return NEO_INVALID; }
+    neo_object *original = NULL, *parent = NULL;
+    neo_status status = neo_resolve(vm, source, NEO_READ | NEO_COPY, &original);
+    if (status == NEO_OK) { status = neo_resolve(vm, destination, NEO_INSERT, &parent); }
+    if (status == NEO_OK && neo_inside(vm, parent, original->id)) { status = NEO_CYCLE; }
+    if (status == NEO_OK && neo_name_exists(vm, parent->id, name)) { status = NEO_CONFLICT; }
+    if (status == NEO_OK) { status = neo_closed_region(vm, original); }
+    if (status == NEO_OK) {
+        size_t count = 0, parent_depth = 0;
+        for (neo_object *p = parent; p != NULL; p = neo_lookup(vm, p->parent)) { ++parent_depth; }
+        for (neo_object *node = vm->objects; node != NULL; node = node->next) {
+            if (node->image == parent->image && ++count > NEO_IMAGE_MAX_OBJECTS) { return NEO_LIMIT; }
+            if (!neo_inside(vm, node, original->id)) { continue; }
+            if (++count > NEO_IMAGE_MAX_OBJECTS) { return NEO_LIMIT; }
+            size_t depth = parent_depth;
+            for (neo_object *p = node; p != NULL; p = p == original ? NULL : neo_lookup(vm, p->parent)) {
+                if (++depth > NEO_IMAGE_MAX_DEPTH) { return NEO_LIMIT; }
+            }
+        }
+    }
+    return status == NEO_OK ? neo_duplicate(vm, original, parent, name, source->rights & destination->rights, out) : status;
+}
+
+neo_status neo_object_extract(neo_vm *vm, const neo_capability *source, const neo_capability **out) {
+    if (out == NULL) { return NEO_INVALID; }
+    *out = NULL;
+    neo_object *node = NULL;
+    neo_status status = neo_resolve(vm, source, NEO_READ | NEO_COPY, &node);
+    if (status == NEO_OK) { status = neo_closed_region(vm, node); }
+    return status == NEO_OK ? neo_duplicate(vm, node, NULL, "package", source->rights, out) : status;
+}
+
 neo_status neo_object_move(neo_vm *vm, const neo_capability *source,
                            const neo_capability *destination, const char *name,
                            const neo_capability **out_copy) {
     return neo_transfer(vm, source, destination, name, true, out_copy);
+}
+
+neo_status neo_object_rename(neo_vm *vm, const neo_capability *object, const char *name) {
+    if (name == NULL || *name == '\0') { return NEO_INVALID; }
+    neo_object *node = NULL;
+    neo_status status = neo_resolve(vm, object, NEO_WRITE, &node);
+    if (status != NEO_OK) { return status; }
+    if (node->ether || node->message != NULL) { return NEO_DENIED; }
+    if (strcmp(node->name, name) == 0) { return NEO_OK; }
+    if (node->parent != 0 && neo_name_exists(vm, node->parent, name)) { return NEO_CONFLICT; }
+    char *replacement = neo_string(vm, name);
+    if (replacement == NULL) { return NEO_OUT_OF_MEMORY; }
+    neo_node_rename_owned(vm,node,replacement);
+    return NEO_OK;
 }
 
 neo_status neo_object_delete(neo_vm *vm, const neo_capability *object) {
@@ -775,12 +925,14 @@ neo_status neo_image_unload(neo_vm *vm, const neo_capability *root) {
 /* Ordered traversal uses an ordinal, not storage-list order. Duplication may
  * rearrange allocation links without changing the order of behavior steps. */
 neo_object *neo_child_named(neo_vm *vm, neo_object_id parent, const char *name) {
-    for (neo_object *node = vm->parent_index[parent % NEO_INDEX_BUCKETS]; node != NULL; node = node->parent_next) {
+    neo_object *found = NULL;
+    for (neo_object *node = vm->name_index[neo_name_bucket(parent,name)]; node != NULL; node = node->name_next) {
         if (node->parent == parent && strcmp(node->name, name) == 0) {
-            return node;
+            if (found != NULL) { return NULL; }
+            found = node;
         }
     }
-    return NULL;
+    return found;
 }
 
 neo_object *neo_child_after(neo_vm *vm, neo_object_id parent, uint64_t order) {

@@ -11,6 +11,7 @@
 // Run: ./build/x86_64/Linux/neo --cli neo/neo-os/image.neo browser demo
 // The initial spatial convention checks coordinate count; it is not a full space/transform model.
 (image #world
+  (entry "platformer")
   (packages #packages
     (maths
       (vector #vector

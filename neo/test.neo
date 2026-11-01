@@ -1,4 +1,5 @@
 (image
+  (entry "hello")
   (hello
     (handlers
       (main

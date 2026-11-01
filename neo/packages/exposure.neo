@@ -1,0 +1,956 @@
+// Ordinary-object exposure policy. Claimed origin is not authenticated identity.
+(package
+  (manifest
+    (schema 1)
+    (id "neo.network.exposure")
+    (version (major 0) (minor 3) (patch 0))
+    (dependencies)
+    (exports
+      (publisher (path "contents/publisher") (mode "copy") (rights 9))
+      (subscriber (path "contents/subscriber") (mode "copy") (rights 9)))
+    (imports)
+    (bindings))
+  (contents
+    (publisher
+      (heartbeats false)
+      (activity 0)
+      (probe-sequence 0)
+      (awaiting-probe 0)
+      (probe-pending false)
+      (acknowledgements false)
+      (awaiting-revision 0)
+      (received-revision 0)
+      (accepted-revision 0)
+      (rejected-revision 0)
+      (origin "")
+      (publication "")
+      (revision 0)
+      (enabled true)
+      (pending false)
+      (complete false)
+      (event "snapshot")
+      (handlers
+        (identity
+          (body
+            (do
+              (if (== (left (read (slot "origin"))) (right "")) (then (fail)) (else))
+              (if (== (left (read (slot "publication"))) (right "")) (then (fail)) (else)))))
+        (queue
+          (body
+            (do
+              (if
+                (read (slot "acknowledgements"))
+                (then
+                  (if (!= (left (read (slot "awaiting-revision"))) (right 0)) (then (fail)) (else)))
+                (else (result 0)))
+              (do
+                (if (read (slot "pending")) (then (fail)) (else))
+                (call (selector "identity"))
+                (write (slot "revision") (value (add (left (read (slot "revision"))) (right 1))))
+                (if
+                  (has-child (target (self)) (name "draft"))
+                  (then (object-delete (target (child (target (self)) (name "draft")))))
+                  (else))
+                (object-create (target (self)) (name "draft") (value (unit)))
+                (object-create
+                  (target (child (target (self)) (name "draft")))
+                  (name "schema")
+                  (value 1))
+                (object-create
+                  (target (child (target (self)) (name "draft")))
+                  (name "origin")
+                  (value (read (slot "origin"))))
+                (object-create
+                  (target (child (target (self)) (name "draft")))
+                  (name "publication")
+                  (value (read (slot "publication"))))
+                (object-create
+                  (target (child (target (self)) (name "draft")))
+                  (name "revision")
+                  (value (read (slot "revision"))))
+                (object-create
+                  (target (child (target (self)) (name "draft")))
+                  (name "event")
+                  (value (read (slot "event"))))
+                (if
+                  (== (left (read (slot "event"))) (right "snapshot"))
+                  (then
+                    (object-copy
+                      (target (connection (target (self)) (name "scope")))
+                      (destination (child (target (self)) (name "draft")))
+                      (name "state")))
+                  (else))
+                (replica-prepare
+                  (target (connection (target (self)) (name "channel")))
+                  (value (child (target (self)) (name "draft"))))
+                (write (slot "pending") (value true))
+                (read (slot "revision")))
+              (if
+                (read (slot "acknowledgements"))
+                (then (write (slot "awaiting-revision") (value (read (slot "revision")))))
+                (else (result 0)))
+              (read (slot "revision")))))
+        (publish
+          (body
+            (do
+              (if (not (value (read (slot "enabled")))) (then (fail)) (else))
+              (write (slot "event") (value "snapshot"))
+              (call (selector "queue")))))
+        (withdraw
+          (body
+            (do
+              (write (slot "event") (value "withdrawal"))
+              (call (selector "queue"))
+              (write (slot "enabled") (value false))
+              (read (slot "revision")))))
+        (resume (body (write (slot "enabled") (value true))))
+        (send
+          (body
+            (do
+              (if (not (value (read (slot "pending")))) (then (fail)) (else))
+              (write
+                (slot "complete")
+                (value (replica-send (target (connection (target (self)) (name "channel"))))))
+              (if (read (slot "complete")) (then (write (slot "pending") (value false))) (else))
+              (read (slot "complete")))))
+        (validate-reply
+          (body
+            (do
+              (if
+                (==
+                  (left
+                    (inspect
+                      (target
+                        (child (target (child (target (self)) (name "reply"))) (name "event")))))
+                  (right "alive"))
+                (then (call (selector "validate-alive")))
+                (else
+                  (do
+                    (if (not (value (read (slot "acknowledgements")))) (then (fail)) (else))
+                    (if (read (slot "pending")) (then (fail)) (else))
+                    (if
+                      (<= (left (read (slot "awaiting-revision"))) (right 0))
+                      (then (fail))
+                      (else))
+                    (if
+                      (!=
+                        (left (child-count (target (child (target (self)) (name "reply")))))
+                        (right 5))
+                      (then (fail))
+                      (else))
+                    (if
+                      (!=
+                        (left
+                          (inspect
+                            (target
+                              (child
+                                (target (child (target (self)) (name "reply")))
+                                (name "schema")))))
+                        (right 1))
+                      (then (fail))
+                      (else))
+                    (if
+                      (!=
+                        (left
+                          (inspect
+                            (target
+                              (child
+                                (target (child (target (self)) (name "reply")))
+                                (name "origin")))))
+                        (right (read (slot "origin"))))
+                      (then (fail))
+                      (else))
+                    (if
+                      (!=
+                        (left
+                          (inspect
+                            (target
+                              (child
+                                (target (child (target (self)) (name "reply")))
+                                (name "publication")))))
+                        (right (read (slot "publication"))))
+                      (then (fail))
+                      (else))
+                    (if
+                      (!=
+                        (left
+                          (inspect
+                            (target
+                              (child
+                                (target (child (target (self)) (name "reply")))
+                                (name "revision")))))
+                        (right (read (slot "awaiting-revision"))))
+                      (then (fail))
+                      (else))
+                    (if
+                      (==
+                        (left
+                          (inspect
+                            (target
+                              (child (target (child (target (self)) (name "reply"))) (name "event")))))
+                        (right "received"))
+                      (then
+                        (write (slot "received-revision") (value (read (slot "awaiting-revision")))))
+                      (else
+                        (do
+                          (if
+                            (!=
+                              (left (read (slot "received-revision")))
+                              (right (read (slot "awaiting-revision"))))
+                            (then (fail))
+                            (else))
+                          (if
+                            (==
+                              (left
+                                (inspect
+                                  (target
+                                    (child
+                                      (target (child (target (self)) (name "reply")))
+                                      (name "event")))))
+                              (right "accepted"))
+                            (then
+                              (write
+                                (slot "accepted-revision")
+                                (value (read (slot "awaiting-revision")))))
+                            (else
+                              (do
+                                (if
+                                  (!=
+                                    (left
+                                      (inspect
+                                        (target
+                                          (child
+                                            (target (child (target (self)) (name "reply")))
+                                            (name "event")))))
+                                    (right "rejected"))
+                                  (then (fail))
+                                  (else))
+                                (write
+                                  (slot "rejected-revision")
+                                  (value (read (slot "awaiting-revision")))))))
+                          (write (slot "awaiting-revision") (value 0)))))
+                    (result true))))
+              (write (slot "activity") (value (add (left (read (slot "activity"))) (right 1))))
+              (result true))))
+        (receive-reply
+          (body
+            (do
+              (if (not (value (read (slot "acknowledgements")))) (then (fail)) (else))
+              (if
+                (has-child (target (self)) (name "reply"))
+                (then (call (selector "validate-reply")))
+                (else
+                  (if
+                    (replica-receive (target (connection (target (self)) (name "channel"))))
+                    (then
+                      (do
+                        (replica-import
+                          (target (connection (target (self)) (name "channel")))
+                          (destination (self))
+                          (name "reply"))
+                        (call (selector "validate-reply"))))
+                    (else (result 0)))))
+              (if
+                (has-child (target (self)) (name "reply"))
+                (then (object-delete (target (child (target (self)) (name "reply")))))
+                (else))
+              (result 0))))
+        (reset-replies
+          (body
+            (do
+              (write (slot "awaiting-revision") (value 0))
+              (write (slot "awaiting-probe") (value 0))
+              (write (slot "probe-pending") (value false))
+              (if
+                (has-child (target (self)) (name "probe-draft"))
+                (then (object-delete (target (child (target (self)) (name "probe-draft")))))
+                (else))
+              (if
+                (has-child (target (self)) (name "reply"))
+                (then (object-delete (target (child (target (self)) (name "reply")))))
+                (else))
+              (result true))))
+        (validate-alive
+          (body
+            (do
+              (do
+                (if (not (value (read (slot "heartbeats")))) (then (fail)) (else))
+                (if (not (value (read (slot "acknowledgements")))) (then (fail)) (else))
+                (if
+                  (!=
+                    (left (child-count (target (child (target (self)) (name "reply")))))
+                    (right 5))
+                  (then (fail))
+                  (else))
+                (if
+                  (!=
+                    (left
+                      (inspect
+                        (target
+                          (child (target (child (target (self)) (name "reply"))) (name "schema")))))
+                    (right 1))
+                  (then (fail))
+                  (else))
+                (if
+                  (!=
+                    (left
+                      (inspect
+                        (target
+                          (child (target (child (target (self)) (name "reply"))) (name "origin")))))
+                    (right (read (slot "origin"))))
+                  (then (fail))
+                  (else))
+                (if
+                  (!=
+                    (left
+                      (inspect
+                        (target
+                          (child
+                            (target (child (target (self)) (name "reply")))
+                            (name "publication")))))
+                    (right (read (slot "publication"))))
+                  (then (fail))
+                  (else)))
+              (if (<= (left (read (slot "awaiting-probe"))) (right 0)) (then (fail)) (else))
+              (if
+                (!=
+                  (left
+                    (inspect
+                      (target
+                        (child (target (child (target (self)) (name "reply"))) (name "sequence")))))
+                  (right (read (slot "awaiting-probe"))))
+                (then (fail))
+                (else))
+              (write (slot "awaiting-probe") (value 0))
+              (result true))))
+        (probe
+          (body
+            (do
+              (if (not (value (read (slot "heartbeats")))) (then (fail)) (else))
+              (if (not (value (read (slot "acknowledgements")))) (then (fail)) (else))
+              (if (read (slot "pending")) (then (fail)) (else))
+              (if (read (slot "probe-pending")) (then (fail)) (else))
+              (if (!= (left (read (slot "awaiting-probe"))) (right 0)) (then (fail)) (else))
+              (call (selector "identity"))
+              (write
+                (slot "probe-sequence")
+                (value (add (left (read (slot "probe-sequence"))) (right 1))))
+              (if
+                (has-child (target (self)) (name "probe-draft"))
+                (then (object-delete (target (child (target (self)) (name "probe-draft")))))
+                (else))
+              (object-create (target (self)) (name "probe-draft") (value (unit)))
+              (object-create
+                (target (child (target (self)) (name "probe-draft")))
+                (name "schema")
+                (value 1))
+              (object-create
+                (target (child (target (self)) (name "probe-draft")))
+                (name "origin")
+                (value (read (slot "origin"))))
+              (object-create
+                (target (child (target (self)) (name "probe-draft")))
+                (name "publication")
+                (value (read (slot "publication"))))
+              (object-create
+                (target (child (target (self)) (name "probe-draft")))
+                (name "sequence")
+                (value (read (slot "probe-sequence"))))
+              (object-create
+                (target (child (target (self)) (name "probe-draft")))
+                (name "event")
+                (value "probe"))
+              (replica-prepare
+                (target (connection (target (self)) (name "channel")))
+                (value (child (target (self)) (name "probe-draft"))))
+              (write (slot "awaiting-probe") (value (read (slot "probe-sequence"))))
+              (write (slot "probe-pending") (value true))
+              (result true))))
+        (send-probe
+          (body
+            (do
+              (if (not (value (read (slot "probe-pending")))) (then (fail)) (else))
+              (if
+                (replica-send (target (connection (target (self)) (name "channel"))))
+                (then (write (slot "probe-pending") (value false)))
+                (else (result 0)))
+              (result 0))))))
+    (subscriber
+      (heartbeats false)
+      (activity 0)
+      (last-probe 0)
+      (alive-pending false)
+      (acknowledgements false)
+      (ack-pending false)
+      (receipt-pending false)
+      (decision-pending false)
+      (candidate-reply-active false)
+      (candidate-revision 0)
+      (reply-event "")
+      (decision "")
+      (origin "")
+      (publication "")
+      (revision 0)
+      (accept-name "accepted")
+      (valid false)
+      (complete false)
+      (inbox)
+      (accepted)
+      (handlers
+        (revision-policy
+          (body
+            (if
+              (<=
+                (left
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "candidate")))
+                        (name "revision")))))
+                (right (read (slot "revision"))))
+              (then (fail))
+              (else))))
+        (validate
+          (body
+            (do
+              (write (slot "valid") (value false))
+              (if (== (left (read (slot "origin"))) (right "")) (then (fail)) (else))
+              (if (== (left (read (slot "publication"))) (right "")) (then (fail)) (else))
+              (if
+                (!=
+                  (left
+                    (inspect
+                      (target
+                        (child
+                          (target (connection (target (self)) (name "candidate")))
+                          (name "schema")))))
+                  (right 1))
+                (then (fail))
+                (else))
+              (if
+                (!=
+                  (left
+                    (inspect
+                      (target
+                        (child
+                          (target (connection (target (self)) (name "candidate")))
+                          (name "origin")))))
+                  (right (read (slot "origin"))))
+                (then (fail))
+                (else))
+              (if
+                (!=
+                  (left
+                    (inspect
+                      (target
+                        (child
+                          (target (connection (target (self)) (name "candidate")))
+                          (name "publication")))))
+                  (right (read (slot "publication"))))
+                (then (fail))
+                (else))
+              (if
+                (<=
+                  (left
+                    (inspect
+                      (target
+                        (child
+                          (target (connection (target (self)) (name "candidate")))
+                          (name "revision")))))
+                  (right 0))
+                (then (fail))
+                (else))
+              (if
+                (==
+                  (left
+                    (inspect
+                      (target
+                        (child
+                          (target (connection (target (self)) (name "candidate")))
+                          (name "event")))))
+                  (right "snapshot"))
+                (then
+                  (do
+                    (if
+                      (not
+                        (value
+                          (has-child
+                            (target (connection (target (self)) (name "candidate")))
+                            (name "state"))))
+                      (then (fail))
+                      (else))
+                    (if
+                      (!=
+                        (left
+                          (child-count (target (connection (target (self)) (name "candidate")))))
+                        (right 6))
+                      (then (fail))
+                      (else))))
+                (else
+                  (do
+                    (if
+                      (!=
+                        (left
+                          (inspect
+                            (target
+                              (child
+                                (target (connection (target (self)) (name "candidate")))
+                                (name "event")))))
+                        (right "withdrawal"))
+                      (then (fail))
+                      (else))
+                    (if
+                      (!=
+                        (left
+                          (child-count (target (connection (target (self)) (name "candidate")))))
+                        (right 5))
+                      (then (fail))
+                      (else)))))
+              (call (selector "revision-policy"))
+              (write (slot "valid") (value true))
+              (result true))))
+        (receive
+          (body
+            (do
+              (if
+                (read (slot "acknowledgements"))
+                (then
+                  (if
+                    (or
+                      (left (read (slot "ack-pending")))
+                      (right
+                        (or
+                          (left (read (slot "receipt-pending")))
+                          (right (read (slot "decision-pending"))))))
+                    (then (fail))
+                    (else)))
+                (else (result 0)))
+              (do
+                (if
+                  (has-child (target (child (target (self)) (name "inbox"))) (name "candidate"))
+                  (then (fail))
+                  (else))
+                (write
+                  (slot "complete")
+                  (value (replica-receive (target (connection (target (self)) (name "channel"))))))
+                (if
+                  (read (slot "complete"))
+                  (then
+                    (do
+                      (replica-import
+                        (target (connection (target (self)) (name "channel")))
+                        (destination (child (target (self)) (name "inbox")))
+                        (name "candidate"))
+                      (connect
+                        (target (self))
+                        (name "candidate")
+                        (value
+                          (child (target (child (target (self)) (name "inbox"))) (name "candidate")))
+                        (rights 9))
+                      (call (selector "validate"))))
+                  (else false)))
+              (if
+                (read (slot "acknowledgements"))
+                (then
+                  (if
+                    (read (slot "complete"))
+                    (then
+                      (do
+                        (write
+                          (slot "candidate-revision")
+                          (value
+                            (inspect
+                              (target
+                                (child
+                                  (target (connection (target (self)) (name "candidate")))
+                                  (name "revision"))))))
+                        (write (slot "candidate-reply-active") (value true))
+                        (write (slot "receipt-pending") (value true))))
+                    (else (result 0))))
+                (else (result 0)))
+              (read (slot "complete")))))
+        (accept
+          (body
+            (do
+              (do
+                (call (selector "validate"))
+                (object-copy
+                  (target (connection (target (self)) (name "candidate")))
+                  (destination (child (target (self)) (name "accepted")))
+                  (name (read (slot "accept-name"))))
+                (write
+                  (slot "revision")
+                  (value
+                    (inspect
+                      (target
+                        (child
+                          (target (connection (target (self)) (name "candidate")))
+                          (name "revision"))))))
+                (disconnect (target (self)) (name "candidate"))
+                (object-delete
+                  (target
+                    (child (target (child (target (self)) (name "inbox"))) (name "candidate"))))
+                (write (slot "valid") (value false))
+                (read (slot "revision")))
+              (if
+                (read (slot "acknowledgements"))
+                (then
+                  (if
+                    (read (slot "candidate-reply-active"))
+                    (then
+                      (do
+                        (write (slot "decision") (value "accepted"))
+                        (write (slot "decision-pending") (value true))
+                        (write (slot "candidate-reply-active") (value false))))
+                    (else (result 0))))
+                (else (result 0)))
+              (read (slot "revision")))))
+        (reject
+          (body
+            (do
+              (do
+                (disconnect (target (self)) (name "candidate"))
+                (object-delete
+                  (target
+                    (child (target (child (target (self)) (name "inbox"))) (name "candidate"))))
+                (write (slot "valid") (value false))
+                (result true))
+              (if
+                (read (slot "acknowledgements"))
+                (then
+                  (if
+                    (read (slot "candidate-reply-active"))
+                    (then
+                      (do
+                        (write (slot "decision") (value "rejected"))
+                        (write (slot "decision-pending") (value true))
+                        (write (slot "candidate-reply-active") (value false))))
+                    (else (result 0))))
+                (else (result 0)))
+              (result true))))
+        (reply-busy
+          (body
+            (or
+              (left
+                (or
+                  (left (read (slot "ack-pending")))
+                  (right
+                    (or
+                      (left (read (slot "receipt-pending")))
+                      (right (read (slot "decision-pending")))))))
+              (right (read (slot "alive-pending"))))))
+        (prepare-reply
+          (body
+            (do
+              (if
+                (has-child (target (self)) (name "reply-draft"))
+                (then (object-delete (target (child (target (self)) (name "reply-draft")))))
+                (else))
+              (object-create (target (self)) (name "reply-draft") (value (unit)))
+              (object-create
+                (target (child (target (self)) (name "reply-draft")))
+                (name "schema")
+                (value 1))
+              (object-create
+                (target (child (target (self)) (name "reply-draft")))
+                (name "origin")
+                (value (read (slot "origin"))))
+              (object-create
+                (target (child (target (self)) (name "reply-draft")))
+                (name "publication")
+                (value (read (slot "publication"))))
+              (object-create
+                (target (child (target (self)) (name "reply-draft")))
+                (name "revision")
+                (value (read (slot "candidate-revision"))))
+              (object-create
+                (target (child (target (self)) (name "reply-draft")))
+                (name "event")
+                (value (read (slot "reply-event"))))
+              (replica-prepare
+                (target (connection (target (self)) (name "channel")))
+                (value (child (target (self)) (name "reply-draft"))))
+              (write (slot "ack-pending") (value true)))))
+        (send-reply
+          (body
+            (do
+              (if (not (value (read (slot "acknowledgements")))) (then (fail)) (else))
+              (if
+                (or
+                  (left (read (slot "ack-pending")))
+                  (right
+                    (or
+                      (left (read (slot "receipt-pending")))
+                      (right (read (slot "decision-pending"))))))
+                (then
+                  (do
+                    (if (not (value (read (slot "acknowledgements")))) (then (fail)) (else))
+                    (if
+                      (read (slot "ack-pending"))
+                      (then
+                        (if
+                          (replica-send (target (connection (target (self)) (name "channel"))))
+                          (then (write (slot "ack-pending") (value false)))
+                          (else (result 0))))
+                      (else
+                        (if
+                          (read (slot "receipt-pending"))
+                          (then
+                            (do
+                              (write (slot "reply-event") (value "received"))
+                              (call (selector "prepare-reply"))
+                              (write (slot "receipt-pending") (value false))))
+                          (else
+                            (if
+                              (read (slot "decision-pending"))
+                              (then
+                                (do
+                                  (write (slot "reply-event") (value (read (slot "decision"))))
+                                  (call (selector "prepare-reply"))
+                                  (write (slot "decision-pending") (value false))))
+                              (else (result 0)))))))
+                    (result 0)))
+                (else
+                  (if
+                    (read (slot "alive-pending"))
+                    (then (call (selector "prepare-alive")))
+                    (else (result 0)))))
+              (result 0))))
+        (reset-replies
+          (body
+            (do
+              (write (slot "ack-pending") (value false))
+              (write (slot "receipt-pending") (value false))
+              (write (slot "decision-pending") (value false))
+              (write (slot "candidate-reply-active") (value false))
+              (write (slot "alive-pending") (value false))
+              (write (slot "last-probe") (value 0))
+              (if
+                (has-child (target (self)) (name "incoming"))
+                (then (object-delete (target (child (target (self)) (name "incoming")))))
+                (else))
+              (if
+                (has-child (target (self)) (name "deferred"))
+                (then (object-delete (target (child (target (self)) (name "deferred")))))
+                (else))
+              (if
+                (has-child (target (self)) (name "reply-draft"))
+                (then (object-delete (target (child (target (self)) (name "reply-draft")))))
+                (else))
+              (result true))))
+        (defer-candidate
+          (body
+            (do
+              (if (has-child (target (self)) (name "deferred")) (then (fail)) (else))
+              (object-copy
+                (target (child (target (self)) (name "incoming")))
+                (destination (self))
+                (name "deferred"))
+              (result true))))
+        (promote-deferred
+          (body
+            (do
+              (object-copy
+                (target (child (target (self)) (name "deferred")))
+                (destination (self))
+                (name "incoming"))
+              (object-delete (target (child (target (self)) (name "deferred"))))
+              (call (selector "handle-incoming")))))
+        (validate-probe
+          (body
+            (do
+              (if (not (value (read (slot "heartbeats")))) (then (fail)) (else))
+              (if (not (value (read (slot "acknowledgements")))) (then (fail)) (else))
+              (if
+                (!=
+                  (left (child-count (target (child (target (self)) (name "incoming")))))
+                  (right 5))
+                (then (fail))
+                (else))
+              (if
+                (!=
+                  (left
+                    (inspect
+                      (target
+                        (child (target (child (target (self)) (name "incoming"))) (name "schema")))))
+                  (right 1))
+                (then (fail))
+                (else))
+              (if
+                (!=
+                  (left
+                    (inspect
+                      (target
+                        (child (target (child (target (self)) (name "incoming"))) (name "origin")))))
+                  (right (read (slot "origin"))))
+                (then (fail))
+                (else))
+              (if
+                (!=
+                  (left
+                    (inspect
+                      (target
+                        (child
+                          (target (child (target (self)) (name "incoming")))
+                          (name "publication")))))
+                  (right (read (slot "publication"))))
+                (then (fail))
+                (else))
+              (if
+                (<=
+                  (left
+                    (inspect
+                      (target
+                        (child (target (child (target (self)) (name "incoming"))) (name "sequence")))))
+                  (right (read (slot "last-probe"))))
+                (then (fail))
+                (else))
+              (write
+                (slot "last-probe")
+                (value
+                  (inspect
+                    (target
+                      (child (target (child (target (self)) (name "incoming"))) (name "sequence"))))))
+              (write (slot "alive-pending") (value true))
+              (result true))))
+        (handle-incoming
+          (body
+            (do
+              (if
+                (==
+                  (left
+                    (inspect
+                      (target
+                        (child (target (child (target (self)) (name "incoming"))) (name "event")))))
+                  (right "probe"))
+                (then
+                  (do
+                    (call (selector "validate-probe"))
+                    (write
+                      (slot "activity")
+                      (value (add (left (read (slot "activity"))) (right 1))))
+                    (result true)))
+                (else
+                  (if
+                    (has-child (target (child (target (self)) (name "inbox"))) (name "candidate"))
+                    (then (call (selector "defer-candidate")))
+                    (else
+                      (do
+                        (do
+                          (if
+                            (has-child
+                              (target (child (target (self)) (name "inbox")))
+                              (name "candidate"))
+                            (then (fail))
+                            (else))
+                          (object-copy
+                            (target (child (target (self)) (name "incoming")))
+                            (destination (child (target (self)) (name "inbox")))
+                            (name "candidate"))
+                          (connect
+                            (target (self))
+                            (name "candidate")
+                            (value
+                              (child
+                                (target (child (target (self)) (name "inbox")))
+                                (name "candidate")))
+                            (rights 9))
+                          (call (selector "validate"))
+                          (do
+                            (write
+                              (slot "candidate-revision")
+                              (value
+                                (inspect
+                                  (target
+                                    (child
+                                      (target (connection (target (self)) (name "candidate")))
+                                      (name "revision"))))))
+                            (write (slot "candidate-reply-active") (value true))
+                            (write (slot "receipt-pending") (value true))))
+                        (write
+                          (slot "activity")
+                          (value (add (left (read (slot "activity"))) (right 1))))
+                        (result true))))))
+              (object-delete (target (child (target (self)) (name "incoming"))))
+              (result true))))
+        (receive-live
+          (body
+            (do
+              (if (not (value (read (slot "heartbeats")))) (then (fail)) (else))
+              (if (not (value (read (slot "acknowledgements")))) (then (fail)) (else))
+              (if
+                (or
+                  (left (read (slot "ack-pending")))
+                  (right
+                    (or
+                      (left (read (slot "receipt-pending")))
+                      (right (read (slot "decision-pending"))))))
+                (then (fail))
+                (else))
+              (if
+                (has-child (target (self)) (name "incoming"))
+                (then (call (selector "handle-incoming")))
+                (else
+                  (if
+                    (has-child (target (child (target (self)) (name "inbox"))) (name "candidate"))
+                    (then
+                      (if
+                        (replica-receive (target (connection (target (self)) (name "channel"))))
+                        (then
+                          (do
+                            (replica-import
+                              (target (connection (target (self)) (name "channel")))
+                              (destination (self))
+                              (name "incoming"))
+                            (call (selector "handle-incoming"))))
+                        (else (result 0))))
+                    (else
+                      (if
+                        (has-child (target (self)) (name "deferred"))
+                        (then (call (selector "promote-deferred")))
+                        (else
+                          (if
+                            (replica-receive (target (connection (target (self)) (name "channel"))))
+                            (then
+                              (do
+                                (replica-import
+                                  (target (connection (target (self)) (name "channel")))
+                                  (destination (self))
+                                  (name "incoming"))
+                                (call (selector "handle-incoming"))))
+                            (else (result 0)))))))))
+              (result 0))))
+        (prepare-alive
+          (body
+            (do
+              (if
+                (has-child (target (self)) (name "reply-draft"))
+                (then (object-delete (target (child (target (self)) (name "reply-draft")))))
+                (else))
+              (object-create (target (self)) (name "reply-draft") (value (unit)))
+              (object-create
+                (target (child (target (self)) (name "reply-draft")))
+                (name "schema")
+                (value 1))
+              (object-create
+                (target (child (target (self)) (name "reply-draft")))
+                (name "origin")
+                (value (read (slot "origin"))))
+              (object-create
+                (target (child (target (self)) (name "reply-draft")))
+                (name "publication")
+                (value (read (slot "publication"))))
+              (object-create
+                (target (child (target (self)) (name "reply-draft")))
+                (name "sequence")
+                (value (read (slot "last-probe"))))
+              (object-create
+                (target (child (target (self)) (name "reply-draft")))
+                (name "event")
+                (value "alive"))
+              (replica-prepare
+                (target (connection (target (self)) (name "channel")))
+                (value (child (target (self)) (name "reply-draft"))))
+              (write (slot "ack-pending") (value true))
+              (write (slot "alive-pending") (value false))
+              (result true))))))))

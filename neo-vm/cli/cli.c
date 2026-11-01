@@ -14,14 +14,16 @@
 static void neo_usage(void) {
     fputs("usage:\n"
           "  neo platform\n"
-          "  neo selftest\n"
-          "  neo [--cli] [--gui] IMAGE ACTOR [HANDLER]\n"
+          "  neo live IMAGE\n"
+          "  neo selftest [gui]\n"
+          "  neo [--cli] [--gui] IMAGE [ACTOR [HANDLER]]\n"
           "  neo check IMAGE...\n"
           "  neo format IMAGE\n"
           "  neo clone IMAGE\n"
           "  neo run IMAGE ACTOR HANDLER [STEP_BUDGET]\n"
           "  neo tick IMAGE TICKS [STEP_BUDGET]\n"
           "\nACTOR is an image child name, or '.' for the root.\n"
+          "Omit ACTOR to use the image's entry field, or root main (GUI: frame).\n"
           "format and clone write graph text to stdout, never overwrite files.\n", stderr);
 }
 
@@ -123,8 +125,11 @@ static neo_status neo_start(neo_vm *vm, const neo_capability *root) {
 
 static int neo_show_platform(void) {
     unsigned flags = NEO_PLATFORM_HOST_FILES | NEO_PLATFORM_BYTE_STREAMS | NEO_PLATFORM_WAIT;
-#ifdef NEO_PLATFORM_WITH_X11
+#if defined(NEO_PLATFORM_WITH_X11) || defined(NEO_PLATFORM_WITH_WIN32)
     flags |= NEO_PLATFORM_PIXEL_WINDOWS | NEO_PLATFORM_INPUT_EVENTS;
+#endif
+#ifdef NEO_PLATFORM_WITH_WIN32
+    flags |= NEO_PLATFORM_NETWORK;
 #endif
     neo_platform_services services;
     neo_status status = neo_platform_native_services(flags, &services);
@@ -136,12 +141,13 @@ static int neo_show_platform(void) {
     printf("backend = %s\nenvironment = %s\nhost-os = %s\narchitecture = %s\nvirtualization = %s\n",
            info.backend, neo_environment_name(info.environment), info.host_os,
            info.architecture, neo_virtualization_name(info.virtualization));
-    printf("byte-streams = %s\nhost-files = %s\npixel-windows = %s\ninput-events = %s\nwait = %s\n",
+    printf("byte-streams = %s\nhost-files = %s\npixel-windows = %s\ninput-events = %s\nwait = %s\nnetwork = %s\n",
            (info.services & NEO_PLATFORM_BYTE_STREAMS) != 0 ? "true" : "false",
            (info.services & NEO_PLATFORM_HOST_FILES) != 0 ? "true" : "false",
            (info.services & NEO_PLATFORM_PIXEL_WINDOWS) != 0 ? "true" : "false",
            (info.services & NEO_PLATFORM_INPUT_EVENTS) != 0 ? "true" : "false",
-           (info.services & NEO_PLATFORM_WAIT) != 0 ? "true" : "false");
+           (info.services & NEO_PLATFORM_WAIT) != 0 ? "true" : "false",
+           (info.services & NEO_PLATFORM_NETWORK) != 0 ? "true" : "false");
     return fflush(stdout) == EOF ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
@@ -232,6 +238,8 @@ int neo_cli_run(int argc, char **argv) {
         neo_usage(); return EXIT_SUCCESS;
     }
     if (argc == 2 && strcmp(argv[1], "selftest") == 0) { return neo_cli_selftest(); }
+    if (argc == 3 && strcmp(argv[1], "selftest") == 0 && strcmp(argv[2], "gui") == 0) { return neo_cli_gui_selftest(); }
+    if (argc > 1 && strcmp(argv[1], "live") == 0) { return neo_cli_live(argc, argv); }
     if (argc > 1) {
         const char *commands[] = {"platform", "check", "format", "clone", "run", "tick"};
         for (size_t i = 0; i < sizeof(commands) / sizeof(commands[0]); ++i) {

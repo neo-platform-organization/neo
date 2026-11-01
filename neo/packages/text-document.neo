@@ -1,0 +1,1261 @@
+// Image-owned editable document, undo/redo, validation and publication policy.
+(package
+  (manifest
+    (schema 1)
+    (id "neo.text.document")
+    (version
+      (major 0)
+      (minor 1)
+      (patch 0)
+    )
+    (dependencies)
+    (exports
+      (document
+        (path "contents/document")
+        (mode "copy")
+        (rights 9)
+      )
+    )
+    (imports)
+    (bindings)
+  )
+  (contents
+    (document
+      (package-origin "")
+      (title "Untitled")
+      (mode "text")
+      (text "")
+      (baseline "")
+      (applied-text "")
+      (insert "")
+      (next-text "")
+      (status "UNTITLED TEXT")
+      (limit 262144)
+      (publish-patch 0)
+      (revision 0)
+      (applied-revision 0)
+      (serial 0)
+      (edit-start 0)
+      (edit-count 0)
+      (apply-request false)
+      (apply-ok false)
+      (resume-request false)
+      (publish-request false)
+      (kept false)
+      (owners)
+      (undo)
+      (redo)
+      (handlers
+        (remember
+          (body
+            (do
+              (do
+                (object-create
+                  (target
+                    (child
+                      (target
+                        (self)
+                      )
+                      (name "undo")
+                    )
+                  )
+                  (name
+                    (text-concat
+                      (left "s-")
+                      (right
+                        (to-text
+                          (value
+                            (read
+                              (slot "serial")
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                  (value
+                    (read
+                      (slot "text")
+                    )
+                  )
+                )
+                (write
+                  (slot "serial")
+                  (value
+                    (add
+                      (left
+                        (read
+                          (slot "serial")
+                        )
+                      )
+                      (right 1)
+                    )
+                  )
+                )
+                (if
+                  (>
+                    (left
+                      (child-count
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "undo")
+                          )
+                        )
+                      )
+                    )
+                    (right 32)
+                  )
+                  (then
+                    (object-delete
+                      (target
+                        (child-at
+                          (target
+                            (child
+                              (target
+                                (self)
+                              )
+                              (name "undo")
+                            )
+                          )
+                          (index 0)
+                        )
+                      )
+                    )
+                  )
+                  (else
+                    (result 0)
+                  )
+                )
+              )
+              (while
+                (>
+                  (left
+                    (child-count
+                      (target
+                        (child
+                          (target
+                            (self)
+                          )
+                          (name "redo")
+                        )
+                      )
+                    )
+                  )
+                  (right 0)
+                )
+                (body
+                  (do
+                    (object-delete
+                      (target
+                        (child-at
+                          (target
+                            (child
+                              (target
+                                (self)
+                              )
+                              (name "redo")
+                            )
+                          )
+                          (index 0)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+        (change
+          (body
+            (do
+              (write
+                (slot "next-text")
+                (value
+                  (text-edit
+                    (value
+                      (read
+                        (slot "text")
+                      )
+                    )
+                    (start
+                      (read
+                        (slot "edit-start")
+                      )
+                    )
+                    (count
+                      (read
+                        (slot "edit-count")
+                      )
+                    )
+                    (insert
+                      (read
+                        (slot "insert")
+                      )
+                    )
+                  )
+                )
+              )
+              (if
+                (>
+                  (left
+                    (text-size
+                      (value
+                        (read
+                          (slot "next-text")
+                        )
+                      )
+                    )
+                  )
+                  (right
+                    (read
+                      (slot "limit")
+                    )
+                  )
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (!=
+                  (left
+                    (read
+                      (slot "next-text")
+                    )
+                  )
+                  (right
+                    (read
+                      (slot "text")
+                    )
+                  )
+                )
+                (then
+                  (do
+                    (call
+                      (selector "remember")
+                    )
+                    (write
+                      (slot "text")
+                      (value
+                        (read
+                          (slot "next-text")
+                        )
+                      )
+                    )
+                    (write
+                      (slot "revision")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "revision")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                    (write
+                      (slot "status")
+                      (value "DRAFT - CTRL+ENTER APPLIES CODE")
+                    )
+                  )
+                )
+                (else
+                  (result 0)
+                )
+              )
+            )
+          )
+        )
+        (undo
+          (body
+            (do
+              (if
+                (>
+                  (left
+                    (child-count
+                      (target
+                        (child
+                          (target
+                            (self)
+                          )
+                          (name "undo")
+                        )
+                      )
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (do
+                    (do
+                      (object-create
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "redo")
+                          )
+                        )
+                        (name
+                          (text-concat
+                            (left "s-")
+                            (right
+                              (to-text
+                                (value
+                                  (read
+                                    (slot "serial")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                        (value
+                          (read
+                            (slot "text")
+                          )
+                        )
+                      )
+                      (write
+                        (slot "serial")
+                        (value
+                          (add
+                            (left
+                              (read
+                                (slot "serial")
+                              )
+                            )
+                            (right 1)
+                          )
+                        )
+                      )
+                      (if
+                        (>
+                          (left
+                            (child-count
+                              (target
+                                (child
+                                  (target
+                                    (self)
+                                  )
+                                  (name "redo")
+                                )
+                              )
+                            )
+                          )
+                          (right 32)
+                        )
+                        (then
+                          (object-delete
+                            (target
+                              (child-at
+                                (target
+                                  (child
+                                    (target
+                                      (self)
+                                    )
+                                    (name "redo")
+                                  )
+                                )
+                                (index 0)
+                              )
+                            )
+                          )
+                        )
+                        (else
+                          (result 0)
+                        )
+                      )
+                    )
+                    (write
+                      (slot "text")
+                      (value
+                        (inspect
+                          (target
+                            (child-at
+                              (target
+                                (child
+                                  (target
+                                    (self)
+                                  )
+                                  (name "undo")
+                                )
+                              )
+                              (index
+                                (sub
+                                  (left
+                                    (child-count
+                                      (target
+                                        (child
+                                          (target
+                                            (self)
+                                          )
+                                          (name "undo")
+                                        )
+                                      )
+                                    )
+                                  )
+                                  (right 1)
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (object-delete
+                      (target
+                        (child-at
+                          (target
+                            (child
+                              (target
+                                (self)
+                              )
+                              (name "undo")
+                            )
+                          )
+                          (index
+                            (sub
+                              (left
+                                (child-count
+                                  (target
+                                    (child
+                                      (target
+                                        (self)
+                                      )
+                                      (name "undo")
+                                    )
+                                  )
+                                )
+                              )
+                              (right 1)
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "revision")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "revision")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                    (write
+                      (slot "status")
+                      (value "DRAFT CHANGED")
+                    )
+                  )
+                )
+                (else
+                  (result 0)
+                )
+              )
+            )
+          )
+        )
+        (redo
+          (body
+            (do
+              (if
+                (>
+                  (left
+                    (child-count
+                      (target
+                        (child
+                          (target
+                            (self)
+                          )
+                          (name "redo")
+                        )
+                      )
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (do
+                    (do
+                      (object-create
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "undo")
+                          )
+                        )
+                        (name
+                          (text-concat
+                            (left "s-")
+                            (right
+                              (to-text
+                                (value
+                                  (read
+                                    (slot "serial")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                        (value
+                          (read
+                            (slot "text")
+                          )
+                        )
+                      )
+                      (write
+                        (slot "serial")
+                        (value
+                          (add
+                            (left
+                              (read
+                                (slot "serial")
+                              )
+                            )
+                            (right 1)
+                          )
+                        )
+                      )
+                      (if
+                        (>
+                          (left
+                            (child-count
+                              (target
+                                (child
+                                  (target
+                                    (self)
+                                  )
+                                  (name "undo")
+                                )
+                              )
+                            )
+                          )
+                          (right 32)
+                        )
+                        (then
+                          (object-delete
+                            (target
+                              (child-at
+                                (target
+                                  (child
+                                    (target
+                                      (self)
+                                    )
+                                    (name "undo")
+                                  )
+                                )
+                                (index 0)
+                              )
+                            )
+                          )
+                        )
+                        (else
+                          (result 0)
+                        )
+                      )
+                    )
+                    (write
+                      (slot "text")
+                      (value
+                        (inspect
+                          (target
+                            (child-at
+                              (target
+                                (child
+                                  (target
+                                    (self)
+                                  )
+                                  (name "redo")
+                                )
+                              )
+                              (index
+                                (sub
+                                  (left
+                                    (child-count
+                                      (target
+                                        (child
+                                          (target
+                                            (self)
+                                          )
+                                          (name "redo")
+                                        )
+                                      )
+                                    )
+                                  )
+                                  (right 1)
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (object-delete
+                      (target
+                        (child-at
+                          (target
+                            (child
+                              (target
+                                (self)
+                              )
+                              (name "redo")
+                            )
+                          )
+                          (index
+                            (sub
+                              (left
+                                (child-count
+                                  (target
+                                    (child
+                                      (target
+                                        (self)
+                                      )
+                                      (name "redo")
+                                    )
+                                  )
+                                )
+                              )
+                              (right 1)
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "revision")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "revision")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                    (write
+                      (slot "status")
+                      (value "DRAFT CHANGED")
+                    )
+                  )
+                )
+                (else
+                  (result 0)
+                )
+              )
+            )
+          )
+        )
+        (apply
+          (body
+            (do
+              (write
+                (slot "apply-request")
+                (value false)
+              )
+              (write
+                (slot "apply-ok")
+                (value false)
+              )
+              (if
+                (==
+                  (left
+                    (read
+                      (slot "mode")
+                    )
+                  )
+                  (right "text")
+                )
+                (then
+                  (write
+                    (slot "status")
+                    (value "TEXT DOCUMENT - USE KEEP IN IMAGE")
+                  )
+                )
+                (else
+                  (attempt
+                    (budget 250000)
+                    (body
+                      (do
+                        (write
+                          (slot "status")
+                          (value
+                            (source-check
+                              (value
+                                (read
+                                  (slot "text")
+                                )
+                              )
+                            )
+                          )
+                        )
+                        (if
+                          (==
+                            (left
+                              (read
+                                (slot "status")
+                              )
+                            )
+                            (right "")
+                          )
+                          (then
+                            (do
+                              (source-apply
+                                (target
+                                  (connection
+                                    (target
+                                      (self)
+                                    )
+                                    (name "target")
+                                  )
+                                )
+                                (value
+                                  (read
+                                    (slot "text")
+                                  )
+                                )
+                                (expected
+                                  (read
+                                    (slot "baseline")
+                                  )
+                                )
+                              )
+                              (write
+                                (slot "baseline")
+                                (value
+                                  (source-text
+                                    (target
+                                      (connection
+                                        (target
+                                          (self)
+                                        )
+                                        (name "target")
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                              (write
+                                (slot "applied-text")
+                                (value
+                                  (read
+                                    (slot "text")
+                                  )
+                                )
+                              )
+                              (write
+                                (slot "applied-revision")
+                                (value
+                                  (read
+                                    (slot "revision")
+                                  )
+                                )
+                              )
+                              (write
+                                (slot "apply-ok")
+                                (value true)
+                              )
+                              (write
+                                (slot "resume-request")
+                                (value true)
+                              )
+                              (write
+                                (slot "status")
+                                (value
+                                  (if
+                                    (==
+                                      (left
+                                        (read
+                                          (slot "mode")
+                                        )
+                                      )
+                                      (right "package")
+                                    )
+                                    (then "APPLIED TO PACKAGE DRAFT - PUBLISH UPDATES FUTURE INSTANCES")
+                                    (else "APPLIED TO LIVE INSTANCE")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (else
+                            (result 0)
+                          )
+                        )
+                      )
+                    )
+                    (recover
+                      (write
+                        (slot "status")
+                        (value
+                          (text-concat
+                            (left "APPLY FAILED: ")
+                            (right
+                              (failure
+                                (field "status")
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+        (publish
+          (body
+            (do
+              (write
+                (slot "publish-request")
+                (value false)
+              )
+              (if
+                (!=
+                  (left
+                    (read
+                      (slot "mode")
+                    )
+                  )
+                  (right "package")
+                )
+                (then
+                  (write
+                    (slot "status")
+                    (value "SELECT A PACKAGE DRAFT TO PUBLISH")
+                  )
+                )
+                (else
+                  (attempt
+                    (budget 350000)
+                    (body
+                      (do
+                        (write
+                          (slot "publish-patch")
+                          (value
+                            (inspect
+                              (target
+                                (child
+                                  (target
+                                    (child
+                                      (target
+                                        (child
+                                          (target
+                                            (child
+                                              (target
+                                                (self)
+                                              )
+                                              (name "package")
+                                            )
+                                          )
+                                          (name "manifest")
+                                        )
+                                      )
+                                      (name "version")
+                                    )
+                                  )
+                                  (name "patch")
+                                )
+                              )
+                            )
+                          )
+                        )
+                        (if
+                          (!=
+                            (left
+                              (read
+                                (slot "package-origin")
+                              )
+                            )
+                            (right
+                              (source-text
+                                (target
+                                  (child
+                                    (target
+                                      (child
+                                        (target
+                                          (child
+                                            (target
+                                              (connection
+                                                (target
+                                                  (self)
+                                                )
+                                                (name "manager")
+                                              )
+                                            )
+                                            (name "catalogue")
+                                          )
+                                        )
+                                        (name
+                                          (inspect
+                                            (target
+                                              (child
+                                                (target
+                                                  (child
+                                                    (target
+                                                      (child
+                                                        (target
+                                                          (self)
+                                                        )
+                                                        (name "package")
+                                                      )
+                                                    )
+                                                    (name "manifest")
+                                                  )
+                                                )
+                                                (name "id")
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                    (name "baseline")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (then
+                            (fail)
+                          )
+                          (else
+                            (result 0)
+                          )
+                        )
+                        (call
+                          (selector "apply")
+                        )
+                        (if
+                          (read
+                            (slot "apply-ok")
+                          )
+                          (then
+                            (do
+                              (if
+                                (has-child
+                                  (target
+                                    (child
+                                      (target
+                                        (connection
+                                          (target
+                                            (self)
+                                          )
+                                          (name "manager")
+                                        )
+                                      )
+                                      (name "staging")
+                                    )
+                                  )
+                                  (name "candidate")
+                                )
+                                (then
+                                  (fail)
+                                )
+                                (else
+                                  (result 0)
+                                )
+                              )
+                              (object-write
+                                (target
+                                  (child
+                                    (target
+                                      (child
+                                        (target
+                                          (child
+                                            (target
+                                              (child
+                                                (target
+                                                  (self)
+                                                )
+                                                (name "package")
+                                              )
+                                            )
+                                            (name "manifest")
+                                          )
+                                        )
+                                        (name "version")
+                                      )
+                                    )
+                                    (name "patch")
+                                  )
+                                )
+                                (value
+                                  (add
+                                    (left
+                                      (inspect
+                                        (target
+                                          (child
+                                            (target
+                                              (child
+                                                (target
+                                                  (child
+                                                    (target
+                                                      (child
+                                                        (target
+                                                          (self)
+                                                        )
+                                                        (name "package")
+                                                      )
+                                                    )
+                                                    (name "manifest")
+                                                  )
+                                                )
+                                                (name "version")
+                                              )
+                                            )
+                                            (name "patch")
+                                          )
+                                        )
+                                      )
+                                    )
+                                    (right 1)
+                                  )
+                                )
+                              )
+                              (object-copy
+                                (target
+                                  (child
+                                    (target
+                                      (self)
+                                    )
+                                    (name "package")
+                                  )
+                                )
+                                (destination
+                                  (child
+                                    (target
+                                      (connection
+                                        (target
+                                          (self)
+                                        )
+                                        (name "manager")
+                                      )
+                                    )
+                                    (name "staging")
+                                  )
+                                )
+                                (name "candidate")
+                              )
+                              (attempt
+                                (body
+                                  (do
+                                    (invoke
+                                      (target
+                                        (connection
+                                          (target
+                                            (self)
+                                          )
+                                          (name "manager")
+                                        )
+                                      )
+                                      (selector "update")
+                                    )
+                                    (invoke
+                                      (target
+                                        (connection
+                                          (target
+                                            (self)
+                                          )
+                                          (name "manager")
+                                        )
+                                      )
+                                      (selector "clear")
+                                    )
+                                  )
+                                )
+                                (recover
+                                  (do
+                                    (invoke
+                                      (target
+                                        (connection
+                                          (target
+                                            (self)
+                                          )
+                                          (name "manager")
+                                        )
+                                      )
+                                      (selector "clear")
+                                    )
+                                    (rethrow)
+                                  )
+                                )
+                              )
+                              (write
+                                (slot "package-origin")
+                                (value
+                                  (source-text
+                                    (target
+                                      (child
+                                        (target
+                                          (child
+                                            (target
+                                              (child
+                                                (target
+                                                  (connection
+                                                    (target
+                                                      (self)
+                                                    )
+                                                    (name "manager")
+                                                  )
+                                                )
+                                                (name "catalogue")
+                                              )
+                                            )
+                                            (name
+                                              (inspect
+                                                (target
+                                                  (child
+                                                    (target
+                                                      (child
+                                                        (target
+                                                          (child
+                                                            (target
+                                                              (self)
+                                                            )
+                                                            (name "package")
+                                                          )
+                                                        )
+                                                        (name "manifest")
+                                                      )
+                                                    )
+                                                    (name "id")
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                        (name "baseline")
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                              (write
+                                (slot "status")
+                                (value "PACKAGE PUBLISHED - EXISTING INSTANCES UNCHANGED")
+                              )
+                            )
+                          )
+                          (else
+                            (result 0)
+                          )
+                        )
+                      )
+                    )
+                    (recover
+                      (do
+                        (object-write
+                          (target
+                            (child
+                              (target
+                                (child
+                                  (target
+                                    (child
+                                      (target
+                                        (child
+                                          (target
+                                            (self)
+                                          )
+                                          (name "package")
+                                        )
+                                      )
+                                      (name "manifest")
+                                    )
+                                  )
+                                  (name "version")
+                                )
+                              )
+                              (name "patch")
+                            )
+                          )
+                          (value
+                            (read
+                              (slot "publish-patch")
+                            )
+                          )
+                        )
+                        (write
+                          (slot "status")
+                          (value
+                            (text-concat
+                              (left "PUBLISH FAILED (REOPEN IF PACKAGE CHANGED): ")
+                              (right
+                                (failure
+                                  (field "status")
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+        (keep
+          (body
+            (do
+              (write
+                (slot "kept")
+                (value true)
+              )
+              (if
+                (==
+                  (left
+                    (read
+                      (slot "mode")
+                    )
+                  )
+                  (right "text")
+                )
+                (then
+                  (write
+                    (slot "applied-text")
+                    (value
+                      (read
+                        (slot "text")
+                      )
+                    )
+                  )
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "status")
+                (value "KEPT IN LOADED IMAGE - NOT A DISK CHECKPOINT")
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)

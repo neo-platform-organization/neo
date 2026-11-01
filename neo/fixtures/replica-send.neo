@@ -1,0 +1,12 @@
+// Explicit snapshot transport fixture; not part of the OS seed.
+(image
+  (public (value 42) (handlers (main (body (write (slot "value") (value 777)))))) (private 123)
+  (handlers (main (body (do
+    (network-open (target "network"))
+    (while (not (value (network-ready (target "network")))) (body))
+    (while (not (value (network-stream (target "network") (name "peer")))) (body))
+    (replica-channel (target (child (target (self)) (name "peer"))) (destination (self)) (name "channel"))
+    (replica-prepare (target (child (target (self)) (name "channel"))) (value (child (target (self)) (name "public"))))
+    (object-write (target (child (target (child (target (self)) (name "public"))) (name "value"))) (value 99))
+    (while (not (value (replica-send (target (child (target (self)) (name "channel")))))) (body))
+  )))))

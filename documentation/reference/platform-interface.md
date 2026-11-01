@@ -4,7 +4,7 @@
 
 [platform.h](../../neo-vm/platform/platform.h) defines portable descriptors and
 service callbacks. [platform.c](../../neo-vm/platform/platform.c) stores and
-validates them. The Linux adapter supplies the native implementation.
+validates them. Linux and Windows x86_64 adapters supply native implementations.
 
 | Metadata | Current Linux result |
 | --- | --- |
@@ -14,6 +14,10 @@ validates them. The Linux adapter supplies the native implementation.
 | `virtualization` | `unknown` |
 | `backend` | `linux-x86_64` |
 
+Windows reports `hosted`, `windows`, `x86_64`, `unknown`, and `windows-x86_64`
+respectively. Both targets provide standard streams, host files, and waiting.
+Windows uses Win32 pixel windows and input; Linux uses optional X11.
+
 Hosted/bare-metal and physical/virtualized are independent facts. No virtualization
 probe or inferred hardware policy is implemented. Target stubs implement neither
 platform metadata nor native services.
@@ -22,7 +26,7 @@ platform metadata nor native services.
 
 | Callback / API | Mechanism |
 | --- | --- |
-| `read_source` / `neo_platform_load_image` | Bounded inert image loading, maximum 1 MiB; embedded NUL rejected. |
+| `read_source` / `neo_platform_load_image` | Bounded inert image loading, maximum 4 MiB (shared host profile); embedded NUL rejected. |
 | `open_stream` / `neo_platform_open_stream` | Standard byte-stream creation. |
 | `open_window` / `neo_platform_open_window` | Pixel-window creation. |
 | `wait` / `neo_platform_wait` | Host millisecond pacing. |
@@ -44,3 +48,10 @@ Sources, streams, waits, and optional X11 opening live under the native platform
 layer. Generic VM resource code contains no X11/Win32 types. Waiting is host pacing,
 not an image scheduling rule. Loading, current streams, and presentation are
 synchronous; no graph-resident completion mechanism has been implemented.
+
+## Networking provider
+
+`NEO_PLATFORM_NETWORK` optionally installs a trusted host TCP provider. Windows
+x86-64 supports it; Linux currently reports unsupported. No endpoint is opened by
+installation. Connections attach as protected VM streams; see
+[networking transport](network-interface.md) for ownership and scope.

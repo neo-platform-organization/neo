@@ -1,5 +1,13 @@
 # Protected graph operations
 
+Local package graph validation/publication is described in [local packages](packages.md).
+`package-validate` takes `target`; `package-install`/`package-update` take catalogue
+`target` and bundle `value`; `package-remove`/`package-export` take catalogue
+`target` and package ID `name`; `package-resolve` additionally takes export alias
+`value` and `rights`. Export returns inert artifact text. These use actual held
+capabilities and enforce activation-chain mutation protection. No handler runs
+during parsing, package validation or publication.
+
 [VM documentation](../README.md) · [Syntax cheat sheet](syntax-cheat-sheet.md)
 
 These primitives let neo behavior inspect and change objects using capabilities.
@@ -27,7 +35,9 @@ contained copies. Duplication is performed explicitly by the kernel.
 | `object-delete` | `target` | Unit after authorized deletion; DELETE. |
 | `connect` | `target`, `name`, `value`, `rights` | Unit; WRITE on connection owner, DELEGATE on referenced value, no rights increase. |
 | `invoke` | `target`, `selector` | Receiver-owned handler result; READ/ACT on target. |
-| `to-text` | `value` | Convert integer, boolean, or text to text. |
+| `to-text` | `value` | Convert integer, boolean, text, or an inspected primitive binding identifier to text; never execute it. |
+| `text-bytes` | `value` | Copy text bytes to an integer array (0–255); byte work is charged to the execution budget. |
+| `text-concat` | `left`, `right` | Concatenate two texts; checked allocation and budget charge by total bytes. |
 
 `target`, `destination`, and both `same` operands require references. `connect`'s
 `value` is a reference. Names/selectors are text; index/rights are integers. Rights
@@ -84,3 +94,12 @@ another identity from a string. It has a separate return scope and no inherited
 message context, shares the caller's step budget/depth bound, and propagates errors.
 `call` remains same-receiver invocation with inherited message context. Neither
 implements resumable exceptions, asynchronous invocation, or OS scheduling policy.
+
+## Validated source replacement
+
+source-text, source-check and source-apply add canonical subgraph source and staged
+replacement under the same active-code restrictions. expected canonical source
+provides conflict detection; root identity is preserved and obsolete descendants
+are invalidated. See [source editing](source-editing.md) for exact permissions,
+atomicity boundaries and generic text helpers. The desktop queues application
+until edited callbacks return.

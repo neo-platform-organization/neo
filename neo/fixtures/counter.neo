@@ -1,0 +1,12 @@
+// Isolated scheduler test worker; not part of the OS boot image.
+(counter
+  (description "A live counter. tick adds increment to value; reset clears value.")
+  (value 0)
+  (increment 1)
+  (handlers
+    (tick
+      (body
+        (write
+          (slot "value")
+          (value (add (left (read (slot "value"))) (right (read (slot "increment"))))))))
+    (reset (body (write (slot "value") (value 0))))))

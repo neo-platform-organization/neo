@@ -1,0 +1,447 @@
+// Packed n-dimensional geometry; explicit topology and checked degeneracy.
+(package
+  (manifest
+    (schema 1)
+    (id "neo.spatial.geometry")
+    (version (major 0) (minor 1) (patch 0))
+    (dependencies)
+    (exports (geometry (path "contents/geometry") (mode "copy") (rights 9)))
+    (imports)
+    (bindings))
+  (contents
+    (geometry
+      (dimension 0)
+      (vertex-count 0)
+      (point-count 0)
+      (segment-count 0)
+      (triangle-count 0)
+      (pending-point-count 0)
+      (pending-segment-count 0)
+      (pending-triangle-count 0)
+      (vertex-index 0)
+      (i 0)
+      (axis 0)
+      (a 0)
+      (b 0)
+      (c 0)
+      (pivot 0)
+      (degenerate 0)
+      (valid false)
+      (vertices [])
+      (points [])
+      (segments [])
+      (triangles [])
+      (segment-degenerate [])
+      (triangle-degenerate [])
+      (pending-segments [])
+      (pending-triangles [])
+      (u [])
+      (v [])
+      (result [])
+      (pending [])
+      (handlers
+        (initialize
+          (body
+            (do
+              (write (slot "valid") (value false))
+              (do
+                (if (< (left (read (slot "dimension"))) (right 0)) (then (fail)) (else (result 0)))
+                (if
+                  (< (left (read (slot "vertex-count"))) (right 0))
+                  (then (fail))
+                  (else (result 0))))
+              (write
+                (slot "vertices")
+                (value
+                  (array-new
+                    (size
+                      (mul (left (read (slot "dimension"))) (right (read (slot "vertex-count")))))
+                    (value 0))))
+              (write (slot "points") (value []))
+              (write (slot "segments") (value []))
+              (write (slot "triangles") (value []))
+              (write (slot "segment-degenerate") (value []))
+              (write (slot "triangle-degenerate") (value []))
+              (write (slot "point-count") (value 0))
+              (write (slot "segment-count") (value 0))
+              (write (slot "triangle-count") (value 0))
+              (result true))))
+        (check-shape
+          (body
+            (do
+              (do
+                (if (< (left (read (slot "dimension"))) (right 0)) (then (fail)) (else (result 0)))
+                (if
+                  (< (left (read (slot "vertex-count"))) (right 0))
+                  (then (fail))
+                  (else (result 0))))
+              (if
+                (!=
+                  (left (array-size (slot "vertices")))
+                  (right
+                    (mul (left (read (slot "dimension"))) (right (read (slot "vertex-count"))))))
+                (then (fail))
+                (else (result 0))))))
+        (validate
+          (body
+            (do
+              (write (slot "valid") (value false))
+              (call (selector "check-shape"))
+              (do
+                (if
+                  (!= (left (rem (left (array-size (slot "segments"))) (right 2))) (right 0))
+                  (then (fail))
+                  (else (result 0)))
+                (if
+                  (!= (left (rem (left (array-size (slot "triangles"))) (right 3))) (right 0))
+                  (then (fail))
+                  (else (result 0)))
+                (write (slot "pending-point-count") (value (array-size (slot "points"))))
+                (write
+                  (slot "pending-segment-count")
+                  (value (div (left (array-size (slot "segments"))) (right 2))))
+                (write
+                  (slot "pending-triangle-count")
+                  (value (div (left (array-size (slot "triangles"))) (right 3))))
+                (do
+                  (write (slot "i") (value 0))
+                  (while
+                    (< (left (read (slot "i"))) (right (array-size (slot "points"))))
+                    (body
+                      (do
+                        (do
+                          (if
+                            (<
+                              (left (array-get (slot "points") (index (read (slot "i")))))
+                              (right 0))
+                            (then (fail))
+                            (else (result 0)))
+                          (if
+                            (>=
+                              (left (array-get (slot "points") (index (read (slot "i")))))
+                              (right (read (slot "vertex-count"))))
+                            (then (fail))
+                            (else (result 0))))
+                        (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+                (do
+                  (write (slot "i") (value 0))
+                  (while
+                    (< (left (read (slot "i"))) (right (array-size (slot "segments"))))
+                    (body
+                      (do
+                        (do
+                          (if
+                            (<
+                              (left (array-get (slot "segments") (index (read (slot "i")))))
+                              (right 0))
+                            (then (fail))
+                            (else (result 0)))
+                          (if
+                            (>=
+                              (left (array-get (slot "segments") (index (read (slot "i")))))
+                              (right (read (slot "vertex-count"))))
+                            (then (fail))
+                            (else (result 0))))
+                        (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+                (do
+                  (write (slot "i") (value 0))
+                  (while
+                    (< (left (read (slot "i"))) (right (array-size (slot "triangles"))))
+                    (body
+                      (do
+                        (do
+                          (if
+                            (<
+                              (left (array-get (slot "triangles") (index (read (slot "i")))))
+                              (right 0))
+                            (then (fail))
+                            (else (result 0)))
+                          (if
+                            (>=
+                              (left (array-get (slot "triangles") (index (read (slot "i")))))
+                              (right (read (slot "vertex-count"))))
+                            (then (fail))
+                            (else (result 0))))
+                        (write (slot "i") (value (add (left (read (slot "i"))) (right 1)))))))))
+              (write
+                (slot "pending-segments")
+                (value (array-new (size (read (slot "pending-segment-count"))) (value 0))))
+              (write
+                (slot "pending-triangles")
+                (value (array-new (size (read (slot "pending-triangle-count"))) (value 0))))
+              (if
+                (> (left (read (slot "pending-triangle-count"))) (right 0))
+                (then
+                  (do
+                    (write
+                      (slot "u")
+                      (value (array-new (size (read (slot "dimension"))) (value 0))))
+                    (write
+                      (slot "v")
+                      (value (array-new (size (read (slot "dimension"))) (value 0))))))
+                (else (result 0)))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "pending-segment-count"))))
+                  (body
+                    (do
+                      (do
+                        (write
+                          (slot "a")
+                          (value
+                            (array-get
+                              (slot "segments")
+                              (index (mul (left (read (slot "i"))) (right 2))))))
+                        (write
+                          (slot "b")
+                          (value
+                            (array-get
+                              (slot "segments")
+                              (index
+                                (add (left (mul (left (read (slot "i"))) (right 2))) (right 1))))))
+                        (write (slot "degenerate") (value 1))
+                        (do
+                          (write (slot "axis") (value 0))
+                          (while
+                            (< (left (read (slot "axis"))) (right (read (slot "dimension"))))
+                            (body
+                              (do
+                                (if
+                                  (!=
+                                    (left
+                                      (array-get
+                                        (slot "vertices")
+                                        (index
+                                          (add
+                                            (left
+                                              (mul
+                                                (left (read (slot "a")))
+                                                (right (read (slot "dimension")))))
+                                            (right (read (slot "axis")))))))
+                                    (right
+                                      (array-get
+                                        (slot "vertices")
+                                        (index
+                                          (add
+                                            (left
+                                              (mul
+                                                (left (read (slot "b")))
+                                                (right (read (slot "dimension")))))
+                                            (right (read (slot "axis"))))))))
+                                  (then (write (slot "degenerate") (value 0)))
+                                  (else (result 0)))
+                                (write
+                                  (slot "axis")
+                                  (value (add (left (read (slot "axis"))) (right 1))))))))
+                        (array-set
+                          (slot "pending-segments")
+                          (index (read (slot "i")))
+                          (value (read (slot "degenerate")))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "pending-triangle-count"))))
+                  (body
+                    (do
+                      (do
+                        (write
+                          (slot "a")
+                          (value
+                            (array-get
+                              (slot "triangles")
+                              (index
+                                (add (left (mul (left (read (slot "i"))) (right 3))) (right 0))))))
+                        (write
+                          (slot "b")
+                          (value
+                            (array-get
+                              (slot "triangles")
+                              (index
+                                (add (left (mul (left (read (slot "i"))) (right 3))) (right 1))))))
+                        (write
+                          (slot "c")
+                          (value
+                            (array-get
+                              (slot "triangles")
+                              (index
+                                (add (left (mul (left (read (slot "i"))) (right 3))) (right 2))))))
+                        (write (slot "pivot") (value -1))
+                        (do
+                          (write (slot "axis") (value 0))
+                          (while
+                            (< (left (read (slot "axis"))) (right (read (slot "dimension"))))
+                            (body
+                              (do
+                                (do
+                                  (array-set
+                                    (slot "u")
+                                    (index (read (slot "axis")))
+                                    (value
+                                      (sub
+                                        (left
+                                          (array-get
+                                            (slot "vertices")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "b")))
+                                                    (right (read (slot "dimension")))))
+                                                (right (read (slot "axis")))))))
+                                        (right
+                                          (array-get
+                                            (slot "vertices")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "a")))
+                                                    (right (read (slot "dimension")))))
+                                                (right (read (slot "axis"))))))))))
+                                  (array-set
+                                    (slot "v")
+                                    (index (read (slot "axis")))
+                                    (value
+                                      (sub
+                                        (left
+                                          (array-get
+                                            (slot "vertices")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "c")))
+                                                    (right (read (slot "dimension")))))
+                                                (right (read (slot "axis")))))))
+                                        (right
+                                          (array-get
+                                            (slot "vertices")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "a")))
+                                                    (right (read (slot "dimension")))))
+                                                (right (read (slot "axis"))))))))))
+                                  (if
+                                    (!=
+                                      (left (array-get (slot "u") (index (read (slot "axis")))))
+                                      (right 0))
+                                    (then
+                                      (if
+                                        (< (left (read (slot "pivot"))) (right 0))
+                                        (then (write (slot "pivot") (value (read (slot "axis")))))
+                                        (else (result 0))))
+                                    (else (result 0))))
+                                (write
+                                  (slot "axis")
+                                  (value (add (left (read (slot "axis"))) (right 1))))))))
+                        (write (slot "degenerate") (value 1))
+                        (if
+                          (>= (left (read (slot "pivot"))) (right 0))
+                          (then
+                            (do
+                              (write (slot "axis") (value 0))
+                              (while
+                                (< (left (read (slot "axis"))) (right (read (slot "dimension"))))
+                                (body
+                                  (do
+                                    (if
+                                      (!=
+                                        (left
+                                          (sub
+                                            (left
+                                              (mul
+                                                (left
+                                                  (array-get
+                                                    (slot "u")
+                                                    (index (read (slot "pivot")))))
+                                                (right
+                                                  (array-get
+                                                    (slot "v")
+                                                    (index (read (slot "axis")))))))
+                                            (right
+                                              (mul
+                                                (left
+                                                  (array-get
+                                                    (slot "u")
+                                                    (index (read (slot "axis")))))
+                                                (right
+                                                  (array-get
+                                                    (slot "v")
+                                                    (index (read (slot "pivot")))))))))
+                                        (right 0))
+                                      (then (write (slot "degenerate") (value 0)))
+                                      (else (result 0)))
+                                    (write
+                                      (slot "axis")
+                                      (value (add (left (read (slot "axis"))) (right 1)))))))))
+                          (else (result 0)))
+                        (array-set
+                          (slot "pending-triangles")
+                          (index (read (slot "i")))
+                          (value (read (slot "degenerate")))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (write (slot "segment-degenerate") (value (read (slot "pending-segments"))))
+              (write (slot "triangle-degenerate") (value (read (slot "pending-triangles"))))
+              (write (slot "point-count") (value (read (slot "pending-point-count"))))
+              (write (slot "segment-count") (value (read (slot "pending-segment-count"))))
+              (write (slot "triangle-count") (value (read (slot "pending-triangle-count"))))
+              (write (slot "valid") (value true))
+              (result true))))
+        (vertex
+          (body
+            (do
+              (call (selector "check-shape"))
+              (do
+                (if
+                  (< (left (read (slot "vertex-index"))) (right 0))
+                  (then (fail))
+                  (else (result 0)))
+                (if
+                  (>= (left (read (slot "vertex-index"))) (right (read (slot "vertex-count"))))
+                  (then (fail))
+                  (else (result 0))))
+              (write
+                (slot "pending")
+                (value (array-new (size (read (slot "dimension"))) (value 0))))
+              (do
+                (write (slot "axis") (value 0))
+                (while
+                  (< (left (read (slot "axis"))) (right (read (slot "dimension"))))
+                  (body
+                    (do
+                      (array-set
+                        (slot "pending")
+                        (index (read (slot "axis")))
+                        (value
+                          (array-get
+                            (slot "vertices")
+                            (index
+                              (add
+                                (left
+                                  (mul
+                                    (left (read (slot "vertex-index")))
+                                    (right (read (slot "dimension")))))
+                                (right (read (slot "axis"))))))))
+                      (write (slot "axis") (value (add (left (read (slot "axis"))) (right 1))))))))
+              (write (slot "result") (value (read (slot "pending"))))
+              (read (slot "result")))))
+        (validate-frame
+          (body
+            (do
+              (call (selector "check-shape"))
+              (if
+                (!=
+                  (left
+                    (inspect
+                      (target
+                        (child
+                          (target (connection (target (self)) (name "frame")))
+                          (name "dimension")))))
+                  (right (read (slot "dimension"))))
+                (then (fail))
+                (else (result 0)))
+              (result true))))))))

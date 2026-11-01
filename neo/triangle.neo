@@ -3,6 +3,7 @@
 // Fixed 640x480 RGBA buffer. Vertices: (320,80), (160,400), (480,400).
 // Draw eight scanlines per frame to stay within the host's execution budget.
 (image
+  (entry "triangle")
   (triangle
     (y 80)
     (row-stop 80)

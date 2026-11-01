@@ -1,0 +1,3483 @@
+// Image desktop model: nD source positions, explicit2-axis views, hidden-preserving edits.
+(package
+  (manifest
+    (schema 1)
+    (id "neo.desktop.model")
+    (version
+      (major 0)
+      (minor 1)
+      (patch 0)
+    )
+    (dependencies)
+    (exports
+      (desktop
+        (path "contents/desktop")
+        (mode "copy")
+        (rights 9)
+      )
+    )
+    (imports)
+    (bindings)
+  )
+  (contents
+    (desktop
+      (x 0)
+      (y 0)
+      (width 0)
+      (height 0)
+      (viewport-x 0)
+      (viewport-y 0)
+      (pan-x 0)
+      (pan-y 0)
+      (pointer-x 0)
+      (pointer-y 0)
+      (world-x 0)
+      (world-y 0)
+      (screen-x 0)
+      (screen-y 0)
+      (right 0)
+      (bottom 0)
+      (revision 0)
+      (next-revision 0)
+      (new-z 0)
+      (new-viewport-x 0)
+      (new-viewport-y 0)
+      (scan 0)
+      (best-z 0)
+      (next-z 1)
+      (name "")
+      (title "")
+      (focused-name "")
+      (hit-name "")
+      (best-name "")
+      (windows)
+      (staging)
+      (window-template
+        (title "")
+        (x 0)
+        (y 0)
+        (width 640)
+        (height 480)
+        (z 0)
+        (coordinates [0 0])
+      )
+      (handlers
+        (validate-geometry
+          (body
+            (do
+              (if
+                (<=
+                  (left
+                    (read
+                      (slot "width")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (<=
+                  (left
+                    (read
+                      (slot "height")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "right")
+                (value
+                  (add
+                    (left
+                      (read
+                        (slot "x")
+                      )
+                    )
+                    (right
+                      (read
+                        (slot "width")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "bottom")
+                (value
+                  (add
+                    (left
+                      (read
+                        (slot "y")
+                      )
+                    )
+                    (right
+                      (read
+                        (slot "height")
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+        (open
+          (body
+            (do
+              (do
+                (if
+                  (<=
+                    (left
+                      (read
+                        (slot "width")
+                      )
+                    )
+                    (right 0)
+                  )
+                  (then
+                    (fail)
+                  )
+                  (else
+                    (result 0)
+                  )
+                )
+                (if
+                  (<=
+                    (left
+                      (read
+                        (slot "height")
+                      )
+                    )
+                    (right 0)
+                  )
+                  (then
+                    (fail)
+                  )
+                  (else
+                    (result 0)
+                  )
+                )
+                (write
+                  (slot "right")
+                  (value
+                    (add
+                      (left
+                        (read
+                          (slot "x")
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "width")
+                        )
+                      )
+                    )
+                  )
+                )
+                (write
+                  (slot "bottom")
+                  (value
+                    (add
+                      (left
+                        (read
+                          (slot "y")
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "height")
+                        )
+                      )
+                    )
+                  )
+                )
+                (write
+                  (slot "next-revision")
+                  (value
+                    (add
+                      (left
+                        (read
+                          (slot "revision")
+                        )
+                      )
+                      (right 1)
+                    )
+                  )
+                )
+                (write
+                  (slot "new-z")
+                  (value
+                    (add
+                      (left
+                        (read
+                          (slot "next-z")
+                        )
+                      )
+                      (right 1)
+                    )
+                  )
+                )
+                (if
+                  (has-child
+                    (target
+                      (child
+                        (target
+                          (self)
+                        )
+                        (name "windows")
+                      )
+                    )
+                    (name
+                      (read
+                        (slot "name")
+                      )
+                    )
+                  )
+                  (then
+                    (fail)
+                  )
+                  (else
+                    (result 0)
+                  )
+                )
+                (restrict
+                  (target
+                    (connection
+                      (target
+                        (self)
+                      )
+                      (name "candidate")
+                    )
+                  )
+                  (rights 127)
+                )
+                (attempt
+                  (body
+                    (do
+                      (object-copy
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "window-template")
+                          )
+                        )
+                        (destination
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "staging")
+                          )
+                        )
+                        (name "candidate")
+                      )
+                      (object-write
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (child
+                                    (target
+                                      (self)
+                                    )
+                                    (name "staging")
+                                  )
+                                )
+                                (name "candidate")
+                              )
+                            )
+                            (name "x")
+                          )
+                        )
+                        (value
+                          (read
+                            (slot "x")
+                          )
+                        )
+                      )
+                      (object-write
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (child
+                                    (target
+                                      (self)
+                                    )
+                                    (name "staging")
+                                  )
+                                )
+                                (name "candidate")
+                              )
+                            )
+                            (name "y")
+                          )
+                        )
+                        (value
+                          (read
+                            (slot "y")
+                          )
+                        )
+                      )
+                      (object-write
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (child
+                                    (target
+                                      (self)
+                                    )
+                                    (name "staging")
+                                  )
+                                )
+                                (name "candidate")
+                              )
+                            )
+                            (name "width")
+                          )
+                        )
+                        (value
+                          (read
+                            (slot "width")
+                          )
+                        )
+                      )
+                      (object-write
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (child
+                                    (target
+                                      (self)
+                                    )
+                                    (name "staging")
+                                  )
+                                )
+                                (name "candidate")
+                              )
+                            )
+                            (name "height")
+                          )
+                        )
+                        (value
+                          (read
+                            (slot "height")
+                          )
+                        )
+                      )
+                      (object-write
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (child
+                                    (target
+                                      (self)
+                                    )
+                                    (name "staging")
+                                  )
+                                )
+                                (name "candidate")
+                              )
+                            )
+                            (name "title")
+                          )
+                        )
+                        (value
+                          (read
+                            (slot "title")
+                          )
+                        )
+                      )
+                      (object-write
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (child
+                                    (target
+                                      (self)
+                                    )
+                                    (name "staging")
+                                  )
+                                )
+                                (name "candidate")
+                              )
+                            )
+                            (name "z")
+                          )
+                        )
+                        (value
+                          (read
+                            (slot "next-z")
+                          )
+                        )
+                      )
+                      (connect
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (self)
+                                )
+                                (name "staging")
+                              )
+                            )
+                            (name "candidate")
+                          )
+                        )
+                        (name "app")
+                        (value
+                          (connection
+                            (target
+                              (self)
+                            )
+                            (name "candidate")
+                          )
+                        )
+                        (rights 127)
+                      )
+                      (object-copy
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (self)
+                                )
+                                (name "staging")
+                              )
+                            )
+                            (name "candidate")
+                          )
+                        )
+                        (destination
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "windows")
+                          )
+                        )
+                        (name
+                          (read
+                            (slot "name")
+                          )
+                        )
+                      )
+                      (object-delete
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (self)
+                                )
+                                (name "staging")
+                              )
+                            )
+                            (name "candidate")
+                          )
+                        )
+                      )
+                    )
+                  )
+                  (recover
+                    (do
+                      (if
+                        (has-child
+                          (target
+                            (child
+                              (target
+                                (self)
+                              )
+                              (name "staging")
+                            )
+                          )
+                          (name "candidate")
+                        )
+                        (then
+                          (object-delete
+                            (target
+                              (child
+                                (target
+                                  (child
+                                    (target
+                                      (self)
+                                    )
+                                    (name "staging")
+                                  )
+                                )
+                                (name "candidate")
+                              )
+                            )
+                          )
+                        )
+                        (else
+                          (result 0)
+                        )
+                      )
+                      (rethrow)
+                    )
+                  )
+                )
+                (write
+                  (slot "focused-name")
+                  (value
+                    (read
+                      (slot "name")
+                    )
+                  )
+                )
+                (write
+                  (slot "next-z")
+                  (value
+                    (read
+                      (slot "new-z")
+                    )
+                  )
+                )
+                (write
+                  (slot "revision")
+                  (value
+                    (read
+                      (slot "next-revision")
+                    )
+                  )
+                )
+                (result true)
+              )
+              (write
+                (slot "axis-x")
+                (value
+                  (array-get
+                    (slot "view-axes")
+                    (index 0)
+                  )
+                )
+              )
+              (write
+                (slot "axis-y")
+                (value
+                  (array-get
+                    (slot "view-axes")
+                    (index 1)
+                  )
+                )
+              )
+              (if
+                (or
+                  (left
+                    (or
+                      (left
+                        (<
+                          (left
+                            (read
+                              (slot "axis-x")
+                            )
+                          )
+                          (right 0)
+                        )
+                      )
+                      (right
+                        (<
+                          (left
+                            (read
+                              (slot "axis-y")
+                            )
+                          )
+                          (right 0)
+                        )
+                      )
+                    )
+                  )
+                  (right
+                    (==
+                      (left
+                        (read
+                          (slot "axis-x")
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "axis-y")
+                        )
+                      )
+                    )
+                  )
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "position-size")
+                (value
+                  (array-size
+                    (slot "view-axes")
+                  )
+                )
+              )
+              (if
+                (!=
+                  (left
+                    (read
+                      (slot "position-size")
+                    )
+                  )
+                  (right 2)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "position-work")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (self)
+                                )
+                                (name "windows")
+                              )
+                            )
+                            (name
+                              (read
+                                (slot "name")
+                              )
+                            )
+                          )
+                        )
+                        (name "coordinates")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "position-size")
+                (value
+                  (read
+                    (slot "display-dimension")
+                  )
+                )
+              )
+              (write
+                (slot "position-size")
+                (value
+                  (if
+                    (>
+                      (left
+                        (add
+                          (left
+                            (read
+                              (slot "axis-x")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "position-size")
+                        )
+                      )
+                    )
+                    (then
+                      (add
+                        (left
+                          (read
+                            (slot "axis-x")
+                          )
+                        )
+                        (right 1)
+                      )
+                    )
+                    (else
+                      (read
+                        (slot "position-size")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "position-size")
+                (value
+                  (if
+                    (>
+                      (left
+                        (add
+                          (left
+                            (read
+                              (slot "axis-y")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "position-size")
+                        )
+                      )
+                    )
+                    (then
+                      (add
+                        (left
+                          (read
+                            (slot "axis-y")
+                          )
+                        )
+                        (right 1)
+                      )
+                    )
+                    (else
+                      (read
+                        (slot "position-size")
+                      )
+                    )
+                  )
+                )
+              )
+              (if
+                (>
+                  (left
+                    (read
+                      (slot "position-size")
+                    )
+                  )
+                  (right
+                    (array-size
+                      (slot "position-work")
+                    )
+                  )
+                )
+                (then
+                  (do
+                    (write
+                      (slot "position-copy")
+                      (value
+                        (array-new
+                          (size
+                            (read
+                              (slot "position-size")
+                            )
+                          )
+                          (value 0)
+                        )
+                      )
+                    )
+                    (write
+                      (slot "position-i")
+                      (value 0)
+                    )
+                    (while
+                      (<
+                        (left
+                          (read
+                            (slot "position-i")
+                          )
+                        )
+                        (right
+                          (array-size
+                            (slot "position-work")
+                          )
+                        )
+                      )
+                      (body
+                        (do
+                          (array-set
+                            (slot "position-copy")
+                            (index
+                              (read
+                                (slot "position-i")
+                              )
+                            )
+                            (value
+                              (array-get
+                                (slot "position-work")
+                                (index
+                                  (read
+                                    (slot "position-i")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (write
+                            (slot "position-i")
+                            (value
+                              (add
+                                (left
+                                  (read
+                                    (slot "position-i")
+                                  )
+                                )
+                                (right 1)
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "position-work")
+                      (value
+                        (read
+                          (slot "position-copy")
+                        )
+                      )
+                    )
+                  )
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (object-write
+                (target
+                  (child
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "windows")
+                          )
+                        )
+                        (name
+                          (read
+                            (slot "name")
+                          )
+                        )
+                      )
+                    )
+                    (name "coordinates")
+                  )
+                )
+                (value
+                  (read
+                    (slot "position-work")
+                  )
+                )
+              )
+              (array-set
+                (slot "position-work")
+                (index
+                  (read
+                    (slot "axis-x")
+                  )
+                )
+                (value
+                  (mul
+                    (left
+                      (read
+                        (slot "x")
+                      )
+                    )
+                    (right 1000000)
+                  )
+                )
+              )
+              (array-set
+                (slot "position-work")
+                (index
+                  (read
+                    (slot "axis-y")
+                  )
+                )
+                (value
+                  (mul
+                    (left
+                      (read
+                        (slot "y")
+                      )
+                    )
+                    (right 1000000)
+                  )
+                )
+              )
+              (object-write
+                (target
+                  (child
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "windows")
+                          )
+                        )
+                        (name
+                          (read
+                            (slot "name")
+                          )
+                        )
+                      )
+                    )
+                    (name "coordinates")
+                  )
+                )
+                (value
+                  (read
+                    (slot "position-work")
+                  )
+                )
+              )
+            )
+          )
+        )
+        (focus
+          (body
+            (do
+              (write
+                (slot "next-revision")
+                (value
+                  (add
+                    (left
+                      (read
+                        (slot "revision")
+                      )
+                    )
+                    (right 1)
+                  )
+                )
+              )
+              (write
+                (slot "new-z")
+                (value
+                  (add
+                    (left
+                      (read
+                        (slot "next-z")
+                      )
+                    )
+                    (right 1)
+                  )
+                )
+              )
+              (result true)
+              (object-write
+                (target
+                  (child
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "windows")
+                          )
+                        )
+                        (name
+                          (read
+                            (slot "name")
+                          )
+                        )
+                      )
+                    )
+                    (name "z")
+                  )
+                )
+                (value
+                  (read
+                    (slot "next-z")
+                  )
+                )
+              )
+              (write
+                (slot "focused-name")
+                (value
+                  (read
+                    (slot "name")
+                  )
+                )
+              )
+              (write
+                (slot "next-z")
+                (value
+                  (read
+                    (slot "new-z")
+                  )
+                )
+              )
+              (write
+                (slot "revision")
+                (value
+                  (read
+                    (slot "next-revision")
+                  )
+                )
+              )
+              (result true)
+            )
+          )
+        )
+        (reconcile-focus
+          (body
+            (do
+              (write
+                (slot "scan")
+                (value 0)
+              )
+              (write
+                (slot "best-z")
+                (value -1)
+              )
+              (write
+                (slot "best-name")
+                (value "")
+              )
+              (while
+                (<
+                  (left
+                    (read
+                      (slot "scan")
+                    )
+                  )
+                  (right
+                    (child-count
+                      (target
+                        (child
+                          (target
+                            (self)
+                          )
+                          (name "windows")
+                        )
+                      )
+                    )
+                  )
+                )
+                (body
+                  (do
+                    (if
+                      (>
+                        (left
+                          (inspect
+                            (target
+                              (child
+                                (target
+                                  (child-at
+                                    (target
+                                      (child
+                                        (target
+                                          (self)
+                                        )
+                                        (name "windows")
+                                      )
+                                    )
+                                    (index
+                                      (read
+                                        (slot "scan")
+                                      )
+                                    )
+                                  )
+                                )
+                                (name "z")
+                              )
+                            )
+                          )
+                        )
+                        (right
+                          (read
+                            (slot "best-z")
+                          )
+                        )
+                      )
+                      (then
+                        (do
+                          (write
+                            (slot "best-z")
+                            (value
+                              (inspect
+                                (target
+                                  (child
+                                    (target
+                                      (child-at
+                                        (target
+                                          (child
+                                            (target
+                                              (self)
+                                            )
+                                            (name "windows")
+                                          )
+                                        )
+                                        (index
+                                          (read
+                                            (slot "scan")
+                                          )
+                                        )
+                                      )
+                                    )
+                                    (name "z")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (write
+                            (slot "best-name")
+                            (value
+                              (object-name
+                                (target
+                                  (child-at
+                                    (target
+                                      (child
+                                        (target
+                                          (self)
+                                        )
+                                        (name "windows")
+                                      )
+                                    )
+                                    (index
+                                      (read
+                                        (slot "scan")
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (write
+                      (slot "scan")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "scan")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "focused-name")
+                (value
+                  (read
+                    (slot "best-name")
+                  )
+                )
+              )
+            )
+          )
+        )
+        (close
+          (body
+            (do
+              (write
+                (slot "next-revision")
+                (value
+                  (add
+                    (left
+                      (read
+                        (slot "revision")
+                      )
+                    )
+                    (right 1)
+                  )
+                )
+              )
+              (object-delete
+                (target
+                  (child
+                    (target
+                      (child
+                        (target
+                          (self)
+                        )
+                        (name "windows")
+                      )
+                    )
+                    (name
+                      (read
+                        (slot "name")
+                      )
+                    )
+                  )
+                )
+              )
+              (call
+                (selector "reconcile-focus")
+              )
+              (write
+                (slot "revision")
+                (value
+                  (read
+                    (slot "next-revision")
+                  )
+                )
+              )
+              (result true)
+            )
+          )
+        )
+        (move
+          (body
+            (do
+              (do
+                (write
+                  (slot "next-revision")
+                  (value
+                    (add
+                      (left
+                        (read
+                          (slot "revision")
+                        )
+                      )
+                      (right 1)
+                    )
+                  )
+                )
+                (write
+                  (slot "right")
+                  (value
+                    (add
+                      (left
+                        (read
+                          (slot "x")
+                        )
+                      )
+                      (right
+                        (inspect
+                          (target
+                            (child
+                              (target
+                                (child
+                                  (target
+                                    (child
+                                      (target
+                                        (self)
+                                      )
+                                      (name "windows")
+                                    )
+                                  )
+                                  (name
+                                    (read
+                                      (slot "name")
+                                    )
+                                  )
+                                )
+                              )
+                              (name "width")
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+                (write
+                  (slot "bottom")
+                  (value
+                    (add
+                      (left
+                        (read
+                          (slot "y")
+                        )
+                      )
+                      (right
+                        (inspect
+                          (target
+                            (child
+                              (target
+                                (child
+                                  (target
+                                    (child
+                                      (target
+                                        (self)
+                                      )
+                                      (name "windows")
+                                    )
+                                  )
+                                  (name
+                                    (read
+                                      (slot "name")
+                                    )
+                                  )
+                                )
+                              )
+                              (name "height")
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+                (object-write
+                  (target
+                    (child
+                      (target
+                        (child
+                          (target
+                            (child
+                              (target
+                                (self)
+                              )
+                              (name "windows")
+                            )
+                          )
+                          (name
+                            (read
+                              (slot "name")
+                            )
+                          )
+                        )
+                      )
+                      (name "x")
+                    )
+                  )
+                  (value
+                    (read
+                      (slot "x")
+                    )
+                  )
+                )
+                (object-write
+                  (target
+                    (child
+                      (target
+                        (child
+                          (target
+                            (child
+                              (target
+                                (self)
+                              )
+                              (name "windows")
+                            )
+                          )
+                          (name
+                            (read
+                              (slot "name")
+                            )
+                          )
+                        )
+                      )
+                      (name "y")
+                    )
+                  )
+                  (value
+                    (read
+                      (slot "y")
+                    )
+                  )
+                )
+                (write
+                  (slot "revision")
+                  (value
+                    (read
+                      (slot "next-revision")
+                    )
+                  )
+                )
+                (result true)
+              )
+              (write
+                (slot "axis-x")
+                (value
+                  (array-get
+                    (slot "view-axes")
+                    (index 0)
+                  )
+                )
+              )
+              (write
+                (slot "axis-y")
+                (value
+                  (array-get
+                    (slot "view-axes")
+                    (index 1)
+                  )
+                )
+              )
+              (if
+                (or
+                  (left
+                    (or
+                      (left
+                        (<
+                          (left
+                            (read
+                              (slot "axis-x")
+                            )
+                          )
+                          (right 0)
+                        )
+                      )
+                      (right
+                        (<
+                          (left
+                            (read
+                              (slot "axis-y")
+                            )
+                          )
+                          (right 0)
+                        )
+                      )
+                    )
+                  )
+                  (right
+                    (==
+                      (left
+                        (read
+                          (slot "axis-x")
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "axis-y")
+                        )
+                      )
+                    )
+                  )
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "position-size")
+                (value
+                  (array-size
+                    (slot "view-axes")
+                  )
+                )
+              )
+              (if
+                (!=
+                  (left
+                    (read
+                      (slot "position-size")
+                    )
+                  )
+                  (right 2)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "position-work")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (self)
+                                )
+                                (name "windows")
+                              )
+                            )
+                            (name
+                              (read
+                                (slot "name")
+                              )
+                            )
+                          )
+                        )
+                        (name "coordinates")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "position-size")
+                (value
+                  (read
+                    (slot "display-dimension")
+                  )
+                )
+              )
+              (write
+                (slot "position-size")
+                (value
+                  (if
+                    (>
+                      (left
+                        (add
+                          (left
+                            (read
+                              (slot "axis-x")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "position-size")
+                        )
+                      )
+                    )
+                    (then
+                      (add
+                        (left
+                          (read
+                            (slot "axis-x")
+                          )
+                        )
+                        (right 1)
+                      )
+                    )
+                    (else
+                      (read
+                        (slot "position-size")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "position-size")
+                (value
+                  (if
+                    (>
+                      (left
+                        (add
+                          (left
+                            (read
+                              (slot "axis-y")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "position-size")
+                        )
+                      )
+                    )
+                    (then
+                      (add
+                        (left
+                          (read
+                            (slot "axis-y")
+                          )
+                        )
+                        (right 1)
+                      )
+                    )
+                    (else
+                      (read
+                        (slot "position-size")
+                      )
+                    )
+                  )
+                )
+              )
+              (if
+                (>
+                  (left
+                    (read
+                      (slot "position-size")
+                    )
+                  )
+                  (right
+                    (array-size
+                      (slot "position-work")
+                    )
+                  )
+                )
+                (then
+                  (do
+                    (write
+                      (slot "position-copy")
+                      (value
+                        (array-new
+                          (size
+                            (read
+                              (slot "position-size")
+                            )
+                          )
+                          (value 0)
+                        )
+                      )
+                    )
+                    (write
+                      (slot "position-i")
+                      (value 0)
+                    )
+                    (while
+                      (<
+                        (left
+                          (read
+                            (slot "position-i")
+                          )
+                        )
+                        (right
+                          (array-size
+                            (slot "position-work")
+                          )
+                        )
+                      )
+                      (body
+                        (do
+                          (array-set
+                            (slot "position-copy")
+                            (index
+                              (read
+                                (slot "position-i")
+                              )
+                            )
+                            (value
+                              (array-get
+                                (slot "position-work")
+                                (index
+                                  (read
+                                    (slot "position-i")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (write
+                            (slot "position-i")
+                            (value
+                              (add
+                                (left
+                                  (read
+                                    (slot "position-i")
+                                  )
+                                )
+                                (right 1)
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "position-work")
+                      (value
+                        (read
+                          (slot "position-copy")
+                        )
+                      )
+                    )
+                  )
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (object-write
+                (target
+                  (child
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "windows")
+                          )
+                        )
+                        (name
+                          (read
+                            (slot "name")
+                          )
+                        )
+                      )
+                    )
+                    (name "coordinates")
+                  )
+                )
+                (value
+                  (read
+                    (slot "position-work")
+                  )
+                )
+              )
+              (array-set
+                (slot "position-work")
+                (index
+                  (read
+                    (slot "axis-x")
+                  )
+                )
+                (value
+                  (mul
+                    (left
+                      (read
+                        (slot "x")
+                      )
+                    )
+                    (right 1000000)
+                  )
+                )
+              )
+              (array-set
+                (slot "position-work")
+                (index
+                  (read
+                    (slot "axis-y")
+                  )
+                )
+                (value
+                  (mul
+                    (left
+                      (read
+                        (slot "y")
+                      )
+                    )
+                    (right 1000000)
+                  )
+                )
+              )
+              (object-write
+                (target
+                  (child
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "windows")
+                          )
+                        )
+                        (name
+                          (read
+                            (slot "name")
+                          )
+                        )
+                      )
+                    )
+                    (name "coordinates")
+                  )
+                )
+                (value
+                  (read
+                    (slot "position-work")
+                  )
+                )
+              )
+            )
+          )
+        )
+        (resize
+          (body
+            (do
+              (write
+                (slot "next-revision")
+                (value
+                  (add
+                    (left
+                      (read
+                        (slot "revision")
+                      )
+                    )
+                    (right 1)
+                  )
+                )
+              )
+              (if
+                (<=
+                  (left
+                    (read
+                      (slot "width")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (<=
+                  (left
+                    (read
+                      (slot "height")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "right")
+                (value
+                  (add
+                    (left
+                      (inspect
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (child
+                                    (target
+                                      (self)
+                                    )
+                                    (name "windows")
+                                  )
+                                )
+                                (name
+                                  (read
+                                    (slot "name")
+                                  )
+                                )
+                              )
+                            )
+                            (name "x")
+                          )
+                        )
+                      )
+                    )
+                    (right
+                      (read
+                        (slot "width")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "bottom")
+                (value
+                  (add
+                    (left
+                      (inspect
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (child
+                                    (target
+                                      (self)
+                                    )
+                                    (name "windows")
+                                  )
+                                )
+                                (name
+                                  (read
+                                    (slot "name")
+                                  )
+                                )
+                              )
+                            )
+                            (name "y")
+                          )
+                        )
+                      )
+                    )
+                    (right
+                      (read
+                        (slot "height")
+                      )
+                    )
+                  )
+                )
+              )
+              (object-write
+                (target
+                  (child
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "windows")
+                          )
+                        )
+                        (name
+                          (read
+                            (slot "name")
+                          )
+                        )
+                      )
+                    )
+                    (name "width")
+                  )
+                )
+                (value
+                  (read
+                    (slot "width")
+                  )
+                )
+              )
+              (object-write
+                (target
+                  (child
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "windows")
+                          )
+                        )
+                        (name
+                          (read
+                            (slot "name")
+                          )
+                        )
+                      )
+                    )
+                    (name "height")
+                  )
+                )
+                (value
+                  (read
+                    (slot "height")
+                  )
+                )
+              )
+              (write
+                (slot "revision")
+                (value
+                  (read
+                    (slot "next-revision")
+                  )
+                )
+              )
+              (result true)
+            )
+          )
+        )
+        (pan
+          (body
+            (do
+              (write
+                (slot "next-revision")
+                (value
+                  (add
+                    (left
+                      (read
+                        (slot "revision")
+                      )
+                    )
+                    (right 1)
+                  )
+                )
+              )
+              (write
+                (slot "new-viewport-x")
+                (value
+                  (add
+                    (left
+                      (read
+                        (slot "viewport-x")
+                      )
+                    )
+                    (right
+                      (read
+                        (slot "pan-x")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "new-viewport-y")
+                (value
+                  (add
+                    (left
+                      (read
+                        (slot "viewport-y")
+                      )
+                    )
+                    (right
+                      (read
+                        (slot "pan-y")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "viewport-x")
+                (value
+                  (read
+                    (slot "new-viewport-x")
+                  )
+                )
+              )
+              (write
+                (slot "viewport-y")
+                (value
+                  (read
+                    (slot "new-viewport-y")
+                  )
+                )
+              )
+              (write
+                (slot "revision")
+                (value
+                  (read
+                    (slot "next-revision")
+                  )
+                )
+              )
+              (result true)
+            )
+          )
+        )
+        (screen
+          (body
+            (do
+              (write
+                (slot "screen-x")
+                (value
+                  (sub
+                    (left
+                      (inspect
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (child
+                                    (target
+                                      (self)
+                                    )
+                                    (name "windows")
+                                  )
+                                )
+                                (name
+                                  (read
+                                    (slot "name")
+                                  )
+                                )
+                              )
+                            )
+                            (name "x")
+                          )
+                        )
+                      )
+                    )
+                    (right
+                      (read
+                        (slot "viewport-x")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "screen-y")
+                (value
+                  (sub
+                    (left
+                      (inspect
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (child
+                                    (target
+                                      (self)
+                                    )
+                                    (name "windows")
+                                  )
+                                )
+                                (name
+                                  (read
+                                    (slot "name")
+                                  )
+                                )
+                              )
+                            )
+                            (name "y")
+                          )
+                        )
+                      )
+                    )
+                    (right
+                      (read
+                        (slot "viewport-y")
+                      )
+                    )
+                  )
+                )
+              )
+              (result true)
+            )
+          )
+        )
+        (hit
+          (body
+            (do
+              (write
+                (slot "world-x")
+                (value
+                  (add
+                    (left
+                      (read
+                        (slot "pointer-x")
+                      )
+                    )
+                    (right
+                      (read
+                        (slot "viewport-x")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "world-y")
+                (value
+                  (add
+                    (left
+                      (read
+                        (slot "pointer-y")
+                      )
+                    )
+                    (right
+                      (read
+                        (slot "viewport-y")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "hit-name")
+                (value "")
+              )
+              (write
+                (slot "best-z")
+                (value -1)
+              )
+              (write
+                (slot "scan")
+                (value 0)
+              )
+              (while
+                (<
+                  (left
+                    (read
+                      (slot "scan")
+                    )
+                  )
+                  (right
+                    (child-count
+                      (target
+                        (child
+                          (target
+                            (self)
+                          )
+                          (name "windows")
+                        )
+                      )
+                    )
+                  )
+                )
+                (body
+                  (do
+                    (if
+                      (and
+                        (left
+                          (and
+                            (left
+                              (and
+                                (left
+                                  (and
+                                    (left
+                                      (>
+                                        (left
+                                          (inspect
+                                            (target
+                                              (child
+                                                (target
+                                                  (child-at
+                                                    (target
+                                                      (child
+                                                        (target
+                                                          (self)
+                                                        )
+                                                        (name "windows")
+                                                      )
+                                                    )
+                                                    (index
+                                                      (read
+                                                        (slot "scan")
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                                (name "z")
+                                              )
+                                            )
+                                          )
+                                        )
+                                        (right
+                                          (read
+                                            (slot "best-z")
+                                          )
+                                        )
+                                      )
+                                    )
+                                    (right
+                                      (>=
+                                        (left
+                                          (read
+                                            (slot "world-x")
+                                          )
+                                        )
+                                        (right
+                                          (inspect
+                                            (target
+                                              (child
+                                                (target
+                                                  (child-at
+                                                    (target
+                                                      (child
+                                                        (target
+                                                          (self)
+                                                        )
+                                                        (name "windows")
+                                                      )
+                                                    )
+                                                    (index
+                                                      (read
+                                                        (slot "scan")
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                                (name "x")
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                                (right
+                                  (<
+                                    (left
+                                      (read
+                                        (slot "world-x")
+                                      )
+                                    )
+                                    (right
+                                      (add
+                                        (left
+                                          (inspect
+                                            (target
+                                              (child
+                                                (target
+                                                  (child-at
+                                                    (target
+                                                      (child
+                                                        (target
+                                                          (self)
+                                                        )
+                                                        (name "windows")
+                                                      )
+                                                    )
+                                                    (index
+                                                      (read
+                                                        (slot "scan")
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                                (name "x")
+                                              )
+                                            )
+                                          )
+                                        )
+                                        (right
+                                          (inspect
+                                            (target
+                                              (child
+                                                (target
+                                                  (child-at
+                                                    (target
+                                                      (child
+                                                        (target
+                                                          (self)
+                                                        )
+                                                        (name "windows")
+                                                      )
+                                                    )
+                                                    (index
+                                                      (read
+                                                        (slot "scan")
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                                (name "width")
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                            (right
+                              (>=
+                                (left
+                                  (read
+                                    (slot "world-y")
+                                  )
+                                )
+                                (right
+                                  (inspect
+                                    (target
+                                      (child
+                                        (target
+                                          (child-at
+                                            (target
+                                              (child
+                                                (target
+                                                  (self)
+                                                )
+                                                (name "windows")
+                                              )
+                                            )
+                                            (index
+                                              (read
+                                                (slot "scan")
+                                              )
+                                            )
+                                          )
+                                        )
+                                        (name "y")
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                        (right
+                          (<
+                            (left
+                              (read
+                                (slot "world-y")
+                              )
+                            )
+                            (right
+                              (add
+                                (left
+                                  (inspect
+                                    (target
+                                      (child
+                                        (target
+                                          (child-at
+                                            (target
+                                              (child
+                                                (target
+                                                  (self)
+                                                )
+                                                (name "windows")
+                                              )
+                                            )
+                                            (index
+                                              (read
+                                                (slot "scan")
+                                              )
+                                            )
+                                          )
+                                        )
+                                        (name "y")
+                                      )
+                                    )
+                                  )
+                                )
+                                (right
+                                  (inspect
+                                    (target
+                                      (child
+                                        (target
+                                          (child-at
+                                            (target
+                                              (child
+                                                (target
+                                                  (self)
+                                                )
+                                                (name "windows")
+                                              )
+                                            )
+                                            (index
+                                              (read
+                                                (slot "scan")
+                                              )
+                                            )
+                                          )
+                                        )
+                                        (name "height")
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                      (then
+                        (do
+                          (write
+                            (slot "hit-name")
+                            (value
+                              (object-name
+                                (target
+                                  (child-at
+                                    (target
+                                      (child
+                                        (target
+                                          (self)
+                                        )
+                                        (name "windows")
+                                      )
+                                    )
+                                    (index
+                                      (read
+                                        (slot "scan")
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (write
+                            (slot "best-z")
+                            (value
+                              (inspect
+                                (target
+                                  (child
+                                    (target
+                                      (child-at
+                                        (target
+                                          (child
+                                            (target
+                                              (self)
+                                            )
+                                            (name "windows")
+                                          )
+                                        )
+                                        (index
+                                          (read
+                                            (slot "scan")
+                                          )
+                                        )
+                                      )
+                                    )
+                                    (name "z")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (write
+                      (slot "scan")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "scan")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (read
+                (slot "hit-name")
+              )
+            )
+          )
+        )
+        (project-position
+          (body
+            (do
+              (write
+                (slot "axis-x")
+                (value
+                  (array-get
+                    (slot "view-axes")
+                    (index 0)
+                  )
+                )
+              )
+              (write
+                (slot "axis-y")
+                (value
+                  (array-get
+                    (slot "view-axes")
+                    (index 1)
+                  )
+                )
+              )
+              (if
+                (or
+                  (left
+                    (or
+                      (left
+                        (<
+                          (left
+                            (read
+                              (slot "axis-x")
+                            )
+                          )
+                          (right 0)
+                        )
+                      )
+                      (right
+                        (<
+                          (left
+                            (read
+                              (slot "axis-y")
+                            )
+                          )
+                          (right 0)
+                        )
+                      )
+                    )
+                  )
+                  (right
+                    (==
+                      (left
+                        (read
+                          (slot "axis-x")
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "axis-y")
+                        )
+                      )
+                    )
+                  )
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "position-size")
+                (value
+                  (array-size
+                    (slot "view-axes")
+                  )
+                )
+              )
+              (if
+                (!=
+                  (left
+                    (read
+                      (slot "position-size")
+                    )
+                  )
+                  (right 2)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "position-work")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (child
+                                (target
+                                  (self)
+                                )
+                                (name "windows")
+                              )
+                            )
+                            (name
+                              (read
+                                (slot "name")
+                              )
+                            )
+                          )
+                        )
+                        (name "coordinates")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "position-size")
+                (value
+                  (read
+                    (slot "display-dimension")
+                  )
+                )
+              )
+              (write
+                (slot "position-size")
+                (value
+                  (if
+                    (>
+                      (left
+                        (add
+                          (left
+                            (read
+                              (slot "axis-x")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "position-size")
+                        )
+                      )
+                    )
+                    (then
+                      (add
+                        (left
+                          (read
+                            (slot "axis-x")
+                          )
+                        )
+                        (right 1)
+                      )
+                    )
+                    (else
+                      (read
+                        (slot "position-size")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "position-size")
+                (value
+                  (if
+                    (>
+                      (left
+                        (add
+                          (left
+                            (read
+                              (slot "axis-y")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "position-size")
+                        )
+                      )
+                    )
+                    (then
+                      (add
+                        (left
+                          (read
+                            (slot "axis-y")
+                          )
+                        )
+                        (right 1)
+                      )
+                    )
+                    (else
+                      (read
+                        (slot "position-size")
+                      )
+                    )
+                  )
+                )
+              )
+              (if
+                (>
+                  (left
+                    (read
+                      (slot "position-size")
+                    )
+                  )
+                  (right
+                    (array-size
+                      (slot "position-work")
+                    )
+                  )
+                )
+                (then
+                  (do
+                    (write
+                      (slot "position-copy")
+                      (value
+                        (array-new
+                          (size
+                            (read
+                              (slot "position-size")
+                            )
+                          )
+                          (value 0)
+                        )
+                      )
+                    )
+                    (write
+                      (slot "position-i")
+                      (value 0)
+                    )
+                    (while
+                      (<
+                        (left
+                          (read
+                            (slot "position-i")
+                          )
+                        )
+                        (right
+                          (array-size
+                            (slot "position-work")
+                          )
+                        )
+                      )
+                      (body
+                        (do
+                          (array-set
+                            (slot "position-copy")
+                            (index
+                              (read
+                                (slot "position-i")
+                              )
+                            )
+                            (value
+                              (array-get
+                                (slot "position-work")
+                                (index
+                                  (read
+                                    (slot "position-i")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (write
+                            (slot "position-i")
+                            (value
+                              (add
+                                (left
+                                  (read
+                                    (slot "position-i")
+                                  )
+                                )
+                                (right 1)
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "position-work")
+                      (value
+                        (read
+                          (slot "position-copy")
+                        )
+                      )
+                    )
+                  )
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (object-write
+                (target
+                  (child
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "windows")
+                          )
+                        )
+                        (name
+                          (read
+                            (slot "name")
+                          )
+                        )
+                      )
+                    )
+                    (name "coordinates")
+                  )
+                )
+                (value
+                  (read
+                    (slot "position-work")
+                  )
+                )
+              )
+              (object-write
+                (target
+                  (child
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "windows")
+                          )
+                        )
+                        (name
+                          (read
+                            (slot "name")
+                          )
+                        )
+                      )
+                    )
+                    (name "x")
+                  )
+                )
+                (value
+                  (div
+                    (left
+                      (array-get
+                        (slot "position-work")
+                        (index
+                          (read
+                            (slot "axis-x")
+                          )
+                        )
+                      )
+                    )
+                    (right 1000000)
+                  )
+                )
+              )
+              (object-write
+                (target
+                  (child
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "windows")
+                          )
+                        )
+                        (name
+                          (read
+                            (slot "name")
+                          )
+                        )
+                      )
+                    )
+                    (name "y")
+                  )
+                )
+                (value
+                  (div
+                    (left
+                      (array-get
+                        (slot "position-work")
+                        (index
+                          (read
+                            (slot "axis-y")
+                          )
+                        )
+                      )
+                    )
+                    (right 1000000)
+                  )
+                )
+              )
+            )
+          )
+        )
+        (set-position
+          (body
+            (do
+              (write
+                (slot "position-size")
+                (value
+                  (array-size
+                    (slot "view-axes")
+                  )
+                )
+              )
+              (if
+                (!=
+                  (left
+                    (read
+                      (slot "position-size")
+                    )
+                  )
+                  (right 2)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "axis-x")
+                (value
+                  (array-get
+                    (slot "view-axes")
+                    (index 0)
+                  )
+                )
+              )
+              (write
+                (slot "axis-y")
+                (value
+                  (array-get
+                    (slot "view-axes")
+                    (index 1)
+                  )
+                )
+              )
+              (if
+                (or
+                  (left
+                    (or
+                      (left
+                        (<
+                          (left
+                            (read
+                              (slot "axis-x")
+                            )
+                          )
+                          (right 0)
+                        )
+                      )
+                      (right
+                        (<
+                          (left
+                            (read
+                              (slot "axis-y")
+                            )
+                          )
+                          (right 0)
+                        )
+                      )
+                    )
+                  )
+                  (right
+                    (==
+                      (left
+                        (read
+                          (slot "axis-x")
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "axis-y")
+                        )
+                      )
+                    )
+                  )
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "position-work")
+                (value
+                  (read
+                    (slot "position")
+                  )
+                )
+              )
+              (write
+                (slot "position-size")
+                (value
+                  (array-size
+                    (slot "position-work")
+                  )
+                )
+              )
+              (write
+                (slot "position-size")
+                (value
+                  (if
+                    (>
+                      (left
+                        (add
+                          (left
+                            (read
+                              (slot "axis-x")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "position-size")
+                        )
+                      )
+                    )
+                    (then
+                      (add
+                        (left
+                          (read
+                            (slot "axis-x")
+                          )
+                        )
+                        (right 1)
+                      )
+                    )
+                    (else
+                      (read
+                        (slot "position-size")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "position-size")
+                (value
+                  (if
+                    (>
+                      (left
+                        (add
+                          (left
+                            (read
+                              (slot "axis-y")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "position-size")
+                        )
+                      )
+                    )
+                    (then
+                      (add
+                        (left
+                          (read
+                            (slot "axis-y")
+                          )
+                        )
+                        (right 1)
+                      )
+                    )
+                    (else
+                      (read
+                        (slot "position-size")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "position-copy")
+                (value
+                  (array-new
+                    (size
+                      (read
+                        (slot "position-size")
+                      )
+                    )
+                    (value 0)
+                  )
+                )
+              )
+              (write
+                (slot "position-i")
+                (value 0)
+              )
+              (while
+                (<
+                  (left
+                    (read
+                      (slot "position-i")
+                    )
+                  )
+                  (right
+                    (array-size
+                      (slot "position-work")
+                    )
+                  )
+                )
+                (body
+                  (do
+                    (array-set
+                      (slot "position-copy")
+                      (index
+                        (read
+                          (slot "position-i")
+                        )
+                      )
+                      (value
+                        (array-get
+                          (slot "position-work")
+                          (index
+                            (read
+                              (slot "position-i")
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "position-i")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "position-i")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "position-projected-x")
+                (value
+                  (div
+                    (left
+                      (array-get
+                        (slot "position-copy")
+                        (index
+                          (read
+                            (slot "axis-x")
+                          )
+                        )
+                      )
+                    )
+                    (right 1000000)
+                  )
+                )
+              )
+              (write
+                (slot "position-projected-y")
+                (value
+                  (div
+                    (left
+                      (array-get
+                        (slot "position-copy")
+                        (index
+                          (read
+                            (slot "axis-y")
+                          )
+                        )
+                      )
+                    )
+                    (right 1000000)
+                  )
+                )
+              )
+              (object-write
+                (target
+                  (child
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "windows")
+                          )
+                        )
+                        (name
+                          (read
+                            (slot "name")
+                          )
+                        )
+                      )
+                    )
+                    (name "coordinates")
+                  )
+                )
+                (value
+                  (read
+                    (slot "position-copy")
+                  )
+                )
+              )
+              (object-write
+                (target
+                  (child
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "windows")
+                          )
+                        )
+                        (name
+                          (read
+                            (slot "name")
+                          )
+                        )
+                      )
+                    )
+                    (name "x")
+                  )
+                )
+                (value
+                  (read
+                    (slot "position-projected-x")
+                  )
+                )
+              )
+              (object-write
+                (target
+                  (child
+                    (target
+                      (child
+                        (target
+                          (child
+                            (target
+                              (self)
+                            )
+                            (name "windows")
+                          )
+                        )
+                        (name
+                          (read
+                            (slot "name")
+                          )
+                        )
+                      )
+                    )
+                    (name "y")
+                  )
+                )
+                (value
+                  (read
+                    (slot "position-projected-y")
+                  )
+                )
+              )
+            )
+          )
+        )
+        (project
+          (body
+            (do
+              (write
+                (slot "position-name")
+                (value
+                  (read
+                    (slot "name")
+                  )
+                )
+              )
+              (write
+                (slot "position-scan")
+                (value 0)
+              )
+              (while
+                (<
+                  (left
+                    (read
+                      (slot "position-scan")
+                    )
+                  )
+                  (right
+                    (child-count
+                      (target
+                        (child
+                          (target
+                            (self)
+                          )
+                          (name "windows")
+                        )
+                      )
+                    )
+                  )
+                )
+                (body
+                  (do
+                    (write
+                      (slot "name")
+                      (value
+                        (object-name
+                          (target
+                            (child-at
+                              (target
+                                (child
+                                  (target
+                                    (self)
+                                  )
+                                  (name "windows")
+                                )
+                              )
+                              (index
+                                (read
+                                  (slot "position-scan")
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (call
+                      (selector "project-position")
+                    )
+                    (write
+                      (slot "position-scan")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "position-scan")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "name")
+                (value
+                  (read
+                    (slot "position-name")
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (display-dimension 2)
+      (view-axes [0 1])
+      (position [])
+      (position-work [])
+      (position-copy [])
+      (position-i 0)
+      (position-scan 0)
+      (position-size 0)
+      (axis-x 0)
+      (axis-y 1)
+      (position-name "")
+      (position-projected-x 0)
+      (position-projected-y 0)
+    )
+  )
+)

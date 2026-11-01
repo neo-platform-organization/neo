@@ -65,7 +65,17 @@ neo_status neo_vm_install_platform(neo_vm *vm, const neo_platform_services *serv
     unsigned supplied = (backend->read_source != NULL ? NEO_PLATFORM_HOST_FILES : 0u) |
         (backend->open_stream != NULL ? NEO_PLATFORM_BYTE_STREAMS : 0u) |
         (backend->open_window != NULL ? NEO_PLATFORM_PIXEL_WINDOWS : 0u) |
-        (backend->wait != NULL ? NEO_PLATFORM_WAIT : 0u);
+        (backend->wait != NULL ? NEO_PLATFORM_WAIT : 0u) |
+        (backend->network != NULL ? NEO_PLATFORM_NETWORK : 0u);
+    if (backend->network != NULL && (backend->network->listen == NULL ||
+        backend->network->connect == NULL || backend->network->ready == NULL ||
+        backend->network->accept == NULL || backend->network->local_port == NULL ||
+        backend->network->attach == NULL || backend->network->close == NULL)) { return NEO_INVALID; }
+    if (backend->network != NULL &&
+        (backend->network->tls_identity != NULL || backend->network->tls_configure != NULL || backend->network->authenticated_peer != NULL) &&
+        (backend->network->tls_identity == NULL || backend->network->tls_configure == NULL || backend->network->authenticated_peer == NULL)) {
+        return NEO_INVALID;
+    }
     if ((services->info.services & ~((unsigned)NEO_PLATFORM_INPUT_EVENTS)) != supplied ||
         ((services->info.services & NEO_PLATFORM_INPUT_EVENTS) != 0 && backend->open_window == NULL)) {
         return NEO_INVALID;
@@ -93,7 +103,7 @@ neo_status neo_platform_load_image(neo_vm *vm, const char *location,
     neo_status status = neo_platform_require(vm, NEO_PLATFORM_HOST_FILES);
     if (status != NEO_OK) { return status; }
     if (vm->platform_backend.read_source == NULL) { return NEO_UNSUPPORTED; }
-    const size_t capacity = 1024u * 1024u;
+    const size_t capacity = NEO_IMAGE_MAX_SOURCE_BYTES;
     char *source = neo_alloc(vm, capacity + 1);
     if (source == NULL) { return NEO_OUT_OF_MEMORY; }
     size_t count = 0;
@@ -152,4 +162,48 @@ neo_status neo_platform_wait(neo_vm *vm, uint32_t milliseconds) {
     if (status != NEO_OK) { return status; }
     if (vm->platform_backend.wait == NULL) { return NEO_UNSUPPORTED; }
     return vm->platform_backend.wait(vm->platform_context, milliseconds);
+}
+
+neo_status neo_platform_open_clipboard(neo_vm *vm, const neo_capability *parent,
+                                       const char *name, const neo_capability **out) {
+    if (out == NULL) { return NEO_INVALID; }
+    *out=NULL;
+    neo_status status=neo_platform_require(vm,NEO_PLATFORM_PIXEL_WINDOWS);
+    neo_object *container=NULL;
+    if (status == NEO_OK) { status=neo_resolve(vm,parent,NEO_INSERT,&container); }
+    if (status != NEO_OK) { return status; }
+    if (vm->platform_backend.open_clipboard == NULL) { return NEO_UNSUPPORTED; }
+    return vm->platform_backend.open_clipboard(vm->platform_context,vm,parent,name,out);
+}
+
+neo_status neo_platform_save_image(neo_vm *vm, const neo_capability *root, const char *location) {
+    if (location == NULL || *location == '\0') { return NEO_INVALID; }
+    neo_status status = neo_platform_require(vm, NEO_PLATFORM_HOST_FILES);
+    if (status != NEO_OK) { return status; }
+    if (vm->platform_backend.write_source == NULL) { return NEO_UNSUPPORTED; }
+    char *text = NULL;
+    status = neo_image_checkpoint(vm, root, &text);
+    if (status == NEO_OK) {
+        status = vm->platform_backend.write_source(vm->platform_context, location, text);
+    }
+    neo_image_text_free(vm, text);
+    return status;
+}
+
+neo_status neo_platform_write_text(neo_vm *vm, const char *location, const char *text) {
+    if (location == NULL || *location == '\0' || text == NULL) { return NEO_INVALID; }
+    neo_status status = neo_platform_require(vm, NEO_PLATFORM_HOST_FILES);
+    if (status != NEO_OK) { return status; }
+    if (vm->platform_backend.write_source == NULL) { return NEO_UNSUPPORTED; }
+    return vm->platform_backend.write_source(vm->platform_context, location, text);
+}
+
+neo_status neo_platform_network(neo_vm *vm, const neo_network_backend **out) {
+    if (out == NULL) { return NEO_INVALID; }
+    *out = NULL;
+    neo_status status = neo_platform_require(vm, NEO_PLATFORM_NETWORK);
+    if (status != NEO_OK) { return status; }
+    if (vm->platform_backend.network == NULL) { return NEO_UNSUPPORTED; }
+    *out = vm->platform_backend.network;
+    return NEO_OK;
 }

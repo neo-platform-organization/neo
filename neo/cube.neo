@@ -5,6 +5,7 @@
 // Camera: distance 400, focal length 300. Cube half-size 80 stays ahead of camera.
 // Three edge groups use orange, cyan, and green. Hidden edges stay visible.
 (image
+  (entry "cube")
   (cube
     (c-yaw 0)
     (c-pitch 20)

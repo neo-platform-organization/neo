@@ -1,4 +1,7 @@
 #include "execution/evaluator_internal.h"
+#include "packages/packages.h"
+#include "replication/replication.h"
+#include "image/image.h"
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -12,7 +15,22 @@ typedef struct neo_graph_form {
 } neo_graph_form;
 
 static const neo_graph_form neo_graph_forms[] = {
+    {"network-finish", {"target"}},
+    {"authenticated-peer", {"target"}},
+    {"replica-channel", {"target", "destination", "name"}},
+    {"replica-prepare", {"target", "value"}},
+    {"replica-send", {"target"}},
+    {"replica-receive", {"target"}},
+    {"replica-ended", {"target"}},
+    {"replica-import", {"target", "destination", "name"}},
+    {"package-validate", {"target"}},
+    {"package-install", {"target", "value"}},
+    {"package-update", {"target", "value"}},
+    {"package-remove", {"target", "name"}},
+    {"package-resolve", {"target", "name", "value", "rights"}},
+    {"package-export", {"target", "name"}},
     {"self", {NULL}},
+    {"execution-budget", {NULL}},
     {"child", {"target", "name"}},
     {"child-at", {"target", "index"}},
     {"child-count", {"target"}},
@@ -24,11 +42,27 @@ static const neo_graph_form neo_graph_forms[] = {
     {"object-kind", {"target"}},
     {"inspect", {"target"}},
     {"to-text", {"value"}},
+    {"text-bytes", {"value"}},
+    {"text-concat", {"left", "right"}},
+    {"text-size", {"value"}},
+    {"text-part", {"value", "start", "count"}},
+    {"text-edit", {"value", "start", "count", "insert"}},
+    {"text-offset", {"value", "start", "direction"}},
+    {"text-line", {"value", "index"}},
+    {"text-lines", {"value"}},
+    {"text-position", {"value", "index", "field"}},
+    {"text-index", {"value", "line", "column"}},
+    {"text-find", {"value", "needle", "start"}},
+    {"text-from-bytes", {"value"}},
+    {"source-text", {"target"}},
+    {"source-check", {"value"}},
+    {"source-apply", {"target", "value", "expected"}},
     {"object-create", {"target", "name", "value"}},
     {"object-write", {"target", "value"}},
     {"object-copy", {"target", "destination", "name"}},
     {"object-move", {"target", "destination", "name"}},
     {"object-delete", {"target"}},
+    {"disconnect", {"target", "name"}},
     {"connect", {"target", "name", "value", "rights"}}
 };
 
@@ -63,7 +97,7 @@ static const char *neo_graph_kind_name(neo_kind kind) {
 
 /* Native activations retain node pointers. Protect all receiver-owned handlers,
  * including suspended local callers, until activations support live code edits. */
-static neo_status neo_graph_mutable(neo_activation *a, const neo_capability *cap,
+neo_status neo_graph_mutable(neo_activation *a, const neo_capability *cap,
                                     bool destructive, bool payload_write) {
     neo_object *target = NULL;
     neo_status status = neo_resolve(a->vm, cap, 0, &target);
@@ -89,10 +123,116 @@ neo_status neo_graph_operation(neo_activation *a, neo_object *node, size_t depth
         if (status != NEO_OK || a->returning) { goto done; }
     }
     if (strcmp(op, "self") == 0) { result = a->authority; goto done; }
+    if (strcmp(op,"execution-budget") == 0) { *out=(neo_value){.kind=NEO_INTEGER,.integer=(int64_t)(a->budget-a->report->steps)}; goto done; }
+    if (strcmp(op, "network-finish") == 0) {
+        bool complete = false;
+        status = v[0].kind == NEO_REFERENCE ? neo_network_finish(a->vm, v[0].reference, &complete) : NEO_WRONG_KIND;
+        if (status == NEO_OK) { *out = (neo_value){.kind=NEO_BOOLEAN,.boolean=complete}; }
+        goto done;
+    }
+    if (strcmp(op, "authenticated-peer") == 0) {
+        char peer[65];
+        status = v[0].kind == NEO_REFERENCE ? neo_network_authenticated_peer(a->vm, v[0].reference, peer) : NEO_WRONG_KIND;
+        if (status == NEO_OK) { status = neo_value_copy(a->vm, (neo_value){.kind=NEO_TEXT,.text=peer}, out); }
+        goto done;
+    }
+    if (strncmp(op, "replica-", 8) == 0) {
+        if (v[0].kind != NEO_REFERENCE) { status = NEO_WRONG_KIND; goto done; }
+        if (strcmp(op, "replica-channel") == 0 || strcmp(op, "replica-import") == 0) {
+            if (v[1].kind != NEO_REFERENCE || v[2].kind != NEO_TEXT) { status = NEO_WRONG_KIND; goto done; }
+            status = neo_graph_mutable(a, v[1].reference, false, false);
+            if (status == NEO_OK) {
+                status = strcmp(op, "replica-channel") == 0 ?
+                    neo_replica_channel_create(a->vm, v[0].reference, v[1].reference, v[2].text, &result) :
+                    neo_replica_import(a->vm, v[0].reference, v[1].reference, v[2].text, &result);
+            }
+        } else if (strcmp(op, "replica-prepare") == 0) {
+            status = v[1].kind == NEO_REFERENCE ? neo_replica_prepare(a->vm, v[0].reference, v[1].reference) : NEO_WRONG_KIND;
+        } else {
+            bool complete = false;
+            if (strcmp(op, "replica-ended") == 0) { status = neo_replica_ended(a->vm, v[0].reference, &complete); }
+            else {
+                status = strcmp(op, "replica-send") == 0 ? neo_replica_send(a->vm, v[0].reference, &complete) :
+                    neo_replica_receive(a->vm, v[0].reference, &complete);
+            }
+            *out = (neo_value){.kind=NEO_BOOLEAN,.boolean=complete};
+        }
+        goto done;
+    }
+    if (strncmp(op, "package-", 8) == 0) {
+        if (v[0].kind != NEO_REFERENCE) { status = NEO_WRONG_KIND; goto done; }
+        if (strcmp(op, "package-validate") == 0) { status = neo_package_validate(a->vm, v[0].reference); }
+        else if (strcmp(op, "package-install") == 0 || strcmp(op, "package-update") == 0) {
+            status = neo_graph_mutable(a, v[0].reference, true, false);
+            if (status == NEO_OK) { status = v[1].kind == NEO_REFERENCE ?
+                neo_package_install(a->vm, v[0].reference, v[1].reference, strcmp(op, "package-update") == 0, &result) : NEO_WRONG_KIND; }
+        } else if (v[1].kind != NEO_TEXT) { status = NEO_WRONG_KIND; }
+        else if (strcmp(op, "package-remove") == 0) {
+            status = neo_graph_mutable(a, v[0].reference, true, false);
+            if (status == NEO_OK) { status = neo_package_remove(a->vm, v[0].reference, v[1].text); }
+        } else if (strcmp(op, "package-resolve") == 0) {
+            unsigned rights = 0;
+            status = v[2].kind == NEO_TEXT ? neo_graph_rights(v[3], &rights) : NEO_WRONG_KIND;
+            if (status == NEO_OK) { status = neo_package_resolve(a->vm, v[0].reference, v[1].text, v[2].text, rights, &result); }
+        } else {
+            const neo_capability *artifact = NULL;
+            char *text = NULL;
+            status = neo_package_export(a->vm, v[0].reference, v[1].text, &artifact);
+            if (status == NEO_OK) { status = neo_image_format(a->vm, artifact, &text); }
+            if (artifact != NULL) { (void)neo_image_unload(a->vm, artifact); }
+            if (status == NEO_OK) { *out = (neo_value){.kind=NEO_TEXT,.text=text}; }
+        }
+        goto done;
+    }
+    if (strncmp(op,"source-",7) == 0) {
+        if (strcmp(op,"source-check") == 0) {
+            const neo_capability *parsed=NULL; neo_diagnostic error={0};
+            if (v[0].kind != NEO_TEXT) { status=NEO_WRONG_KIND; goto done; }
+            neo_status checked=neo_image_parse(a->vm,v[0].text,&parsed,&error);
+            if (parsed != NULL) { (void)neo_image_unload(a->vm,parsed); }
+            if (checked == NEO_OUT_OF_MEMORY) { status=checked; goto done; }
+            char message[256]="";
+            if (checked != NEO_OK) { (void)snprintf(message,sizeof(message),"line%zu column%zu: %s",error.line,error.column,
+                error.message[0] != '\0' ? error.message : neo_status_name(checked)); }
+            status=neo_value_copy(a->vm,(neo_value){.kind=NEO_TEXT,.text=message},out);
+        } else if (v[0].kind != NEO_REFERENCE) { status=NEO_WRONG_KIND; }
+        else if (strcmp(op,"source-text") == 0) {
+            char *source=NULL; status=neo_image_source(a->vm,v[0].reference,&source);
+            if (status == NEO_OK) { *out=(neo_value){.kind=NEO_TEXT,.text=source}; }
+        } else {
+            status=v[1].kind != NEO_TEXT || v[2].kind != NEO_TEXT ? NEO_WRONG_KIND : neo_graph_mutable(a,v[0].reference,true,true);
+            neo_diagnostic error={0};
+            if (status == NEO_OK) { status=neo_image_apply_source(a->vm,v[0].reference,v[1].text,v[2].text,&error); }
+            if (status == NEO_OK) { *out=(neo_value){.kind=NEO_BOOLEAN,.boolean=true}; }
+        }
+        goto done;
+    }
+    if (strncmp(op,"text-",5) == 0 && strcmp(op,"text-bytes") != 0 && strcmp(op,"text-concat") != 0) {
+        status=neo_text_value_operation(a,op,v,out); goto done;
+    }
+    if (strcmp(op, "text-bytes") == 0 || strcmp(op, "text-concat") == 0) {
+        if (v[0].kind != NEO_TEXT || (strcmp(op, "text-concat") == 0 && v[1].kind != NEO_TEXT)) { status = NEO_WRONG_KIND; goto done; }
+        size_t first = strlen(v[0].text), second = strcmp(op, "text-concat") == 0 ? strlen(v[1].text) : 0;
+        if (first > SIZE_MAX - second - 1u || first + second > a->budget - a->report->steps) { status = NEO_LIMIT; goto done; }
+        if (strcmp(op, "text-bytes") == 0) {
+            if (first > SIZE_MAX / sizeof(int64_t)) { status = NEO_LIMIT; goto done; }
+            int64_t *bytes = first == 0 ? NULL : neo_alloc(a->vm, first * sizeof(*bytes));
+            if (first != 0 && bytes == NULL) { status = NEO_OUT_OF_MEMORY; goto done; }
+            for (size_t i = 0; i < first; ++i) { bytes[i] = (uint8_t)v[0].text[i]; }
+            *out = (neo_value){.kind=NEO_INTEGERS,.integers=bytes,.count=first};
+        } else {
+            char *text = neo_alloc(a->vm, first + second + 1u);
+            if (text == NULL) { status = NEO_OUT_OF_MEMORY; goto done; }
+            memcpy(text, v[0].text, first); memcpy(text + first, v[1].text, second + 1u);
+            *out = (neo_value){.kind=NEO_TEXT,.text=text};
+        }
+        a->report->steps += first + second;
+        goto done;
+    }
     if (strcmp(op, "to-text") == 0) {
         char integer[32];
         const char *text = NULL;
-        if (v[0].kind == NEO_TEXT) { text = v[0].text; }
+        if (v[0].kind == NEO_TEXT || v[0].kind == NEO_PRIMITIVE) { text = v[0].text; }
         else if (v[0].kind == NEO_BOOLEAN) { text = v[0].boolean ? "true" : "false"; }
         else if (v[0].kind == NEO_INTEGER) {
             (void)snprintf(integer, sizeof(integer), "%" PRId64, v[0].integer); text = integer;
@@ -163,6 +303,9 @@ neo_status neo_graph_operation(neo_activation *a, neo_object *node, size_t depth
     } else if (strcmp(op, "object-delete") == 0) {
         status = neo_graph_mutable(a, target, true, false);
         if (status == NEO_OK) { status = neo_object_delete(a->vm, target); }
+    } else if (strcmp(op, "disconnect") == 0) {
+        status = v[1].kind == NEO_TEXT ? neo_graph_mutable(a, target, false, false) : NEO_WRONG_KIND;
+        if (status == NEO_OK) { status = neo_object_disconnect(a->vm, target, v[1].text); }
     } else if (strcmp(op, "connect") == 0) {
         unsigned rights = 0;
         if (v[1].kind != NEO_TEXT || v[2].kind != NEO_REFERENCE) { status = NEO_WRONG_KIND; goto done; }

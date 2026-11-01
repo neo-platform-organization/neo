@@ -155,3 +155,10 @@ bool neo_scheduler_contains(neo_vm *vm, neo_object_id actor) {
     }
     return false;
 }
+
+bool neo_scheduler_any_active(neo_vm *vm) {
+    for (neo_registration *entry = vm->registrations; entry != NULL; entry = entry->next) {
+        if ((entry->enabled || entry->failed) && neo_lookup(vm, entry->actor) != NULL) { return true; }
+    }
+    return false;
+}

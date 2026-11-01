@@ -7,7 +7,8 @@ CPPFLAGS += -Ineo-vm
 HOST_ARCH := $(shell uname -m | sed -e 's/^amd64$$/x86_64/' -e 's/^aarch64$$/arm64/' -e 's/^armv7l$$/armv7/' -e 's/^i[3-6]86$$/i686/')
 HOST_OS := $(shell uname -s | sed -e 's/^Darwin$$/macOS/' -e 's/^MINGW.*/Windows/' -e 's/^MSYS.*/Windows/' -e 's/^CYGWIN.*/Windows/')
 TARGET ?= $(HOST_ARCH)/$(HOST_OS)
-WITH_X11 ?= 1
+WITH_X11 ?= $(if $(filter %/Windows,$(TARGET)),0,1)
+EXEEXT = $(if $(filter %/Windows,$(TARGET)),.exe,)
 BUILD_ROOT = build
 BUILD = $(BUILD_ROOT)/$(TARGET)
 .DEFAULT_GOAL := all
@@ -23,10 +24,10 @@ else ifeq ($(strip $(MAKECMDGOALS)),)
 include neo-vm/platform/$(TARGET)/platform.mk
 endif
 
-SOURCES = neo-vm/main.c neo-vm/cli/cli.c neo-vm/cli/launch.c neo-vm/cli/selftest.c \
-          neo-vm/objects/objects.c neo-vm/messages/messages.c neo-vm/image/image.c \
-          neo-vm/execution/evaluator.c neo-vm/execution/graph.c neo-vm/execution/scheduler.c \
-          neo-vm/display/display.c neo-vm/io/io.c neo-vm/platform/platform.c \
+SOURCES = neo-vm/main.c neo-vm/cli/cli.c neo-vm/cli/launch.c neo-vm/cli/selftest.c neo-vm/cli/live.c \
+          neo-vm/objects/objects.c neo-vm/messages/messages.c neo-vm/image/image.c neo-vm/packages/packages.c neo-vm/replication/replication.c \
+          neo-vm/execution/evaluator.c neo-vm/execution/graph.c neo-vm/execution/text_ops.c neo-vm/execution/message_ops.c neo-vm/execution/scheduler.c \
+          neo-vm/display/display.c neo-vm/display/headless.c neo-vm/display/text.c neo-vm/io/io.c neo-vm/platform/platform.c neo-vm/platform/network.c \
           $(PLATFORM_SOURCES)
 HEADERS = $(shell find neo-vm -name '*.h')
 ifeq ($(WITH_X11),1)
@@ -38,19 +39,19 @@ $(error WITH_X11 must be 0 or 1)
 endif
 
 .PHONY: all test clean targets path FORCE $(TARGETS)
-all: $(BUILD)/neo
+all: $(BUILD)/neo$(EXEEXT)
 
-test: $(BUILD)/neo
-	./$(BUILD)/neo selftest
+test: $(BUILD)/neo$(EXEEXT)
+	./$(BUILD)/neo$(EXEEXT) selftest
 
 path:
-	@printf '%s\n' '$(BUILD)/neo'
+	@printf '%s\n' '$(BUILD)/neo$(EXEEXT)'
 # A complete build produces only the universal executable. Rebuilding also applies
 # mode/compiler option changes without leaving object files or configuration stamps.
-$(BUILD)/neo: $(SOURCES) $(HEADERS) Makefile FORCE
+$(BUILD)/neo$(EXEEXT): $(SOURCES) $(HEADERS) Makefile FORCE
 	mkdir -p $(BUILD)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNINGS) $(SOURCES) $(LDFLAGS) $(LDLIBS) -o $@.tmp
-	mv $@.tmp $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNINGS) $(SOURCES) $(LDFLAGS) $(LDLIBS) -o $@.tmp$(EXEEXT)
+	mv $@.tmp$(EXEEXT) $@
 
 FORCE:
 

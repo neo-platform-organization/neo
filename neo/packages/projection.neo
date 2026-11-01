@@ -1,0 +1,484 @@
+// Derived axis views retain an explicit source; edits preserve hidden coordinates.
+(package
+  (manifest
+    (schema 1)
+    (id "neo.spatial.projection")
+    (version (major 0) (minor 2) (patch 0))
+    (dependencies (geometry (id "neo.spatial.geometry") (version (major 0) (minor 1) (patch 0))))
+    (exports (projection (path "contents/projection") (mode "copy") (rights 9)))
+    (imports)
+    (bindings))
+  (contents
+    (projection
+      (view-dimension 0)
+      (dimension 0)
+      (vertex-count 0)
+      (axis-count 0)
+      (vertex-index 0)
+      (result-dimension 0)
+      (result-vertex-count 0)
+      (i 0)
+      (j 0)
+      (k 0)
+      (axis 0)
+      (axes [])
+      (vertices [])
+      (pending [])
+      (result [])
+      (edit [])
+      (edit-result [])
+      (slice-count 0)
+      (visible-count 0)
+      (row 0)
+      (difference 0)
+      (result-source-count 0)
+      (matches false)
+      (slice-axes [])
+      (slice-values [])
+      (slice-tolerances [])
+      (pending-mask [])
+      (pending-map [])
+      (source-indices [])
+      (visibility [])
+      (handlers
+        (check-source
+          (body
+            (do
+              (write
+                (slot "dimension")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "source")))
+                        (name "dimension"))))))
+              (write
+                (slot "vertex-count")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "source")))
+                        (name "vertex-count"))))))
+              (do
+                (if (< (left (read (slot "dimension"))) (right 0)) (then (fail)) (else (result 0)))
+                (if
+                  (< (left (read (slot "vertex-count"))) (right 0))
+                  (then (fail))
+                  (else (result 0))))
+              (write
+                (slot "vertices")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "source")))
+                        (name "vertices"))))))
+              (if
+                (!=
+                  (left (array-size (slot "vertices")))
+                  (right
+                    (mul (left (read (slot "dimension"))) (right (read (slot "vertex-count"))))))
+                (then (fail))
+                (else (result 0))))))
+        (check-axes
+          (body
+            (do
+              (write (slot "axis-count") (value (array-size (slot "axes"))))
+              (do
+                (write (slot "j") (value 0))
+                (while
+                  (< (left (read (slot "j"))) (right (read (slot "axis-count"))))
+                  (body
+                    (do
+                      (do
+                        (write
+                          (slot "axis")
+                          (value (array-get (slot "axes") (index (read (slot "j"))))))
+                        (if
+                          (< (left (read (slot "axis"))) (right 0))
+                          (then (fail))
+                          (else (result 0)))
+                        (if
+                          (>= (left (read (slot "axis"))) (right (read (slot "dimension"))))
+                          (then (fail))
+                          (else (result 0)))
+                        (do
+                          (write (slot "k") (value 0))
+                          (while
+                            (< (left (read (slot "k"))) (right (read (slot "j"))))
+                            (body
+                              (do
+                                (if
+                                  (==
+                                    (left (array-get (slot "axes") (index (read (slot "k")))))
+                                    (right (read (slot "axis"))))
+                                  (then (fail))
+                                  (else (result 0)))
+                                (write (slot "k") (value (add (left (read (slot "k"))) (right 1)))))))))
+                      (write (slot "j") (value (add (left (read (slot "j"))) (right 1)))))))))))
+        (initialize
+          (body
+            (do
+              (call (selector "check-source"))
+              (do
+                (if
+                  (< (left (read (slot "view-dimension"))) (right 0))
+                  (then (fail))
+                  (else (result 0))))
+              (if
+                (> (left (read (slot "view-dimension"))) (right (read (slot "dimension"))))
+                (then (fail))
+                (else (result 0)))
+              (write
+                (slot "pending")
+                (value (array-new (size (read (slot "view-dimension"))) (value 0))))
+              (do
+                (write (slot "j") (value 0))
+                (while
+                  (< (left (read (slot "j"))) (right (read (slot "view-dimension"))))
+                  (body
+                    (do
+                      (array-set
+                        (slot "pending")
+                        (index (read (slot "j")))
+                        (value (read (slot "j"))))
+                      (write (slot "j") (value (add (left (read (slot "j"))) (right 1))))))))
+              (write (slot "axes") (value (read (slot "pending"))))
+              (result true))))
+        (project
+          (body
+            (do
+              (call (selector "check-source"))
+              (call (selector "check-axes"))
+              (write
+                (slot "pending-mask")
+                (value (array-new (size (read (slot "vertex-count"))) (value 1))))
+              (write
+                (slot "pending-map")
+                (value (array-new (size (read (slot "vertex-count"))) (value 0))))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "vertex-count"))))
+                  (body
+                    (do
+                      (array-set
+                        (slot "pending-map")
+                        (index (read (slot "i")))
+                        (value (read (slot "i"))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (write
+                (slot "pending")
+                (value
+                  (array-new
+                    (size
+                      (mul (left (read (slot "vertex-count"))) (right (read (slot "axis-count")))))
+                    (value 0))))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "vertex-count"))))
+                  (body
+                    (do
+                      (do
+                        (write (slot "j") (value 0))
+                        (while
+                          (< (left (read (slot "j"))) (right (read (slot "axis-count"))))
+                          (body
+                            (do
+                              (array-set
+                                (slot "pending")
+                                (index
+                                  (add
+                                    (left
+                                      (mul
+                                        (left (read (slot "i")))
+                                        (right (read (slot "axis-count")))))
+                                    (right (read (slot "j")))))
+                                (value
+                                  (array-get
+                                    (slot "vertices")
+                                    (index
+                                      (add
+                                        (left
+                                          (mul
+                                            (left (read (slot "i")))
+                                            (right (read (slot "dimension")))))
+                                        (right (array-get (slot "axes") (index (read (slot "j"))))))))))
+                              (write (slot "j") (value (add (left (read (slot "j"))) (right 1))))))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (write (slot "result") (value (read (slot "pending"))))
+              (write (slot "result-dimension") (value (read (slot "axis-count"))))
+              (write (slot "result-vertex-count") (value (read (slot "vertex-count"))))
+              (write (slot "result-source-count") (value (read (slot "vertex-count"))))
+              (write (slot "source-indices") (value (read (slot "pending-map"))))
+              (write (slot "visibility") (value (read (slot "pending-mask"))))
+              (read (slot "result")))))
+        (edit-vertex
+          (body
+            (do
+              (call (selector "check-source"))
+              (call (selector "check-axes"))
+              (if (< (left (read (slot "vertex-index"))) (right 0)) (then (fail)) (else (result 0)))
+              (if
+                (>= (left (read (slot "vertex-index"))) (right (read (slot "vertex-count"))))
+                (then (fail))
+                (else (result 0)))
+              (if
+                (!= (left (array-size (slot "edit"))) (right (read (slot "axis-count"))))
+                (then (fail))
+                (else (result 0)))
+              (do
+                (write (slot "j") (value 0))
+                (while
+                  (< (left (read (slot "j"))) (right (read (slot "axis-count"))))
+                  (body
+                    (do
+                      (array-set
+                        (slot "vertices")
+                        (index
+                          (add
+                            (left
+                              (mul
+                                (left (read (slot "vertex-index")))
+                                (right (read (slot "dimension")))))
+                            (right (array-get (slot "axes") (index (read (slot "j")))))))
+                        (value (array-get (slot "edit") (index (read (slot "j"))))))
+                      (write (slot "j") (value (add (left (read (slot "j"))) (right 1))))))))
+              (write
+                (slot "pending")
+                (value (array-new (size (read (slot "dimension"))) (value 0))))
+              (do
+                (write (slot "j") (value 0))
+                (while
+                  (< (left (read (slot "j"))) (right (read (slot "dimension"))))
+                  (body
+                    (do
+                      (array-set
+                        (slot "pending")
+                        (index (read (slot "j")))
+                        (value
+                          (array-get
+                            (slot "vertices")
+                            (index
+                              (add
+                                (left
+                                  (mul
+                                    (left (read (slot "vertex-index")))
+                                    (right (read (slot "dimension")))))
+                                (right (read (slot "j"))))))))
+                      (write (slot "j") (value (add (left (read (slot "j"))) (right 1))))))))
+              (object-write
+                (target
+                  (child (target (connection (target (self)) (name "source"))) (name "valid")))
+                (value false))
+              (object-write
+                (target
+                  (child (target (connection (target (self)) (name "source"))) (name "vertices")))
+                (value (read (slot "vertices"))))
+              (write (slot "edit-result") (value (read (slot "pending"))))
+              (read (slot "edit-result")))))
+        (check-slice
+          (body
+            (do
+              (write (slot "slice-count") (value (array-size (slot "slice-axes"))))
+              (if
+                (!= (left (array-size (slot "slice-values"))) (right (read (slot "slice-count"))))
+                (then (fail))
+                (else (result 0)))
+              (if
+                (!=
+                  (left (array-size (slot "slice-tolerances")))
+                  (right (read (slot "slice-count"))))
+                (then (fail))
+                (else (result 0)))
+              (do
+                (write (slot "j") (value 0))
+                (while
+                  (< (left (read (slot "j"))) (right (read (slot "slice-count"))))
+                  (body
+                    (do
+                      (do
+                        (write
+                          (slot "axis")
+                          (value (array-get (slot "slice-axes") (index (read (slot "j"))))))
+                        (if
+                          (< (left (read (slot "axis"))) (right 0))
+                          (then (fail))
+                          (else (result 0)))
+                        (if
+                          (>= (left (read (slot "axis"))) (right (read (slot "dimension"))))
+                          (then (fail))
+                          (else (result 0)))
+                        (if
+                          (<
+                            (left (array-get (slot "slice-tolerances") (index (read (slot "j")))))
+                            (right 0))
+                          (then (fail))
+                          (else (result 0)))
+                        (do
+                          (write (slot "k") (value 0))
+                          (while
+                            (< (left (read (slot "k"))) (right (read (slot "j"))))
+                            (body
+                              (do
+                                (if
+                                  (==
+                                    (left (array-get (slot "slice-axes") (index (read (slot "k")))))
+                                    (right (read (slot "axis"))))
+                                  (then (fail))
+                                  (else (result 0)))
+                                (write (slot "k") (value (add (left (read (slot "k"))) (right 1)))))))))
+                      (write (slot "j") (value (add (left (read (slot "j"))) (right 1)))))))))))
+        (matches-slice
+          (body
+            (do
+              (write (slot "matches") (value true))
+              (do
+                (write (slot "j") (value 0))
+                (while
+                  (< (left (read (slot "j"))) (right (read (slot "slice-count"))))
+                  (body
+                    (do
+                      (do
+                        (write
+                          (slot "difference")
+                          (value
+                            (sub
+                              (left
+                                (array-get
+                                  (slot "vertices")
+                                  (index
+                                    (add
+                                      (left
+                                        (mul
+                                          (left (read (slot "i")))
+                                          (right (read (slot "dimension")))))
+                                      (right
+                                        (array-get (slot "slice-axes") (index (read (slot "j")))))))))
+                              (right (array-get (slot "slice-values") (index (read (slot "j"))))))))
+                        (if
+                          (< (left (read (slot "difference"))) (right 0))
+                          (then
+                            (write
+                              (slot "difference")
+                              (value (sub (left 0) (right (read (slot "difference")))))))
+                          (else (result 0)))
+                        (if
+                          (>
+                            (left (read (slot "difference")))
+                            (right (array-get (slot "slice-tolerances") (index (read (slot "j"))))))
+                          (then (write (slot "matches") (value false)))
+                          (else (result 0))))
+                      (write (slot "j") (value (add (left (read (slot "j"))) (right 1))))))))
+              (read (slot "matches")))))
+        (slice
+          (body
+            (do
+              (call (selector "check-source"))
+              (call (selector "check-axes"))
+              (call (selector "check-slice"))
+              (write
+                (slot "pending-mask")
+                (value (array-new (size (read (slot "vertex-count"))) (value 0))))
+              (write (slot "visible-count") (value 0))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "vertex-count"))))
+                  (body
+                    (do
+                      (if
+                        (call (selector "matches-slice"))
+                        (then
+                          (do
+                            (array-set (slot "pending-mask") (index (read (slot "i"))) (value 1))
+                            (write
+                              (slot "visible-count")
+                              (value (add (left (read (slot "visible-count"))) (right 1))))))
+                        (else (result 0)))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (write
+                (slot "pending-map")
+                (value (array-new (size (read (slot "visible-count"))) (value 0))))
+              (write
+                (slot "pending")
+                (value
+                  (array-new
+                    (size
+                      (mul (left (read (slot "visible-count"))) (right (read (slot "axis-count")))))
+                    (value 0))))
+              (write (slot "row") (value 0))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "vertex-count"))))
+                  (body
+                    (do
+                      (if
+                        (==
+                          (left (array-get (slot "pending-mask") (index (read (slot "i")))))
+                          (right 1))
+                        (then
+                          (do
+                            (array-set
+                              (slot "pending-map")
+                              (index (read (slot "row")))
+                              (value (read (slot "i"))))
+                            (do
+                              (write (slot "j") (value 0))
+                              (while
+                                (< (left (read (slot "j"))) (right (read (slot "axis-count"))))
+                                (body
+                                  (do
+                                    (array-set
+                                      (slot "pending")
+                                      (index
+                                        (add
+                                          (left
+                                            (mul
+                                              (left (read (slot "row")))
+                                              (right (read (slot "axis-count")))))
+                                          (right (read (slot "j")))))
+                                      (value
+                                        (array-get
+                                          (slot "vertices")
+                                          (index
+                                            (add
+                                              (left
+                                                (mul
+                                                  (left (read (slot "i")))
+                                                  (right (read (slot "dimension")))))
+                                              (right
+                                                (array-get (slot "axes") (index (read (slot "j"))))))))))
+                                    (write
+                                      (slot "j")
+                                      (value (add (left (read (slot "j"))) (right 1))))))))
+                            (write (slot "row") (value (add (left (read (slot "row"))) (right 1))))))
+                        (else (result 0)))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (write (slot "result") (value (read (slot "pending"))))
+              (write (slot "result-dimension") (value (read (slot "axis-count"))))
+              (write (slot "result-vertex-count") (value (read (slot "visible-count"))))
+              (write (slot "result-source-count") (value (read (slot "vertex-count"))))
+              (write (slot "source-indices") (value (read (slot "pending-map"))))
+              (write (slot "visibility") (value (read (slot "pending-mask"))))
+              (read (slot "result")))))
+        (edit-slice-vertex
+          (body
+            (do
+              (call (selector "check-source"))
+              (call (selector "check-axes"))
+              (call (selector "check-slice"))
+              (if (< (left (read (slot "vertex-index"))) (right 0)) (then (fail)) (else (result 0)))
+              (if
+                (>= (left (read (slot "vertex-index"))) (right (read (slot "vertex-count"))))
+                (then (fail))
+                (else (result 0)))
+              (write (slot "i") (value (read (slot "vertex-index"))))
+              (if
+                (== (left (call (selector "matches-slice"))) (right false))
+                (then (fail))
+                (else (result 0)))
+              (call (selector "edit-vertex")))))))))

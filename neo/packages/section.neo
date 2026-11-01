@@ -1,0 +1,1908 @@
+// Segment and triangle plane sections; explicit topology and rational provenance.
+(package
+  (manifest
+    (schema 1)
+    (id "neo.spatial.section")
+    (version (major 0) (minor 2) (patch 0))
+    (dependencies (geometry (id "neo.spatial.geometry") (version (major 0) (minor 1) (patch 0))))
+    (exports
+      (section (path "contents/section") (mode "copy") (rights 9))
+      (triangle-section (path "contents/triangle-section") (mode "copy") (rights 9)))
+    (imports)
+    (bindings))
+  (contents
+    (section
+      (dimension 0)
+      (vertex-count 0)
+      (plane-axis 0)
+      (plane-value 0)
+      (segment-count 0)
+      (i 0)
+      (axis 0)
+      (a 0)
+      (b 0)
+      (av 0)
+      (bv 0)
+      (kind 0)
+      (point-count 0)
+      (line-count 0)
+      (output-count 0)
+      (row 0)
+      (point-row 0)
+      (line-row 0)
+      (endpoint 0)
+      (tn 0)
+      (td 0)
+      (numerator 0)
+      (denominator 0)
+      (quotient 0)
+      (remainder 0)
+      (result-dimension 0)
+      (result-vertex-count 0)
+      (vertices [])
+      (segments [])
+      (pending-kinds [])
+      (pending [])
+      (pending-points [])
+      (pending-lines [])
+      (pending-line-sources [])
+      (pending-source-segments [])
+      (pending-source-vertices [])
+      (pending-numerators [])
+      (pending-denominators [])
+      (result [])
+      (result-points [])
+      (result-segments [])
+      (source-segments [])
+      (source-vertices [])
+      (parameter-numerators [])
+      (parameter-denominators [])
+      (segment-sources [])
+      (segment-kinds [])
+      (handlers
+        (check-source
+          (body
+            (do
+              (write
+                (slot "dimension")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "source")))
+                        (name "dimension"))))))
+              (write
+                (slot "vertex-count")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "source")))
+                        (name "vertex-count"))))))
+              (do
+                (if (< (left (read (slot "dimension"))) (right 0)) (then (fail)) (else (result 0)))
+                (if
+                  (< (left (read (slot "vertex-count"))) (right 0))
+                  (then (fail))
+                  (else (result 0))))
+              (write
+                (slot "vertices")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "source")))
+                        (name "vertices"))))))
+              (if
+                (!=
+                  (left (array-size (slot "vertices")))
+                  (right
+                    (mul (left (read (slot "dimension"))) (right (read (slot "vertex-count"))))))
+                (then (fail))
+                (else (result 0)))
+              (if (< (left (read (slot "plane-axis"))) (right 0)) (then (fail)) (else (result 0)))
+              (if
+                (>= (left (read (slot "plane-axis"))) (right (read (slot "dimension"))))
+                (then (fail))
+                (else (result 0)))
+              (write
+                (slot "segments")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "source")))
+                        (name "segments"))))))
+              (if
+                (!= (left (rem (left (array-size (slot "segments"))) (right 2))) (right 0))
+                (then (fail))
+                (else (result 0)))
+              (write
+                (slot "segment-count")
+                (value (div (left (array-size (slot "segments"))) (right 2))))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (array-size (slot "segments"))))
+                  (body
+                    (do
+                      (do
+                        (if
+                          (<
+                            (left (array-get (slot "segments") (index (read (slot "i")))))
+                            (right 0))
+                          (then (fail))
+                          (else (result 0)))
+                        (if
+                          (>=
+                            (left (array-get (slot "segments") (index (read (slot "i")))))
+                            (right (read (slot "vertex-count"))))
+                          (then (fail))
+                          (else (result 0))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1)))))))))))
+        (divide
+          (body
+            (do
+              (write
+                (slot "quotient")
+                (value (div (left (read (slot "numerator"))) (right (read (slot "denominator"))))))
+              (write
+                (slot "remainder")
+                (value (rem (left (read (slot "numerator"))) (right (read (slot "denominator"))))))
+              (if
+                (>=
+                  (left
+                    (mul
+                      (left
+                        (if
+                          (< (left (read (slot "remainder"))) (right 0))
+                          (then (sub (left 0) (right (read (slot "remainder")))))
+                          (else (read (slot "remainder")))))
+                      (right 2)))
+                  (right
+                    (if
+                      (< (left (read (slot "denominator"))) (right 0))
+                      (then (sub (left 0) (right (read (slot "denominator")))))
+                      (else (read (slot "denominator"))))))
+                (then
+                  (if
+                    (< (left (read (slot "numerator"))) (right 0))
+                    (then
+                      (if
+                        (< (left (read (slot "denominator"))) (right 0))
+                        (then
+                          (write
+                            (slot "quotient")
+                            (value (add (left (read (slot "quotient"))) (right 1)))))
+                        (else
+                          (write
+                            (slot "quotient")
+                            (value (sub (left (read (slot "quotient"))) (right 1)))))))
+                    (else
+                      (if
+                        (< (left (read (slot "denominator"))) (right 0))
+                        (then
+                          (write
+                            (slot "quotient")
+                            (value (sub (left (read (slot "quotient"))) (right 1)))))
+                        (else
+                          (write
+                            (slot "quotient")
+                            (value (add (left (read (slot "quotient"))) (right 1)))))))))
+                (else (result 0)))
+              (read (slot "quotient")))))
+        (append
+          (body
+            (do
+              (do
+                (write (slot "axis") (value 0))
+                (while
+                  (< (left (read (slot "axis"))) (right (read (slot "dimension"))))
+                  (body
+                    (do
+                      (array-set
+                        (slot "pending")
+                        (index
+                          (add
+                            (left
+                              (mul (left (read (slot "row"))) (right (read (slot "dimension")))))
+                            (right (read (slot "axis")))))
+                        (value
+                          (if
+                            (>= (left (read (slot "endpoint"))) (right 0))
+                            (then
+                              (array-get
+                                (slot "vertices")
+                                (index
+                                  (add
+                                    (left
+                                      (mul
+                                        (left (read (slot "endpoint")))
+                                        (right (read (slot "dimension")))))
+                                    (right (read (slot "axis")))))))
+                            (else
+                              (if
+                                (== (left (read (slot "axis"))) (right (read (slot "plane-axis"))))
+                                (then (read (slot "plane-value")))
+                                (else
+                                  (do
+                                    (write
+                                      (slot "numerator")
+                                      (value
+                                        (add
+                                          (left
+                                            (mul
+                                              (left
+                                                (array-get
+                                                  (slot "vertices")
+                                                  (index
+                                                    (add
+                                                      (left
+                                                        (mul
+                                                          (left (read (slot "a")))
+                                                          (right (read (slot "dimension")))))
+                                                      (right (read (slot "axis")))))))
+                                              (right
+                                                (sub
+                                                  (left (read (slot "bv")))
+                                                  (right (read (slot "plane-value")))))))
+                                          (right
+                                            (mul
+                                              (left
+                                                (array-get
+                                                  (slot "vertices")
+                                                  (index
+                                                    (add
+                                                      (left
+                                                        (mul
+                                                          (left (read (slot "b")))
+                                                          (right (read (slot "dimension")))))
+                                                      (right (read (slot "axis")))))))
+                                              (right
+                                                (sub
+                                                  (left (read (slot "plane-value")))
+                                                  (right (read (slot "av"))))))))))
+                                    (write (slot "denominator") (value (read (slot "td"))))
+                                    (call (selector "divide")))))))))
+                      (write (slot "axis") (value (add (left (read (slot "axis"))) (right 1))))))))
+              (array-set
+                (slot "pending-source-segments")
+                (index (read (slot "row")))
+                (value (read (slot "i"))))
+              (array-set
+                (slot "pending-source-vertices")
+                (index (read (slot "row")))
+                (value (read (slot "endpoint"))))
+              (array-set
+                (slot "pending-numerators")
+                (index (read (slot "row")))
+                (value (read (slot "tn"))))
+              (array-set
+                (slot "pending-denominators")
+                (index (read (slot "row")))
+                (value (read (slot "td"))))
+              (write (slot "row") (value (add (left (read (slot "row"))) (right 1)))))))
+        (intersect
+          (body
+            (do
+              (call (selector "check-source"))
+              (write
+                (slot "pending-kinds")
+                (value (array-new (size (read (slot "segment-count"))) (value 0))))
+              (write (slot "point-count") (value 0))
+              (write (slot "line-count") (value 0))
+              (write (slot "output-count") (value 0))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "segment-count"))))
+                  (body
+                    (do
+                      (do
+                        (do
+                          (write
+                            (slot "a")
+                            (value
+                              (array-get
+                                (slot "segments")
+                                (index (mul (left (read (slot "i"))) (right 2))))))
+                          (write
+                            (slot "b")
+                            (value
+                              (array-get
+                                (slot "segments")
+                                (index
+                                  (add (left (mul (left (read (slot "i"))) (right 2))) (right 1))))))
+                          (write
+                            (slot "av")
+                            (value
+                              (array-get
+                                (slot "vertices")
+                                (index
+                                  (add
+                                    (left
+                                      (mul
+                                        (left (read (slot "a")))
+                                        (right (read (slot "dimension")))))
+                                    (right (read (slot "plane-axis"))))))))
+                          (write
+                            (slot "bv")
+                            (value
+                              (array-get
+                                (slot "vertices")
+                                (index
+                                  (add
+                                    (left
+                                      (mul
+                                        (left (read (slot "b")))
+                                        (right (read (slot "dimension")))))
+                                    (right (read (slot "plane-axis")))))))))
+                        (write (slot "kind") (value 0))
+                        (if
+                          (== (left (read (slot "av"))) (right (read (slot "plane-value"))))
+                          (then
+                            (if
+                              (== (left (read (slot "bv"))) (right (read (slot "plane-value"))))
+                              (then
+                                (do
+                                  (write (slot "kind") (value 1))
+                                  (do
+                                    (write (slot "axis") (value 0))
+                                    (while
+                                      (<
+                                        (left (read (slot "axis")))
+                                        (right (read (slot "dimension"))))
+                                      (body
+                                        (do
+                                          (if
+                                            (!=
+                                              (left
+                                                (array-get
+                                                  (slot "vertices")
+                                                  (index
+                                                    (add
+                                                      (left
+                                                        (mul
+                                                          (left (read (slot "a")))
+                                                          (right (read (slot "dimension")))))
+                                                      (right (read (slot "axis")))))))
+                                              (right
+                                                (array-get
+                                                  (slot "vertices")
+                                                  (index
+                                                    (add
+                                                      (left
+                                                        (mul
+                                                          (left (read (slot "b")))
+                                                          (right (read (slot "dimension")))))
+                                                      (right (read (slot "axis"))))))))
+                                            (then (write (slot "kind") (value 2)))
+                                            (else (result 0)))
+                                          (write
+                                            (slot "axis")
+                                            (value (add (left (read (slot "axis"))) (right 1))))))))))
+                              (else (write (slot "kind") (value 1)))))
+                          (else
+                            (if
+                              (== (left (read (slot "bv"))) (right (read (slot "plane-value"))))
+                              (then (write (slot "kind") (value 1)))
+                              (else
+                                (if
+                                  (< (left (read (slot "av"))) (right (read (slot "plane-value"))))
+                                  (then
+                                    (if
+                                      (>
+                                        (left (read (slot "bv")))
+                                        (right (read (slot "plane-value"))))
+                                      (then (write (slot "kind") (value 1)))
+                                      (else (result 0))))
+                                  (else
+                                    (if
+                                      (<
+                                        (left (read (slot "bv")))
+                                        (right (read (slot "plane-value"))))
+                                      (then (write (slot "kind") (value 1)))
+                                      (else (result 0)))))))))
+                        (array-set
+                          (slot "pending-kinds")
+                          (index (read (slot "i")))
+                          (value (read (slot "kind"))))
+                        (if
+                          (== (left (read (slot "kind"))) (right 1))
+                          (then
+                            (write
+                              (slot "point-count")
+                              (value (add (left (read (slot "point-count"))) (right 1)))))
+                          (else (result 0)))
+                        (if
+                          (== (left (read (slot "kind"))) (right 2))
+                          (then
+                            (write
+                              (slot "line-count")
+                              (value (add (left (read (slot "line-count"))) (right 1)))))
+                          (else (result 0)))
+                        (write
+                          (slot "output-count")
+                          (value
+                            (add (left (read (slot "output-count"))) (right (read (slot "kind")))))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (write
+                (slot "pending")
+                (value
+                  (array-new
+                    (size
+                      (mul (left (read (slot "output-count"))) (right (read (slot "dimension")))))
+                    (value 0))))
+              (write
+                (slot "pending-points")
+                (value (array-new (size (read (slot "point-count"))) (value 0))))
+              (write
+                (slot "pending-lines")
+                (value
+                  (array-new (size (mul (left (read (slot "line-count"))) (right 2))) (value 0))))
+              (write
+                (slot "pending-line-sources")
+                (value (array-new (size (read (slot "line-count"))) (value 0))))
+              (write
+                (slot "pending-source-segments")
+                (value (array-new (size (read (slot "output-count"))) (value 0))))
+              (write
+                (slot "pending-source-vertices")
+                (value (array-new (size (read (slot "output-count"))) (value 0))))
+              (write
+                (slot "pending-numerators")
+                (value (array-new (size (read (slot "output-count"))) (value 0))))
+              (write
+                (slot "pending-denominators")
+                (value (array-new (size (read (slot "output-count"))) (value 0))))
+              (write (slot "row") (value 0))
+              (write (slot "point-row") (value 0))
+              (write (slot "line-row") (value 0))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "segment-count"))))
+                  (body
+                    (do
+                      (do
+                        (do
+                          (write
+                            (slot "a")
+                            (value
+                              (array-get
+                                (slot "segments")
+                                (index (mul (left (read (slot "i"))) (right 2))))))
+                          (write
+                            (slot "b")
+                            (value
+                              (array-get
+                                (slot "segments")
+                                (index
+                                  (add (left (mul (left (read (slot "i"))) (right 2))) (right 1))))))
+                          (write
+                            (slot "av")
+                            (value
+                              (array-get
+                                (slot "vertices")
+                                (index
+                                  (add
+                                    (left
+                                      (mul
+                                        (left (read (slot "a")))
+                                        (right (read (slot "dimension")))))
+                                    (right (read (slot "plane-axis"))))))))
+                          (write
+                            (slot "bv")
+                            (value
+                              (array-get
+                                (slot "vertices")
+                                (index
+                                  (add
+                                    (left
+                                      (mul
+                                        (left (read (slot "b")))
+                                        (right (read (slot "dimension")))))
+                                    (right (read (slot "plane-axis")))))))))
+                        (if
+                          (==
+                            (left (array-get (slot "pending-kinds") (index (read (slot "i")))))
+                            (right 1))
+                          (then
+                            (do
+                              (array-set
+                                (slot "pending-points")
+                                (index (read (slot "point-row")))
+                                (value (read (slot "row"))))
+                              (write
+                                (slot "point-row")
+                                (value (add (left (read (slot "point-row"))) (right 1))))
+                              (if
+                                (== (left (read (slot "av"))) (right (read (slot "plane-value"))))
+                                (then
+                                  (do
+                                    (write (slot "endpoint") (value (read (slot "a"))))
+                                    (write (slot "tn") (value 0))
+                                    (write (slot "td") (value 1))))
+                                (else
+                                  (if
+                                    (==
+                                      (left (read (slot "bv")))
+                                      (right (read (slot "plane-value"))))
+                                    (then
+                                      (do
+                                        (write (slot "endpoint") (value (read (slot "b"))))
+                                        (write (slot "tn") (value 1))
+                                        (write (slot "td") (value 1))))
+                                    (else
+                                      (do
+                                        (write (slot "endpoint") (value -1))
+                                        (write
+                                          (slot "tn")
+                                          (value
+                                            (sub
+                                              (left (read (slot "plane-value")))
+                                              (right (read (slot "av"))))))
+                                        (write
+                                          (slot "td")
+                                          (value
+                                            (sub
+                                              (left (read (slot "bv")))
+                                              (right (read (slot "av")))))))))))
+                              (call (selector "append"))))
+                          (else
+                            (if
+                              (==
+                                (left (array-get (slot "pending-kinds") (index (read (slot "i")))))
+                                (right 2))
+                              (then
+                                (do
+                                  (array-set
+                                    (slot "pending-lines")
+                                    (index (mul (left (read (slot "line-row"))) (right 2)))
+                                    (value (read (slot "row"))))
+                                  (array-set
+                                    (slot "pending-lines")
+                                    (index
+                                      (add
+                                        (left (mul (left (read (slot "line-row"))) (right 2)))
+                                        (right 1)))
+                                    (value (add (left (read (slot "row"))) (right 1))))
+                                  (array-set
+                                    (slot "pending-line-sources")
+                                    (index (read (slot "line-row")))
+                                    (value (read (slot "i"))))
+                                  (write
+                                    (slot "line-row")
+                                    (value (add (left (read (slot "line-row"))) (right 1))))
+                                  (write (slot "endpoint") (value (read (slot "a"))))
+                                  (write (slot "tn") (value 0))
+                                  (write (slot "td") (value 1))
+                                  (call (selector "append"))
+                                  (write (slot "endpoint") (value (read (slot "b"))))
+                                  (write (slot "tn") (value 1))
+                                  (call (selector "append"))))
+                              (else (result 0))))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (write (slot "result") (value (read (slot "pending"))))
+              (write (slot "result-points") (value (read (slot "pending-points"))))
+              (write (slot "result-segments") (value (read (slot "pending-lines"))))
+              (write (slot "source-segments") (value (read (slot "pending-source-segments"))))
+              (write (slot "source-vertices") (value (read (slot "pending-source-vertices"))))
+              (write (slot "parameter-numerators") (value (read (slot "pending-numerators"))))
+              (write (slot "parameter-denominators") (value (read (slot "pending-denominators"))))
+              (write (slot "segment-sources") (value (read (slot "pending-line-sources"))))
+              (write (slot "segment-kinds") (value (read (slot "pending-kinds"))))
+              (write (slot "result-dimension") (value (read (slot "dimension"))))
+              (write (slot "result-vertex-count") (value (read (slot "output-count"))))
+              (read (slot "result")))))))
+    (triangle-section
+      (dimension 0)
+      (vertex-count 0)
+      (plane-axis 0)
+      (plane-value 0)
+      (face-count 0)
+      (i 0)
+      (j 0)
+      (axis 0)
+      (v0 0)
+      (v1 0)
+      (v2 0)
+      (pivot 0)
+      (extent-axis 0)
+      (rank 0)
+      (contacts 0)
+      (low 0)
+      (high 0)
+      (a 0)
+      (b 0)
+      (av 0)
+      (bv 0)
+      (tn 0)
+      (td 0)
+      (endpoint 0)
+      (point-count 0)
+      (line-count 0)
+      (triangle-count 0)
+      (output-count 0)
+      (row 0)
+      (point-row 0)
+      (line-row 0)
+      (face-row 0)
+      (start-row 0)
+      (degenerate 0)
+      (numerator 0)
+      (denominator 0)
+      (quotient 0)
+      (remainder 0)
+      (result-dimension 0)
+      (result-vertex-count 0)
+      (vertices [])
+      (triangles [])
+      (u [])
+      (v [])
+      (pending-kinds [])
+      (pending-ranks [])
+      (pending-edge-vertices [])
+      (source-edge-vertices [])
+      (candidate-a [])
+      (candidate-b [])
+      (candidate-tn [])
+      (candidate-td [])
+      (candidate-endpoint [])
+      (pending [])
+      (pending-points [])
+      (pending-lines [])
+      (pending-faces [])
+      (pending-line-sources [])
+      (pending-face-sources [])
+      (pending-line-degenerate [])
+      (pending-face-degenerate [])
+      (pending-source-triangles [])
+      (pending-source-vertices [])
+      (pending-numerators [])
+      (pending-denominators [])
+      (result [])
+      (result-points [])
+      (result-segments [])
+      (result-triangles [])
+      (source-triangles [])
+      (source-vertices [])
+      (parameter-numerators [])
+      (parameter-denominators [])
+      (segment-sources [])
+      (triangle-sources [])
+      (segment-degenerate [])
+      (triangle-degenerate [])
+      (triangle-kinds [])
+      (triangle-ranks [])
+      (handlers
+        (check-source
+          (body
+            (do
+              (write
+                (slot "dimension")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "source")))
+                        (name "dimension"))))))
+              (write
+                (slot "vertex-count")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "source")))
+                        (name "vertex-count"))))))
+              (do
+                (if (< (left (read (slot "dimension"))) (right 0)) (then (fail)) (else (result 0)))
+                (if
+                  (< (left (read (slot "vertex-count"))) (right 0))
+                  (then (fail))
+                  (else (result 0))))
+              (write
+                (slot "vertices")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "source")))
+                        (name "vertices"))))))
+              (if
+                (!=
+                  (left (array-size (slot "vertices")))
+                  (right
+                    (mul (left (read (slot "dimension"))) (right (read (slot "vertex-count"))))))
+                (then (fail))
+                (else (result 0)))
+              (if (< (left (read (slot "plane-axis"))) (right 0)) (then (fail)) (else (result 0)))
+              (if
+                (>= (left (read (slot "plane-axis"))) (right (read (slot "dimension"))))
+                (then (fail))
+                (else (result 0)))
+              (write
+                (slot "triangles")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "source")))
+                        (name "triangles"))))))
+              (if
+                (!= (left (rem (left (array-size (slot "triangles"))) (right 3))) (right 0))
+                (then (fail))
+                (else (result 0)))
+              (write
+                (slot "face-count")
+                (value (div (left (array-size (slot "triangles"))) (right 3))))
+              (do
+                (write (slot "j") (value 0))
+                (while
+                  (< (left (read (slot "j"))) (right (array-size (slot "triangles"))))
+                  (body
+                    (do
+                      (do
+                        (if
+                          (<
+                            (left (array-get (slot "triangles") (index (read (slot "j")))))
+                            (right 0))
+                          (then (fail))
+                          (else (result 0)))
+                        (if
+                          (>=
+                            (left (array-get (slot "triangles") (index (read (slot "j")))))
+                            (right (read (slot "vertex-count"))))
+                          (then (fail))
+                          (else (result 0))))
+                      (write (slot "j") (value (add (left (read (slot "j"))) (right 1)))))))))))
+        (divide
+          (body
+            (do
+              (write
+                (slot "quotient")
+                (value (div (left (read (slot "numerator"))) (right (read (slot "denominator"))))))
+              (write
+                (slot "remainder")
+                (value (rem (left (read (slot "numerator"))) (right (read (slot "denominator"))))))
+              (if
+                (>=
+                  (left
+                    (mul
+                      (left
+                        (if
+                          (< (left (read (slot "remainder"))) (right 0))
+                          (then (sub (left 0) (right (read (slot "remainder")))))
+                          (else (read (slot "remainder")))))
+                      (right 2)))
+                  (right
+                    (if
+                      (< (left (read (slot "denominator"))) (right 0))
+                      (then (sub (left 0) (right (read (slot "denominator")))))
+                      (else (read (slot "denominator"))))))
+                (then
+                  (if
+                    (< (left (read (slot "numerator"))) (right 0))
+                    (then
+                      (if
+                        (< (left (read (slot "denominator"))) (right 0))
+                        (then
+                          (write
+                            (slot "quotient")
+                            (value (add (left (read (slot "quotient"))) (right 1)))))
+                        (else
+                          (write
+                            (slot "quotient")
+                            (value (sub (left (read (slot "quotient"))) (right 1)))))))
+                    (else
+                      (if
+                        (< (left (read (slot "denominator"))) (right 0))
+                        (then
+                          (write
+                            (slot "quotient")
+                            (value (sub (left (read (slot "quotient"))) (right 1)))))
+                        (else
+                          (write
+                            (slot "quotient")
+                            (value (add (left (read (slot "quotient"))) (right 1)))))))))
+                (else (result 0)))
+              (read (slot "quotient")))))
+        (record
+          (body
+            (do
+              (array-set
+                (slot "candidate-a")
+                (index
+                  (add
+                    (left (mul (left (read (slot "i"))) (right 3)))
+                    (right (read (slot "contacts")))))
+                (value (read (slot "a"))))
+              (array-set
+                (slot "candidate-b")
+                (index
+                  (add
+                    (left (mul (left (read (slot "i"))) (right 3)))
+                    (right (read (slot "contacts")))))
+                (value (read (slot "b"))))
+              (array-set
+                (slot "candidate-tn")
+                (index
+                  (add
+                    (left (mul (left (read (slot "i"))) (right 3)))
+                    (right (read (slot "contacts")))))
+                (value (read (slot "tn"))))
+              (array-set
+                (slot "candidate-td")
+                (index
+                  (add
+                    (left (mul (left (read (slot "i"))) (right 3)))
+                    (right (read (slot "contacts")))))
+                (value (read (slot "td"))))
+              (array-set
+                (slot "candidate-endpoint")
+                (index
+                  (add
+                    (left (mul (left (read (slot "i"))) (right 3)))
+                    (right (read (slot "contacts")))))
+                (value (read (slot "endpoint"))))
+              (write (slot "contacts") (value (add (left (read (slot "contacts"))) (right 1)))))))
+        (record-crossing
+          (body
+            (do
+              (write (slot "endpoint") (value -1))
+              (write
+                (slot "tn")
+                (value (sub (left (read (slot "plane-value"))) (right (read (slot "av"))))))
+              (write (slot "td") (value (sub (left (read (slot "bv"))) (right (read (slot "av"))))))
+              (call (selector "record")))))
+        (append
+          (body
+            (do
+              (do
+                (write (slot "axis") (value 0))
+                (while
+                  (< (left (read (slot "axis"))) (right (read (slot "dimension"))))
+                  (body
+                    (do
+                      (array-set
+                        (slot "pending")
+                        (index
+                          (add
+                            (left
+                              (mul (left (read (slot "row"))) (right (read (slot "dimension")))))
+                            (right (read (slot "axis")))))
+                        (value
+                          (if
+                            (>= (left (read (slot "endpoint"))) (right 0))
+                            (then
+                              (array-get
+                                (slot "vertices")
+                                (index
+                                  (add
+                                    (left
+                                      (mul
+                                        (left (read (slot "endpoint")))
+                                        (right (read (slot "dimension")))))
+                                    (right (read (slot "axis")))))))
+                            (else
+                              (if
+                                (== (left (read (slot "axis"))) (right (read (slot "plane-axis"))))
+                                (then (read (slot "plane-value")))
+                                (else
+                                  (do
+                                    (write
+                                      (slot "numerator")
+                                      (value
+                                        (add
+                                          (left
+                                            (mul
+                                              (left
+                                                (array-get
+                                                  (slot "vertices")
+                                                  (index
+                                                    (add
+                                                      (left
+                                                        (mul
+                                                          (left (read (slot "a")))
+                                                          (right (read (slot "dimension")))))
+                                                      (right (read (slot "axis")))))))
+                                              (right
+                                                (sub
+                                                  (left (read (slot "bv")))
+                                                  (right (read (slot "plane-value")))))))
+                                          (right
+                                            (mul
+                                              (left
+                                                (array-get
+                                                  (slot "vertices")
+                                                  (index
+                                                    (add
+                                                      (left
+                                                        (mul
+                                                          (left (read (slot "b")))
+                                                          (right (read (slot "dimension")))))
+                                                      (right (read (slot "axis")))))))
+                                              (right
+                                                (sub
+                                                  (left (read (slot "plane-value")))
+                                                  (right (read (slot "av"))))))))))
+                                    (write (slot "denominator") (value (read (slot "td"))))
+                                    (call (selector "divide")))))))))
+                      (write (slot "axis") (value (add (left (read (slot "axis"))) (right 1))))))))
+              (array-set
+                (slot "pending-source-triangles")
+                (index (read (slot "row")))
+                (value (read (slot "i"))))
+              (array-set
+                (slot "pending-source-vertices")
+                (index (read (slot "row")))
+                (value (read (slot "endpoint"))))
+              (array-set
+                (slot "pending-numerators")
+                (index (read (slot "row")))
+                (value (read (slot "tn"))))
+              (array-set
+                (slot "pending-denominators")
+                (index (read (slot "row")))
+                (value (read (slot "td"))))
+              (write (slot "row") (value (add (left (read (slot "row"))) (right 1)))))))
+        (intersect
+          (body
+            (do
+              (call (selector "check-source"))
+              (write (slot "u") (value (array-new (size (read (slot "dimension"))) (value 0))))
+              (write (slot "v") (value (array-new (size (read (slot "dimension"))) (value 0))))
+              (write
+                (slot "pending-kinds")
+                (value (array-new (size (read (slot "face-count"))) (value 0))))
+              (write
+                (slot "pending-ranks")
+                (value (array-new (size (read (slot "face-count"))) (value 0))))
+              (write
+                (slot "candidate-a")
+                (value
+                  (array-new (size (mul (left (read (slot "face-count"))) (right 3))) (value 0))))
+              (write
+                (slot "candidate-b")
+                (value
+                  (array-new (size (mul (left (read (slot "face-count"))) (right 3))) (value 0))))
+              (write
+                (slot "candidate-tn")
+                (value
+                  (array-new (size (mul (left (read (slot "face-count"))) (right 3))) (value 0))))
+              (write
+                (slot "candidate-td")
+                (value
+                  (array-new (size (mul (left (read (slot "face-count"))) (right 3))) (value 0))))
+              (write
+                (slot "candidate-endpoint")
+                (value
+                  (array-new (size (mul (left (read (slot "face-count"))) (right 3))) (value 0))))
+              (write (slot "point-count") (value 0))
+              (write (slot "line-count") (value 0))
+              (write (slot "triangle-count") (value 0))
+              (write (slot "output-count") (value 0))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "face-count"))))
+                  (body
+                    (do
+                      (do
+                        (do
+                          (write
+                            (slot "v0")
+                            (value
+                              (array-get
+                                (slot "triangles")
+                                (index
+                                  (add (left (mul (left (read (slot "i"))) (right 3))) (right 0))))))
+                          (write
+                            (slot "v1")
+                            (value
+                              (array-get
+                                (slot "triangles")
+                                (index
+                                  (add (left (mul (left (read (slot "i"))) (right 3))) (right 1))))))
+                          (write
+                            (slot "v2")
+                            (value
+                              (array-get
+                                (slot "triangles")
+                                (index
+                                  (add (left (mul (left (read (slot "i"))) (right 3))) (right 2)))))))
+                        (do
+                          (write (slot "pivot") (value -1))
+                          (write (slot "extent-axis") (value -1))
+                          (write (slot "rank") (value 0))
+                          (do
+                            (write (slot "axis") (value 0))
+                            (while
+                              (< (left (read (slot "axis"))) (right (read (slot "dimension"))))
+                              (body
+                                (do
+                                  (do
+                                    (array-set
+                                      (slot "u")
+                                      (index (read (slot "axis")))
+                                      (value
+                                        (sub
+                                          (left
+                                            (array-get
+                                              (slot "vertices")
+                                              (index
+                                                (add
+                                                  (left
+                                                    (mul
+                                                      (left (read (slot "v1")))
+                                                      (right (read (slot "dimension")))))
+                                                  (right (read (slot "axis")))))))
+                                          (right
+                                            (array-get
+                                              (slot "vertices")
+                                              (index
+                                                (add
+                                                  (left
+                                                    (mul
+                                                      (left (read (slot "v0")))
+                                                      (right (read (slot "dimension")))))
+                                                  (right (read (slot "axis"))))))))))
+                                    (array-set
+                                      (slot "v")
+                                      (index (read (slot "axis")))
+                                      (value
+                                        (sub
+                                          (left
+                                            (array-get
+                                              (slot "vertices")
+                                              (index
+                                                (add
+                                                  (left
+                                                    (mul
+                                                      (left (read (slot "v2")))
+                                                      (right (read (slot "dimension")))))
+                                                  (right (read (slot "axis")))))))
+                                          (right
+                                            (array-get
+                                              (slot "vertices")
+                                              (index
+                                                (add
+                                                  (left
+                                                    (mul
+                                                      (left (read (slot "v0")))
+                                                      (right (read (slot "dimension")))))
+                                                  (right (read (slot "axis"))))))))))
+                                    (if
+                                      (!=
+                                        (left (array-get (slot "u") (index (read (slot "axis")))))
+                                        (right 0))
+                                      (then
+                                        (do
+                                          (write (slot "extent-axis") (value (read (slot "axis"))))
+                                          (if
+                                            (< (left (read (slot "pivot"))) (right 0))
+                                            (then
+                                              (write (slot "pivot") (value (read (slot "axis")))))
+                                            (else (result 0)))))
+                                      (else (result 0)))
+                                    (if
+                                      (!=
+                                        (left (array-get (slot "v") (index (read (slot "axis")))))
+                                        (right 0))
+                                      (then
+                                        (write (slot "extent-axis") (value (read (slot "axis")))))
+                                      (else (result 0))))
+                                  (write
+                                    (slot "axis")
+                                    (value (add (left (read (slot "axis"))) (right 1))))))))
+                          (if
+                            (>= (left (read (slot "extent-axis"))) (right 0))
+                            (then (write (slot "rank") (value 1)))
+                            (else (result 0)))
+                          (if
+                            (>= (left (read (slot "pivot"))) (right 0))
+                            (then
+                              (do
+                                (write (slot "axis") (value 0))
+                                (while
+                                  (< (left (read (slot "axis"))) (right (read (slot "dimension"))))
+                                  (body
+                                    (do
+                                      (if
+                                        (!=
+                                          (left
+                                            (sub
+                                              (left
+                                                (mul
+                                                  (left
+                                                    (array-get
+                                                      (slot "u")
+                                                      (index (read (slot "pivot")))))
+                                                  (right
+                                                    (array-get
+                                                      (slot "v")
+                                                      (index (read (slot "axis")))))))
+                                              (right
+                                                (mul
+                                                  (left
+                                                    (array-get
+                                                      (slot "u")
+                                                      (index (read (slot "axis")))))
+                                                  (right
+                                                    (array-get
+                                                      (slot "v")
+                                                      (index (read (slot "pivot")))))))))
+                                          (right 0))
+                                        (then (write (slot "rank") (value 2)))
+                                        (else (result 0)))
+                                      (write
+                                        (slot "axis")
+                                        (value (add (left (read (slot "axis"))) (right 1)))))))))
+                            (else (result 0))))
+                        (write (slot "contacts") (value 0))
+                        (if
+                          (== (left (read (slot "rank"))) (right 0))
+                          (then
+                            (if
+                              (==
+                                (left
+                                  (array-get
+                                    (slot "vertices")
+                                    (index
+                                      (add
+                                        (left
+                                          (mul
+                                            (left (read (slot "v0")))
+                                            (right (read (slot "dimension")))))
+                                        (right (read (slot "plane-axis")))))))
+                                (right (read (slot "plane-value"))))
+                              (then
+                                (do
+                                  (write (slot "a") (value (read (slot "v0"))))
+                                  (write (slot "b") (value (read (slot "v0"))))
+                                  (write (slot "endpoint") (value (read (slot "v0"))))
+                                  (write (slot "tn") (value 0))
+                                  (write (slot "td") (value 1))
+                                  (call (selector "record"))))
+                              (else (result 0))))
+                          (else
+                            (if
+                              (== (left (read (slot "rank"))) (right 1))
+                              (then
+                                (do
+                                  (write (slot "low") (value (read (slot "v0"))))
+                                  (write (slot "high") (value (read (slot "v0"))))
+                                  (do
+                                    (if
+                                      (<
+                                        (left
+                                          (array-get
+                                            (slot "vertices")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "v1")))
+                                                    (right (read (slot "dimension")))))
+                                                (right (read (slot "extent-axis")))))))
+                                        (right
+                                          (array-get
+                                            (slot "vertices")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "low")))
+                                                    (right (read (slot "dimension")))))
+                                                (right (read (slot "extent-axis"))))))))
+                                      (then (write (slot "low") (value (read (slot "v1")))))
+                                      (else (result 0)))
+                                    (if
+                                      (>
+                                        (left
+                                          (array-get
+                                            (slot "vertices")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "v1")))
+                                                    (right (read (slot "dimension")))))
+                                                (right (read (slot "extent-axis")))))))
+                                        (right
+                                          (array-get
+                                            (slot "vertices")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "high")))
+                                                    (right (read (slot "dimension")))))
+                                                (right (read (slot "extent-axis"))))))))
+                                      (then (write (slot "high") (value (read (slot "v1")))))
+                                      (else (result 0))))
+                                  (do
+                                    (if
+                                      (<
+                                        (left
+                                          (array-get
+                                            (slot "vertices")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "v2")))
+                                                    (right (read (slot "dimension")))))
+                                                (right (read (slot "extent-axis")))))))
+                                        (right
+                                          (array-get
+                                            (slot "vertices")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "low")))
+                                                    (right (read (slot "dimension")))))
+                                                (right (read (slot "extent-axis"))))))))
+                                      (then (write (slot "low") (value (read (slot "v2")))))
+                                      (else (result 0)))
+                                    (if
+                                      (>
+                                        (left
+                                          (array-get
+                                            (slot "vertices")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "v2")))
+                                                    (right (read (slot "dimension")))))
+                                                (right (read (slot "extent-axis")))))))
+                                        (right
+                                          (array-get
+                                            (slot "vertices")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "high")))
+                                                    (right (read (slot "dimension")))))
+                                                (right (read (slot "extent-axis"))))))))
+                                      (then (write (slot "high") (value (read (slot "v2")))))
+                                      (else (result 0))))
+                                  (if
+                                    (==
+                                      (left
+                                        (array-get
+                                          (slot "vertices")
+                                          (index
+                                            (add
+                                              (left
+                                                (mul
+                                                  (left (read (slot "low")))
+                                                  (right (read (slot "dimension")))))
+                                              (right (read (slot "plane-axis")))))))
+                                      (right (read (slot "plane-value"))))
+                                    (then
+                                      (do
+                                        (write (slot "a") (value (read (slot "low"))))
+                                        (write (slot "b") (value (read (slot "low"))))
+                                        (write (slot "endpoint") (value (read (slot "low"))))
+                                        (write (slot "tn") (value 0))
+                                        (write (slot "td") (value 1))
+                                        (call (selector "record"))))
+                                    (else (result 0)))
+                                  (if
+                                    (==
+                                      (left
+                                        (array-get
+                                          (slot "vertices")
+                                          (index
+                                            (add
+                                              (left
+                                                (mul
+                                                  (left (read (slot "high")))
+                                                  (right (read (slot "dimension")))))
+                                              (right (read (slot "plane-axis")))))))
+                                      (right (read (slot "plane-value"))))
+                                    (then
+                                      (do
+                                        (write (slot "a") (value (read (slot "high"))))
+                                        (write (slot "b") (value (read (slot "high"))))
+                                        (write (slot "endpoint") (value (read (slot "high"))))
+                                        (write (slot "tn") (value 0))
+                                        (write (slot "td") (value 1))
+                                        (call (selector "record"))))
+                                    (else (result 0)))
+                                  (do
+                                    (write (slot "a") (value (read (slot "low"))))
+                                    (write (slot "b") (value (read (slot "high"))))
+                                    (write
+                                      (slot "av")
+                                      (value
+                                        (array-get
+                                          (slot "vertices")
+                                          (index
+                                            (add
+                                              (left
+                                                (mul
+                                                  (left (read (slot "a")))
+                                                  (right (read (slot "dimension")))))
+                                              (right (read (slot "plane-axis"))))))))
+                                    (write
+                                      (slot "bv")
+                                      (value
+                                        (array-get
+                                          (slot "vertices")
+                                          (index
+                                            (add
+                                              (left
+                                                (mul
+                                                  (left (read (slot "b")))
+                                                  (right (read (slot "dimension")))))
+                                              (right (read (slot "plane-axis"))))))))
+                                    (if
+                                      (<
+                                        (left (read (slot "av")))
+                                        (right (read (slot "plane-value"))))
+                                      (then
+                                        (if
+                                          (>
+                                            (left (read (slot "bv")))
+                                            (right (read (slot "plane-value"))))
+                                          (then (call (selector "record-crossing")))
+                                          (else (result 0))))
+                                      (else
+                                        (if
+                                          (>
+                                            (left (read (slot "av")))
+                                            (right (read (slot "plane-value"))))
+                                          (then
+                                            (if
+                                              (<
+                                                (left (read (slot "bv")))
+                                                (right (read (slot "plane-value"))))
+                                              (then (call (selector "record-crossing")))
+                                              (else (result 0))))
+                                          (else (result 0))))))))
+                              (else
+                                (do
+                                  (if
+                                    (==
+                                      (left
+                                        (array-get
+                                          (slot "vertices")
+                                          (index
+                                            (add
+                                              (left
+                                                (mul
+                                                  (left (read (slot "v0")))
+                                                  (right (read (slot "dimension")))))
+                                              (right (read (slot "plane-axis")))))))
+                                      (right (read (slot "plane-value"))))
+                                    (then
+                                      (do
+                                        (write (slot "a") (value (read (slot "v0"))))
+                                        (write (slot "b") (value (read (slot "v0"))))
+                                        (write (slot "endpoint") (value (read (slot "v0"))))
+                                        (write (slot "tn") (value 0))
+                                        (write (slot "td") (value 1))
+                                        (call (selector "record"))))
+                                    (else (result 0)))
+                                  (if
+                                    (==
+                                      (left
+                                        (array-get
+                                          (slot "vertices")
+                                          (index
+                                            (add
+                                              (left
+                                                (mul
+                                                  (left (read (slot "v1")))
+                                                  (right (read (slot "dimension")))))
+                                              (right (read (slot "plane-axis")))))))
+                                      (right (read (slot "plane-value"))))
+                                    (then
+                                      (do
+                                        (write (slot "a") (value (read (slot "v1"))))
+                                        (write (slot "b") (value (read (slot "v1"))))
+                                        (write (slot "endpoint") (value (read (slot "v1"))))
+                                        (write (slot "tn") (value 0))
+                                        (write (slot "td") (value 1))
+                                        (call (selector "record"))))
+                                    (else (result 0)))
+                                  (if
+                                    (==
+                                      (left
+                                        (array-get
+                                          (slot "vertices")
+                                          (index
+                                            (add
+                                              (left
+                                                (mul
+                                                  (left (read (slot "v2")))
+                                                  (right (read (slot "dimension")))))
+                                              (right (read (slot "plane-axis")))))))
+                                      (right (read (slot "plane-value"))))
+                                    (then
+                                      (do
+                                        (write (slot "a") (value (read (slot "v2"))))
+                                        (write (slot "b") (value (read (slot "v2"))))
+                                        (write (slot "endpoint") (value (read (slot "v2"))))
+                                        (write (slot "tn") (value 0))
+                                        (write (slot "td") (value 1))
+                                        (call (selector "record"))))
+                                    (else (result 0)))
+                                  (do
+                                    (write (slot "a") (value (read (slot "v0"))))
+                                    (write (slot "b") (value (read (slot "v1"))))
+                                    (write
+                                      (slot "av")
+                                      (value
+                                        (array-get
+                                          (slot "vertices")
+                                          (index
+                                            (add
+                                              (left
+                                                (mul
+                                                  (left (read (slot "a")))
+                                                  (right (read (slot "dimension")))))
+                                              (right (read (slot "plane-axis"))))))))
+                                    (write
+                                      (slot "bv")
+                                      (value
+                                        (array-get
+                                          (slot "vertices")
+                                          (index
+                                            (add
+                                              (left
+                                                (mul
+                                                  (left (read (slot "b")))
+                                                  (right (read (slot "dimension")))))
+                                              (right (read (slot "plane-axis"))))))))
+                                    (if
+                                      (<
+                                        (left (read (slot "av")))
+                                        (right (read (slot "plane-value"))))
+                                      (then
+                                        (if
+                                          (>
+                                            (left (read (slot "bv")))
+                                            (right (read (slot "plane-value"))))
+                                          (then (call (selector "record-crossing")))
+                                          (else (result 0))))
+                                      (else
+                                        (if
+                                          (>
+                                            (left (read (slot "av")))
+                                            (right (read (slot "plane-value"))))
+                                          (then
+                                            (if
+                                              (<
+                                                (left (read (slot "bv")))
+                                                (right (read (slot "plane-value"))))
+                                              (then (call (selector "record-crossing")))
+                                              (else (result 0))))
+                                          (else (result 0))))))
+                                  (do
+                                    (write (slot "a") (value (read (slot "v1"))))
+                                    (write (slot "b") (value (read (slot "v2"))))
+                                    (write
+                                      (slot "av")
+                                      (value
+                                        (array-get
+                                          (slot "vertices")
+                                          (index
+                                            (add
+                                              (left
+                                                (mul
+                                                  (left (read (slot "a")))
+                                                  (right (read (slot "dimension")))))
+                                              (right (read (slot "plane-axis"))))))))
+                                    (write
+                                      (slot "bv")
+                                      (value
+                                        (array-get
+                                          (slot "vertices")
+                                          (index
+                                            (add
+                                              (left
+                                                (mul
+                                                  (left (read (slot "b")))
+                                                  (right (read (slot "dimension")))))
+                                              (right (read (slot "plane-axis"))))))))
+                                    (if
+                                      (<
+                                        (left (read (slot "av")))
+                                        (right (read (slot "plane-value"))))
+                                      (then
+                                        (if
+                                          (>
+                                            (left (read (slot "bv")))
+                                            (right (read (slot "plane-value"))))
+                                          (then (call (selector "record-crossing")))
+                                          (else (result 0))))
+                                      (else
+                                        (if
+                                          (>
+                                            (left (read (slot "av")))
+                                            (right (read (slot "plane-value"))))
+                                          (then
+                                            (if
+                                              (<
+                                                (left (read (slot "bv")))
+                                                (right (read (slot "plane-value"))))
+                                              (then (call (selector "record-crossing")))
+                                              (else (result 0))))
+                                          (else (result 0))))))
+                                  (do
+                                    (write (slot "a") (value (read (slot "v2"))))
+                                    (write (slot "b") (value (read (slot "v0"))))
+                                    (write
+                                      (slot "av")
+                                      (value
+                                        (array-get
+                                          (slot "vertices")
+                                          (index
+                                            (add
+                                              (left
+                                                (mul
+                                                  (left (read (slot "a")))
+                                                  (right (read (slot "dimension")))))
+                                              (right (read (slot "plane-axis"))))))))
+                                    (write
+                                      (slot "bv")
+                                      (value
+                                        (array-get
+                                          (slot "vertices")
+                                          (index
+                                            (add
+                                              (left
+                                                (mul
+                                                  (left (read (slot "b")))
+                                                  (right (read (slot "dimension")))))
+                                              (right (read (slot "plane-axis"))))))))
+                                    (if
+                                      (<
+                                        (left (read (slot "av")))
+                                        (right (read (slot "plane-value"))))
+                                      (then
+                                        (if
+                                          (>
+                                            (left (read (slot "bv")))
+                                            (right (read (slot "plane-value"))))
+                                          (then (call (selector "record-crossing")))
+                                          (else (result 0))))
+                                      (else
+                                        (if
+                                          (>
+                                            (left (read (slot "av")))
+                                            (right (read (slot "plane-value"))))
+                                          (then
+                                            (if
+                                              (<
+                                                (left (read (slot "bv")))
+                                                (right (read (slot "plane-value"))))
+                                              (then (call (selector "record-crossing")))
+                                              (else (result 0))))
+                                          (else (result 0)))))))))))
+                        (array-set
+                          (slot "pending-kinds")
+                          (index (read (slot "i")))
+                          (value (read (slot "contacts"))))
+                        (array-set
+                          (slot "pending-ranks")
+                          (index (read (slot "i")))
+                          (value (read (slot "rank"))))
+                        (write
+                          (slot "output-count")
+                          (value
+                            (add
+                              (left (read (slot "output-count")))
+                              (right (read (slot "contacts"))))))
+                        (if
+                          (== (left (read (slot "contacts"))) (right 1))
+                          (then
+                            (write
+                              (slot "point-count")
+                              (value (add (left (read (slot "point-count"))) (right 1)))))
+                          (else (result 0)))
+                        (if
+                          (== (left (read (slot "contacts"))) (right 2))
+                          (then
+                            (write
+                              (slot "line-count")
+                              (value (add (left (read (slot "line-count"))) (right 1)))))
+                          (else (result 0)))
+                        (if
+                          (== (left (read (slot "contacts"))) (right 3))
+                          (then
+                            (write
+                              (slot "triangle-count")
+                              (value (add (left (read (slot "triangle-count"))) (right 1)))))
+                          (else (result 0))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (write
+                (slot "pending")
+                (value
+                  (array-new
+                    (size
+                      (mul (left (read (slot "output-count"))) (right (read (slot "dimension")))))
+                    (value 0))))
+              (write
+                (slot "pending-points")
+                (value (array-new (size (read (slot "point-count"))) (value 0))))
+              (write
+                (slot "pending-lines")
+                (value
+                  (array-new (size (mul (left (read (slot "line-count"))) (right 2))) (value 0))))
+              (write
+                (slot "pending-faces")
+                (value
+                  (array-new (size (mul (left (read (slot "triangle-count"))) (right 3))) (value 0))))
+              (write
+                (slot "pending-line-sources")
+                (value (array-new (size (read (slot "line-count"))) (value 0))))
+              (write
+                (slot "pending-face-sources")
+                (value (array-new (size (read (slot "triangle-count"))) (value 0))))
+              (write
+                (slot "pending-line-degenerate")
+                (value (array-new (size (read (slot "line-count"))) (value 0))))
+              (write
+                (slot "pending-face-degenerate")
+                (value (array-new (size (read (slot "triangle-count"))) (value 0))))
+              (write
+                (slot "pending-source-triangles")
+                (value (array-new (size (read (slot "output-count"))) (value 0))))
+              (write
+                (slot "pending-source-vertices")
+                (value (array-new (size (read (slot "output-count"))) (value 0))))
+              (write
+                (slot "pending-numerators")
+                (value (array-new (size (read (slot "output-count"))) (value 0))))
+              (write
+                (slot "pending-denominators")
+                (value (array-new (size (read (slot "output-count"))) (value 0))))
+              (do
+                (write
+                  (slot "pending-edge-vertices")
+                  (value
+                    (array-new (size (mul (left (read (slot "output-count"))) (right 2))) (value 0))))
+                (write (slot "row") (value 0)))
+              (write (slot "point-row") (value 0))
+              (write (slot "line-row") (value 0))
+              (write (slot "face-row") (value 0))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "face-count"))))
+                  (body
+                    (do
+                      (do
+                        (write (slot "start-row") (value (read (slot "row"))))
+                        (write
+                          (slot "contacts")
+                          (value (array-get (slot "pending-kinds") (index (read (slot "i"))))))
+                        (do
+                          (write (slot "j") (value 0))
+                          (while
+                            (< (left (read (slot "j"))) (right (read (slot "contacts"))))
+                            (body
+                              (do
+                                (do
+                                  (write
+                                    (slot "a")
+                                    (value
+                                      (array-get
+                                        (slot "candidate-a")
+                                        (index
+                                          (add
+                                            (left (mul (left (read (slot "i"))) (right 3)))
+                                            (right (read (slot "j"))))))))
+                                  (write
+                                    (slot "b")
+                                    (value
+                                      (array-get
+                                        (slot "candidate-b")
+                                        (index
+                                          (add
+                                            (left (mul (left (read (slot "i"))) (right 3)))
+                                            (right (read (slot "j"))))))))
+                                  (write
+                                    (slot "tn")
+                                    (value
+                                      (array-get
+                                        (slot "candidate-tn")
+                                        (index
+                                          (add
+                                            (left (mul (left (read (slot "i"))) (right 3)))
+                                            (right (read (slot "j"))))))))
+                                  (write
+                                    (slot "td")
+                                    (value
+                                      (array-get
+                                        (slot "candidate-td")
+                                        (index
+                                          (add
+                                            (left (mul (left (read (slot "i"))) (right 3)))
+                                            (right (read (slot "j"))))))))
+                                  (write
+                                    (slot "endpoint")
+                                    (value
+                                      (array-get
+                                        (slot "candidate-endpoint")
+                                        (index
+                                          (add
+                                            (left (mul (left (read (slot "i"))) (right 3)))
+                                            (right (read (slot "j"))))))))
+                                  (write
+                                    (slot "av")
+                                    (value
+                                      (array-get
+                                        (slot "vertices")
+                                        (index
+                                          (add
+                                            (left
+                                              (mul
+                                                (left (read (slot "a")))
+                                                (right (read (slot "dimension")))))
+                                            (right (read (slot "plane-axis"))))))))
+                                  (write
+                                    (slot "bv")
+                                    (value
+                                      (array-get
+                                        (slot "vertices")
+                                        (index
+                                          (add
+                                            (left
+                                              (mul
+                                                (left (read (slot "b")))
+                                                (right (read (slot "dimension")))))
+                                            (right (read (slot "plane-axis"))))))))
+                                  (do
+                                    (array-set
+                                      (slot "pending-edge-vertices")
+                                      (index (mul (left (read (slot "row"))) (right 2)))
+                                      (value (read (slot "a"))))
+                                    (array-set
+                                      (slot "pending-edge-vertices")
+                                      (index
+                                        (add
+                                          (left (mul (left (read (slot "row"))) (right 2)))
+                                          (right 1)))
+                                      (value (read (slot "b"))))
+                                    (call (selector "append"))))
+                                (write (slot "j") (value (add (left (read (slot "j"))) (right 1))))))))
+                        (if
+                          (== (left (read (slot "contacts"))) (right 1))
+                          (then
+                            (do
+                              (array-set
+                                (slot "pending-points")
+                                (index (read (slot "point-row")))
+                                (value (read (slot "start-row"))))
+                              (write
+                                (slot "point-row")
+                                (value (add (left (read (slot "point-row"))) (right 1))))))
+                          (else (result 0)))
+                        (if
+                          (== (left (read (slot "contacts"))) (right 2))
+                          (then
+                            (do
+                              (array-set
+                                (slot "pending-lines")
+                                (index (mul (left (read (slot "line-row"))) (right 2)))
+                                (value (read (slot "start-row"))))
+                              (array-set
+                                (slot "pending-lines")
+                                (index
+                                  (add
+                                    (left (mul (left (read (slot "line-row"))) (right 2)))
+                                    (right 1)))
+                                (value (add (left (read (slot "start-row"))) (right 1))))
+                              (array-set
+                                (slot "pending-line-sources")
+                                (index (read (slot "line-row")))
+                                (value (read (slot "i"))))
+                              (do
+                                (write (slot "degenerate") (value 1))
+                                (do
+                                  (write (slot "axis") (value 0))
+                                  (while
+                                    (<
+                                      (left (read (slot "axis")))
+                                      (right (read (slot "dimension"))))
+                                    (body
+                                      (do
+                                        (if
+                                          (!=
+                                            (left
+                                              (array-get
+                                                (slot "pending")
+                                                (index
+                                                  (add
+                                                    (left
+                                                      (mul
+                                                        (left (read (slot "start-row")))
+                                                        (right (read (slot "dimension")))))
+                                                    (right (read (slot "axis")))))))
+                                            (right
+                                              (array-get
+                                                (slot "pending")
+                                                (index
+                                                  (add
+                                                    (left
+                                                      (mul
+                                                        (left
+                                                          (add
+                                                            (left (read (slot "start-row")))
+                                                            (right 1)))
+                                                        (right (read (slot "dimension")))))
+                                                    (right (read (slot "axis"))))))))
+                                          (then (write (slot "degenerate") (value 0)))
+                                          (else (result 0)))
+                                        (write
+                                          (slot "axis")
+                                          (value (add (left (read (slot "axis"))) (right 1))))))))
+                                (array-set
+                                  (slot "pending-line-degenerate")
+                                  (index (read (slot "line-row")))
+                                  (value (read (slot "degenerate")))))
+                              (write
+                                (slot "line-row")
+                                (value (add (left (read (slot "line-row"))) (right 1))))))
+                          (else (result 0)))
+                        (if
+                          (== (left (read (slot "contacts"))) (right 3))
+                          (then
+                            (do
+                              (array-set
+                                (slot "pending-faces")
+                                (index
+                                  (add
+                                    (left (mul (left (read (slot "face-row"))) (right 3)))
+                                    (right 0)))
+                                (value (add (left (read (slot "start-row"))) (right 0))))
+                              (array-set
+                                (slot "pending-faces")
+                                (index
+                                  (add
+                                    (left (mul (left (read (slot "face-row"))) (right 3)))
+                                    (right 1)))
+                                (value (add (left (read (slot "start-row"))) (right 1))))
+                              (array-set
+                                (slot "pending-faces")
+                                (index
+                                  (add
+                                    (left (mul (left (read (slot "face-row"))) (right 3)))
+                                    (right 2)))
+                                (value (add (left (read (slot "start-row"))) (right 2))))
+                              (array-set
+                                (slot "pending-face-sources")
+                                (index (read (slot "face-row")))
+                                (value (read (slot "i"))))
+                              (write
+                                (slot "face-row")
+                                (value (add (left (read (slot "face-row"))) (right 1))))))
+                          (else (result 0))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (do
+                (write (slot "source-edge-vertices") (value (read (slot "pending-edge-vertices"))))
+                (write (slot "result") (value (read (slot "pending")))))
+              (write (slot "result-points") (value (read (slot "pending-points"))))
+              (write (slot "result-segments") (value (read (slot "pending-lines"))))
+              (write (slot "result-triangles") (value (read (slot "pending-faces"))))
+              (write (slot "source-triangles") (value (read (slot "pending-source-triangles"))))
+              (write (slot "source-vertices") (value (read (slot "pending-source-vertices"))))
+              (write (slot "parameter-numerators") (value (read (slot "pending-numerators"))))
+              (write (slot "parameter-denominators") (value (read (slot "pending-denominators"))))
+              (write (slot "segment-sources") (value (read (slot "pending-line-sources"))))
+              (write (slot "triangle-sources") (value (read (slot "pending-face-sources"))))
+              (write (slot "segment-degenerate") (value (read (slot "pending-line-degenerate"))))
+              (write (slot "triangle-degenerate") (value (read (slot "pending-face-degenerate"))))
+              (write (slot "triangle-kinds") (value (read (slot "pending-kinds"))))
+              (write (slot "triangle-ranks") (value (read (slot "pending-ranks"))))
+              (write (slot "result-dimension") (value (read (slot "dimension"))))
+              (write (slot "result-vertex-count") (value (read (slot "output-count"))))
+              (read (slot "result")))))))))

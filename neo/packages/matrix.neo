@@ -1,0 +1,1322 @@
+// Fixed-point row-major linear transforms. Compact identity; explicit dense storage.
+(package
+  (manifest
+    (schema 1)
+    (id "neo.maths.matrix")
+    (version (major 0) (minor 3) (patch 0))
+    (dependencies)
+    (exports (matrix (path "contents/matrix") (mode "copy") (rights 9)))
+    (imports)
+    (bindings))
+  (contents
+    (matrix
+      (dimension 0)
+      (rows 0)
+      (inner 0)
+      (columns 0)
+      (result-rows 0)
+      (result-columns 0)
+      (output-columns 0)
+      (i 0)
+      (j 0)
+      (k 0)
+      (sum 0)
+      (quotient 0)
+      (remainder 0)
+      (left-kind "identity")
+      (right-kind "identity")
+      (result-kind "identity")
+      (output-kind "identity")
+      (left [])
+      (right [])
+      (input [])
+      (result [])
+      (pending [])
+      (p 0)
+      (pivot-row 0)
+      (pivot-size 0)
+      (pivot 0)
+      (candidate 0)
+      (temporary 0)
+      (factor 0)
+      (numerator 0)
+      (denominator 0)
+      (expected 0)
+      (pivot-minimum 1)
+      (inverse-tolerance 10)
+      (work [])
+      (left-translation [])
+      (right-translation [])
+      (result-translation [])
+      (translation-pending [])
+      (handlers
+        (invert-prepare
+          (body
+            (do
+              (call (selector "check-left"))
+              (if
+                (!= (left (read (slot "rows"))) (right (read (slot "inner"))))
+                (then (fail))
+                (else (result 0)))
+              (do
+                (if
+                  (< (left (read (slot "pivot-minimum"))) (right 0))
+                  (then (fail))
+                  (else (result 0)))
+                (if
+                  (< (left (read (slot "inverse-tolerance"))) (right 0))
+                  (then (fail))
+                  (else (result 0))))
+              (if
+                (== (left (read (slot "left-kind"))) (right "identity"))
+                (then
+                  (do
+                    (write (slot "pending") (value []))
+                    (write (slot "output-kind") (value "identity"))))
+                (else
+                  (do
+                    (write (slot "work") (value (read (slot "left"))))
+                    (write
+                      (slot "pending")
+                      (value
+                        (array-new
+                          (size (mul (left (read (slot "rows"))) (right (read (slot "inner")))))
+                          (value 0))))
+                    (do
+                      (write (slot "i") (value 0))
+                      (while
+                        (< (left (read (slot "i"))) (right (read (slot "rows"))))
+                        (body
+                          (do
+                            (array-set
+                              (slot "pending")
+                              (index
+                                (add
+                                  (left
+                                    (mul (left (read (slot "i"))) (right (read (slot "inner")))))
+                                  (right (read (slot "i")))))
+                              (value 1000000))
+                            (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+                    (do
+                      (write (slot "p") (value 0))
+                      (while
+                        (< (left (read (slot "p"))) (right (read (slot "rows"))))
+                        (body
+                          (do
+                            (do
+                              (write (slot "pivot-row") (value (read (slot "p"))))
+                              (write (slot "pivot-size") (value 0))
+                              (do
+                                (write (slot "i") (value 0))
+                                (while
+                                  (< (left (read (slot "i"))) (right (read (slot "rows"))))
+                                  (body
+                                    (do
+                                      (if
+                                        (>= (left (read (slot "i"))) (right (read (slot "p"))))
+                                        (then
+                                          (do
+                                            (write
+                                              (slot "candidate")
+                                              (value
+                                                (if
+                                                  (<
+                                                    (left
+                                                      (array-get
+                                                        (slot "work")
+                                                        (index
+                                                          (add
+                                                            (left
+                                                              (mul
+                                                                (left (read (slot "i")))
+                                                                (right (read (slot "inner")))))
+                                                            (right (read (slot "p")))))))
+                                                    (right 0))
+                                                  (then
+                                                    (sub
+                                                      (left 0)
+                                                      (right
+                                                        (array-get
+                                                          (slot "work")
+                                                          (index
+                                                            (add
+                                                              (left
+                                                                (mul
+                                                                  (left (read (slot "i")))
+                                                                  (right (read (slot "inner")))))
+                                                              (right (read (slot "p")))))))))
+                                                  (else
+                                                    (array-get
+                                                      (slot "work")
+                                                      (index
+                                                        (add
+                                                          (left
+                                                            (mul
+                                                              (left (read (slot "i")))
+                                                              (right (read (slot "inner")))))
+                                                          (right (read (slot "p"))))))))))
+                                            (if
+                                              (>
+                                                (left (read (slot "candidate")))
+                                                (right (read (slot "pivot-size"))))
+                                              (then
+                                                (do
+                                                  (write
+                                                    (slot "pivot-size")
+                                                    (value (read (slot "candidate"))))
+                                                  (write
+                                                    (slot "pivot-row")
+                                                    (value (read (slot "i"))))))
+                                              (else (result 0)))))
+                                        (else (result 0)))
+                                      (write
+                                        (slot "i")
+                                        (value (add (left (read (slot "i"))) (right 1))))))))
+                              (if
+                                (<=
+                                  (left (read (slot "pivot-size")))
+                                  (right (read (slot "pivot-minimum"))))
+                                (then (fail))
+                                (else (result 0)))
+                              (do
+                                (write (slot "j") (value 0))
+                                (while
+                                  (< (left (read (slot "j"))) (right (read (slot "inner"))))
+                                  (body
+                                    (do
+                                      (do
+                                        (do
+                                          (write
+                                            (slot "temporary")
+                                            (value
+                                              (array-get
+                                                (slot "work")
+                                                (index
+                                                  (add
+                                                    (left
+                                                      (mul
+                                                        (left (read (slot "p")))
+                                                        (right (read (slot "inner")))))
+                                                    (right (read (slot "j"))))))))
+                                          (array-set
+                                            (slot "work")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "p")))
+                                                    (right (read (slot "inner")))))
+                                                (right (read (slot "j")))))
+                                            (value
+                                              (array-get
+                                                (slot "work")
+                                                (index
+                                                  (add
+                                                    (left
+                                                      (mul
+                                                        (left (read (slot "pivot-row")))
+                                                        (right (read (slot "inner")))))
+                                                    (right (read (slot "j"))))))))
+                                          (array-set
+                                            (slot "work")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "pivot-row")))
+                                                    (right (read (slot "inner")))))
+                                                (right (read (slot "j")))))
+                                            (value (read (slot "temporary")))))
+                                        (do
+                                          (write
+                                            (slot "temporary")
+                                            (value
+                                              (array-get
+                                                (slot "pending")
+                                                (index
+                                                  (add
+                                                    (left
+                                                      (mul
+                                                        (left (read (slot "p")))
+                                                        (right (read (slot "inner")))))
+                                                    (right (read (slot "j"))))))))
+                                          (array-set
+                                            (slot "pending")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "p")))
+                                                    (right (read (slot "inner")))))
+                                                (right (read (slot "j")))))
+                                            (value
+                                              (array-get
+                                                (slot "pending")
+                                                (index
+                                                  (add
+                                                    (left
+                                                      (mul
+                                                        (left (read (slot "pivot-row")))
+                                                        (right (read (slot "inner")))))
+                                                    (right (read (slot "j"))))))))
+                                          (array-set
+                                            (slot "pending")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "pivot-row")))
+                                                    (right (read (slot "inner")))))
+                                                (right (read (slot "j")))))
+                                            (value (read (slot "temporary"))))))
+                                      (write
+                                        (slot "j")
+                                        (value (add (left (read (slot "j"))) (right 1))))))))
+                              (do
+                                (write
+                                  (slot "pivot")
+                                  (value
+                                    (array-get
+                                      (slot "work")
+                                      (index
+                                        (add
+                                          (left
+                                            (mul
+                                              (left (read (slot "p")))
+                                              (right (read (slot "inner")))))
+                                          (right (read (slot "p"))))))))
+                                (do
+                                  (write (slot "j") (value 0))
+                                  (while
+                                    (< (left (read (slot "j"))) (right (read (slot "inner"))))
+                                    (body
+                                      (do
+                                        (do
+                                          (array-set
+                                            (slot "work")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "p")))
+                                                    (right (read (slot "inner")))))
+                                                (right (read (slot "j")))))
+                                            (value
+                                              (do
+                                                (write
+                                                  (slot "numerator")
+                                                  (value
+                                                    (mul
+                                                      (left
+                                                        (array-get
+                                                          (slot "work")
+                                                          (index
+                                                            (add
+                                                              (left
+                                                                (mul
+                                                                  (left (read (slot "p")))
+                                                                  (right (read (slot "inner")))))
+                                                              (right (read (slot "j")))))))
+                                                      (right 1000000))))
+                                                (write
+                                                  (slot "denominator")
+                                                  (value (read (slot "pivot"))))
+                                                (call (selector "divide")))))
+                                          (array-set
+                                            (slot "pending")
+                                            (index
+                                              (add
+                                                (left
+                                                  (mul
+                                                    (left (read (slot "p")))
+                                                    (right (read (slot "inner")))))
+                                                (right (read (slot "j")))))
+                                            (value
+                                              (do
+                                                (write
+                                                  (slot "numerator")
+                                                  (value
+                                                    (mul
+                                                      (left
+                                                        (array-get
+                                                          (slot "pending")
+                                                          (index
+                                                            (add
+                                                              (left
+                                                                (mul
+                                                                  (left (read (slot "p")))
+                                                                  (right (read (slot "inner")))))
+                                                              (right (read (slot "j")))))))
+                                                      (right 1000000))))
+                                                (write
+                                                  (slot "denominator")
+                                                  (value (read (slot "pivot"))))
+                                                (call (selector "divide"))))))
+                                        (write
+                                          (slot "j")
+                                          (value (add (left (read (slot "j"))) (right 1)))))))))
+                              (do
+                                (write (slot "i") (value 0))
+                                (while
+                                  (< (left (read (slot "i"))) (right (read (slot "rows"))))
+                                  (body
+                                    (do
+                                      (if
+                                        (!= (left (read (slot "i"))) (right (read (slot "p"))))
+                                        (then
+                                          (do
+                                            (write
+                                              (slot "factor")
+                                              (value
+                                                (array-get
+                                                  (slot "work")
+                                                  (index
+                                                    (add
+                                                      (left
+                                                        (mul
+                                                          (left (read (slot "i")))
+                                                          (right (read (slot "inner")))))
+                                                      (right (read (slot "p"))))))))
+                                            (do
+                                              (write (slot "j") (value 0))
+                                              (while
+                                                (<
+                                                  (left (read (slot "j")))
+                                                  (right (read (slot "inner"))))
+                                                (body
+                                                  (do
+                                                    (do
+                                                      (array-set
+                                                        (slot "work")
+                                                        (index
+                                                          (add
+                                                            (left
+                                                              (mul
+                                                                (left (read (slot "i")))
+                                                                (right (read (slot "inner")))))
+                                                            (right (read (slot "j")))))
+                                                        (value
+                                                          (sub
+                                                            (left
+                                                              (array-get
+                                                                (slot "work")
+                                                                (index
+                                                                  (add
+                                                                    (left
+                                                                      (mul
+                                                                        (left (read (slot "i")))
+                                                                        (right
+                                                                          (read (slot "inner")))))
+                                                                    (right (read (slot "j")))))))
+                                                            (right
+                                                              (do
+                                                                (write
+                                                                  (slot "numerator")
+                                                                  (value
+                                                                    (mul
+                                                                      (left (read (slot "factor")))
+                                                                      (right
+                                                                        (array-get
+                                                                          (slot "work")
+                                                                          (index
+                                                                            (add
+                                                                              (left
+                                                                                (mul
+                                                                                  (left
+                                                                                    (read
+                                                                                      (slot "p")))
+                                                                                  (right
+                                                                                    (read
+                                                                                      (slot "inner")))))
+                                                                              (right
+                                                                                (read (slot "j"))))))))))
+                                                                (write
+                                                                  (slot "denominator")
+                                                                  (value 1000000))
+                                                                (call (selector "divide")))))))
+                                                      (array-set
+                                                        (slot "pending")
+                                                        (index
+                                                          (add
+                                                            (left
+                                                              (mul
+                                                                (left (read (slot "i")))
+                                                                (right (read (slot "inner")))))
+                                                            (right (read (slot "j")))))
+                                                        (value
+                                                          (sub
+                                                            (left
+                                                              (array-get
+                                                                (slot "pending")
+                                                                (index
+                                                                  (add
+                                                                    (left
+                                                                      (mul
+                                                                        (left (read (slot "i")))
+                                                                        (right
+                                                                          (read (slot "inner")))))
+                                                                    (right (read (slot "j")))))))
+                                                            (right
+                                                              (do
+                                                                (write
+                                                                  (slot "numerator")
+                                                                  (value
+                                                                    (mul
+                                                                      (left (read (slot "factor")))
+                                                                      (right
+                                                                        (array-get
+                                                                          (slot "pending")
+                                                                          (index
+                                                                            (add
+                                                                              (left
+                                                                                (mul
+                                                                                  (left
+                                                                                    (read
+                                                                                      (slot "p")))
+                                                                                  (right
+                                                                                    (read
+                                                                                      (slot "inner")))))
+                                                                              (right
+                                                                                (read (slot "j"))))))))))
+                                                                (write
+                                                                  (slot "denominator")
+                                                                  (value 1000000))
+                                                                (call (selector "divide"))))))))
+                                                    (write
+                                                      (slot "j")
+                                                      (value
+                                                        (add (left (read (slot "j"))) (right 1))))))))))
+                                        (else (result 0)))
+                                      (write
+                                        (slot "i")
+                                        (value (add (left (read (slot "i"))) (right 1)))))))))
+                            (write (slot "p") (value (add (left (read (slot "p"))) (right 1))))))))
+                    (do
+                      (write (slot "i") (value 0))
+                      (while
+                        (< (left (read (slot "i"))) (right (read (slot "rows"))))
+                        (body
+                          (do
+                            (do
+                              (write (slot "j") (value 0))
+                              (while
+                                (< (left (read (slot "j"))) (right (read (slot "inner"))))
+                                (body
+                                  (do
+                                    (do
+                                      (write (slot "sum") (value 0))
+                                      (do
+                                        (write (slot "k") (value 0))
+                                        (while
+                                          (< (left (read (slot "k"))) (right (read (slot "inner"))))
+                                          (body
+                                            (do
+                                              (write
+                                                (slot "sum")
+                                                (value
+                                                  (add
+                                                    (left (read (slot "sum")))
+                                                    (right
+                                                      (mul
+                                                        (left
+                                                          (array-get
+                                                            (slot "left")
+                                                            (index
+                                                              (add
+                                                                (left
+                                                                  (mul
+                                                                    (left (read (slot "i")))
+                                                                    (right (read (slot "inner")))))
+                                                                (right (read (slot "k")))))))
+                                                        (right
+                                                          (array-get
+                                                            (slot "pending")
+                                                            (index
+                                                              (add
+                                                                (left
+                                                                  (mul
+                                                                    (left (read (slot "k")))
+                                                                    (right (read (slot "inner")))))
+                                                                (right (read (slot "j"))))))))))))
+                                              (write
+                                                (slot "k")
+                                                (value (add (left (read (slot "k"))) (right 1))))))))
+                                      (write (slot "candidate") (value (call (selector "round"))))
+                                      (write
+                                        (slot "expected")
+                                        (value
+                                          (if
+                                            (== (left (read (slot "i"))) (right (read (slot "j"))))
+                                            (then 1000000)
+                                            (else 0))))
+                                      (if
+                                        (>
+                                          (left
+                                            (if
+                                              (<
+                                                (left
+                                                  (sub
+                                                    (left (read (slot "candidate")))
+                                                    (right (read (slot "expected")))))
+                                                (right 0))
+                                              (then
+                                                (sub
+                                                  (left 0)
+                                                  (right
+                                                    (sub
+                                                      (left (read (slot "candidate")))
+                                                      (right (read (slot "expected")))))))
+                                              (else
+                                                (sub
+                                                  (left (read (slot "candidate")))
+                                                  (right (read (slot "expected")))))))
+                                          (right (read (slot "inverse-tolerance"))))
+                                        (then (fail))
+                                        (else (result 0))))
+                                    (write
+                                      (slot "j")
+                                      (value (add (left (read (slot "j"))) (right 1))))))))
+                            (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+                    (do
+                      (write (slot "i") (value 0))
+                      (while
+                        (< (left (read (slot "i"))) (right (read (slot "rows"))))
+                        (body
+                          (do
+                            (do
+                              (write (slot "j") (value 0))
+                              (while
+                                (< (left (read (slot "j"))) (right (read (slot "inner"))))
+                                (body
+                                  (do
+                                    (do
+                                      (write (slot "sum") (value 0))
+                                      (do
+                                        (write (slot "k") (value 0))
+                                        (while
+                                          (< (left (read (slot "k"))) (right (read (slot "inner"))))
+                                          (body
+                                            (do
+                                              (write
+                                                (slot "sum")
+                                                (value
+                                                  (add
+                                                    (left (read (slot "sum")))
+                                                    (right
+                                                      (mul
+                                                        (left
+                                                          (array-get
+                                                            (slot "pending")
+                                                            (index
+                                                              (add
+                                                                (left
+                                                                  (mul
+                                                                    (left (read (slot "i")))
+                                                                    (right (read (slot "inner")))))
+                                                                (right (read (slot "k")))))))
+                                                        (right
+                                                          (array-get
+                                                            (slot "left")
+                                                            (index
+                                                              (add
+                                                                (left
+                                                                  (mul
+                                                                    (left (read (slot "k")))
+                                                                    (right (read (slot "inner")))))
+                                                                (right (read (slot "j"))))))))))))
+                                              (write
+                                                (slot "k")
+                                                (value (add (left (read (slot "k"))) (right 1))))))))
+                                      (write (slot "candidate") (value (call (selector "round"))))
+                                      (write
+                                        (slot "expected")
+                                        (value
+                                          (if
+                                            (== (left (read (slot "i"))) (right (read (slot "j"))))
+                                            (then 1000000)
+                                            (else 0))))
+                                      (if
+                                        (>
+                                          (left
+                                            (if
+                                              (<
+                                                (left
+                                                  (sub
+                                                    (left (read (slot "candidate")))
+                                                    (right (read (slot "expected")))))
+                                                (right 0))
+                                              (then
+                                                (sub
+                                                  (left 0)
+                                                  (right
+                                                    (sub
+                                                      (left (read (slot "candidate")))
+                                                      (right (read (slot "expected")))))))
+                                              (else
+                                                (sub
+                                                  (left (read (slot "candidate")))
+                                                  (right (read (slot "expected")))))))
+                                          (right (read (slot "inverse-tolerance"))))
+                                        (then (fail))
+                                        (else (result 0))))
+                                    (write
+                                      (slot "j")
+                                      (value (add (left (read (slot "j"))) (right 1))))))))
+                            (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+                    (write (slot "output-kind") (value "dense")))))
+              (write (slot "output-columns") (value (read (slot "inner")))))))
+        (affine-commit
+          (body
+            (do
+              (write (slot "result-translation") (value (read (slot "translation-pending"))))
+              (call (selector "commit")))))
+        (affine-initialize
+          (body
+            (do
+              (call (selector "initialize"))
+              (write
+                (slot "left-translation")
+                (value (array-new (size (read (slot "rows"))) (value 0))))
+              (write
+                (slot "right-translation")
+                (value (array-new (size (read (slot "inner"))) (value 0))))
+              (result true))))
+        (affine-identity
+          (body
+            (do
+              (do
+                (if (< (left (read (slot "dimension"))) (right 0)) (then (fail)) (else (result 0))))
+              (write
+                (slot "translation-pending")
+                (value (array-new (size (read (slot "dimension"))) (value 0))))
+              (call (selector "identity"))
+              (write (slot "left-translation") (value (read (slot "translation-pending"))))
+              (write (slot "right-translation") (value (read (slot "translation-pending"))))
+              (write (slot "result-translation") (value (read (slot "translation-pending"))))
+              (read (slot "result")))))
+        (point
+          (body
+            (do
+              (call (selector "check-left"))
+              (if
+                (!= (left (array-size (slot "input"))) (right (read (slot "inner"))))
+                (then (fail))
+                (else (result 0)))
+              (if
+                (!= (left (array-size (slot "left-translation"))) (right (read (slot "rows"))))
+                (then (fail))
+                (else (result 0)))
+              (if
+                (== (left (read (slot "left-kind"))) (right "identity"))
+                (then (write (slot "pending") (value (read (slot "input")))))
+                (else (call (selector "apply-dense"))))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "rows"))))
+                  (body
+                    (do
+                      (array-set
+                        (slot "pending")
+                        (index (read (slot "i")))
+                        (value
+                          (add
+                            (left (array-get (slot "pending") (index (read (slot "i")))))
+                            (right (array-get (slot "left-translation") (index (read (slot "i"))))))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (write (slot "output-kind") (value "vector"))
+              (write (slot "output-columns") (value 1))
+              (call (selector "commit")))))
+        (affine-compose
+          (body
+            (do
+              (call (selector "check-left"))
+              (call (selector "check-right"))
+              (if
+                (!= (left (array-size (slot "left-translation"))) (right (read (slot "rows"))))
+                (then (fail))
+                (else (result 0)))
+              (if
+                (!= (left (array-size (slot "right-translation"))) (right (read (slot "inner"))))
+                (then (fail))
+                (else (result 0)))
+              (if
+                (== (left (read (slot "left-kind"))) (right "identity"))
+                (then
+                  (do
+                    (write (slot "pending") (value (read (slot "right"))))
+                    (write (slot "output-kind") (value (read (slot "right-kind"))))))
+                (else
+                  (if
+                    (== (left (read (slot "right-kind"))) (right "identity"))
+                    (then
+                      (do
+                        (write (slot "pending") (value (read (slot "left"))))
+                        (write (slot "output-kind") (value "dense"))))
+                    (else (call (selector "compose-dense"))))))
+              (write
+                (slot "translation-pending")
+                (value (array-new (size (read (slot "rows"))) (value 0))))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "rows"))))
+                  (body
+                    (do
+                      (do
+                        (write
+                          (slot "candidate")
+                          (value
+                            (if
+                              (== (left (read (slot "left-kind"))) (right "identity"))
+                              (then
+                                (array-get (slot "right-translation") (index (read (slot "i")))))
+                              (else
+                                (do
+                                  (write (slot "sum") (value 0))
+                                  (do
+                                    (write (slot "k") (value 0))
+                                    (while
+                                      (< (left (read (slot "k"))) (right (read (slot "inner"))))
+                                      (body
+                                        (do
+                                          (write
+                                            (slot "sum")
+                                            (value
+                                              (add
+                                                (left (read (slot "sum")))
+                                                (right
+                                                  (mul
+                                                    (left
+                                                      (array-get
+                                                        (slot "left")
+                                                        (index
+                                                          (add
+                                                            (left
+                                                              (mul
+                                                                (left (read (slot "i")))
+                                                                (right (read (slot "inner")))))
+                                                            (right (read (slot "k")))))))
+                                                    (right
+                                                      (array-get
+                                                        (slot "right-translation")
+                                                        (index (read (slot "k"))))))))))
+                                          (write
+                                            (slot "k")
+                                            (value (add (left (read (slot "k"))) (right 1))))))))
+                                  (call (selector "round")))))))
+                        (array-set
+                          (slot "translation-pending")
+                          (index (read (slot "i")))
+                          (value
+                            (add
+                              (left (read (slot "candidate")))
+                              (right
+                                (array-get (slot "left-translation") (index (read (slot "i")))))))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (write (slot "output-columns") (value (read (slot "columns"))))
+              (call (selector "affine-commit")))))
+        (affine-invert
+          (body
+            (do
+              (if
+                (!= (left (array-size (slot "left-translation"))) (right (read (slot "rows"))))
+                (then (fail))
+                (else (result 0)))
+              (call (selector "invert-prepare"))
+              (write
+                (slot "translation-pending")
+                (value (array-new (size (read (slot "rows"))) (value 0))))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "rows"))))
+                  (body
+                    (do
+                      (do
+                        (write
+                          (slot "candidate")
+                          (value
+                            (if
+                              (== (left (read (slot "output-kind"))) (right "identity"))
+                              (then (array-get (slot "left-translation") (index (read (slot "i")))))
+                              (else
+                                (do
+                                  (write (slot "sum") (value 0))
+                                  (do
+                                    (write (slot "k") (value 0))
+                                    (while
+                                      (< (left (read (slot "k"))) (right (read (slot "inner"))))
+                                      (body
+                                        (do
+                                          (write
+                                            (slot "sum")
+                                            (value
+                                              (add
+                                                (left (read (slot "sum")))
+                                                (right
+                                                  (mul
+                                                    (left
+                                                      (array-get
+                                                        (slot "pending")
+                                                        (index
+                                                          (add
+                                                            (left
+                                                              (mul
+                                                                (left (read (slot "i")))
+                                                                (right (read (slot "inner")))))
+                                                            (right (read (slot "k")))))))
+                                                    (right
+                                                      (array-get
+                                                        (slot "left-translation")
+                                                        (index (read (slot "k"))))))))))
+                                          (write
+                                            (slot "k")
+                                            (value (add (left (read (slot "k"))) (right 1))))))))
+                                  (call (selector "round")))))))
+                        (array-set
+                          (slot "translation-pending")
+                          (index (read (slot "i")))
+                          (value (sub (left 0) (right (read (slot "candidate")))))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "rows"))))
+                  (body
+                    (do
+                      (do
+                        (write
+                          (slot "candidate")
+                          (value
+                            (if
+                              (== (left (read (slot "left-kind"))) (right "identity"))
+                              (then
+                                (array-get (slot "translation-pending") (index (read (slot "i")))))
+                              (else
+                                (do
+                                  (write (slot "sum") (value 0))
+                                  (do
+                                    (write (slot "k") (value 0))
+                                    (while
+                                      (< (left (read (slot "k"))) (right (read (slot "inner"))))
+                                      (body
+                                        (do
+                                          (write
+                                            (slot "sum")
+                                            (value
+                                              (add
+                                                (left (read (slot "sum")))
+                                                (right
+                                                  (mul
+                                                    (left
+                                                      (array-get
+                                                        (slot "left")
+                                                        (index
+                                                          (add
+                                                            (left
+                                                              (mul
+                                                                (left (read (slot "i")))
+                                                                (right (read (slot "inner")))))
+                                                            (right (read (slot "k")))))))
+                                                    (right
+                                                      (array-get
+                                                        (slot "translation-pending")
+                                                        (index (read (slot "k"))))))))))
+                                          (write
+                                            (slot "k")
+                                            (value (add (left (read (slot "k"))) (right 1))))))))
+                                  (call (selector "round")))))))
+                        (if
+                          (>
+                            (left
+                              (if
+                                (<
+                                  (left
+                                    (add
+                                      (left (read (slot "candidate")))
+                                      (right
+                                        (array-get
+                                          (slot "left-translation")
+                                          (index (read (slot "i")))))))
+                                  (right 0))
+                                (then
+                                  (sub
+                                    (left 0)
+                                    (right
+                                      (add
+                                        (left (read (slot "candidate")))
+                                        (right
+                                          (array-get
+                                            (slot "left-translation")
+                                            (index (read (slot "i")))))))))
+                                (else
+                                  (add
+                                    (left (read (slot "candidate")))
+                                    (right
+                                      (array-get
+                                        (slot "left-translation")
+                                        (index (read (slot "i")))))))))
+                            (right (read (slot "inverse-tolerance"))))
+                          (then (fail))
+                          (else (result 0))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (call (selector "affine-commit")))))
+        (divide
+          (body
+            (do
+              (if (== (left (read (slot "denominator"))) (right 0)) (then (fail)) (else (result 0)))
+              (write
+                (slot "quotient")
+                (value (div (left (read (slot "numerator"))) (right (read (slot "denominator"))))))
+              (write
+                (slot "remainder")
+                (value (rem (left (read (slot "numerator"))) (right (read (slot "denominator"))))))
+              (if
+                (>=
+                  (left
+                    (mul
+                      (left
+                        (if
+                          (< (left (read (slot "remainder"))) (right 0))
+                          (then (sub (left 0) (right (read (slot "remainder")))))
+                          (else (read (slot "remainder")))))
+                      (right 2)))
+                  (right
+                    (if
+                      (< (left (read (slot "denominator"))) (right 0))
+                      (then (sub (left 0) (right (read (slot "denominator")))))
+                      (else (read (slot "denominator"))))))
+                (then
+                  (if
+                    (< (left (read (slot "numerator"))) (right 0))
+                    (then
+                      (if
+                        (< (left (read (slot "denominator"))) (right 0))
+                        (then
+                          (write
+                            (slot "quotient")
+                            (value (add (left (read (slot "quotient"))) (right 1)))))
+                        (else
+                          (write
+                            (slot "quotient")
+                            (value (sub (left (read (slot "quotient"))) (right 1)))))))
+                    (else
+                      (if
+                        (< (left (read (slot "denominator"))) (right 0))
+                        (then
+                          (write
+                            (slot "quotient")
+                            (value (sub (left (read (slot "quotient"))) (right 1)))))
+                        (else
+                          (write
+                            (slot "quotient")
+                            (value (add (left (read (slot "quotient"))) (right 1)))))))))
+                (else (result 0)))
+              (read (slot "quotient")))))
+        (invert (body (do (call (selector "invert-prepare")) (call (selector "commit")))))
+        (identity
+          (body
+            (do
+              (do
+                (if (< (left (read (slot "dimension"))) (right 0)) (then (fail)) (else (result 0))))
+              (write (slot "rows") (value (read (slot "dimension"))))
+              (write (slot "inner") (value (read (slot "dimension"))))
+              (write (slot "columns") (value (read (slot "dimension"))))
+              (write (slot "left-kind") (value "identity"))
+              (write (slot "right-kind") (value "identity"))
+              (write (slot "left") (value []))
+              (write (slot "right") (value []))
+              (write (slot "pending") (value []))
+              (write (slot "output-kind") (value "identity"))
+              (write (slot "output-columns") (value (read (slot "dimension"))))
+              (call (selector "commit")))))
+        (initialize
+          (body
+            (do
+              (do
+                (if (< (left (read (slot "rows"))) (right 0)) (then (fail)) (else (result 0)))
+                (if (< (left (read (slot "inner"))) (right 0)) (then (fail)) (else (result 0)))
+                (if (< (left (read (slot "columns"))) (right 0)) (then (fail)) (else (result 0))))
+              (write
+                (slot "left")
+                (value
+                  (array-new
+                    (size (mul (left (read (slot "rows"))) (right (read (slot "inner")))))
+                    (value 0))))
+              (write
+                (slot "right")
+                (value
+                  (array-new
+                    (size (mul (left (read (slot "inner"))) (right (read (slot "columns")))))
+                    (value 0))))
+              (write (slot "input") (value (array-new (size (read (slot "inner"))) (value 0))))
+              (write (slot "left-kind") (value "dense"))
+              (write (slot "right-kind") (value "dense"))
+              (result true))))
+        (check-left
+          (body
+            (do
+              (do
+                (if (< (left (read (slot "rows"))) (right 0)) (then (fail)) (else (result 0)))
+                (if (< (left (read (slot "inner"))) (right 0)) (then (fail)) (else (result 0))))
+              (if
+                (== (left (read (slot "left-kind"))) (right "identity"))
+                (then
+                  (do
+                    (if
+                      (!= (left (read (slot "rows"))) (right (read (slot "inner"))))
+                      (then (fail))
+                      (else (result 0)))
+                    (if
+                      (!= (left (array-size (slot "left"))) (right 0))
+                      (then (fail))
+                      (else (result 0)))))
+                (else
+                  (do
+                    (if
+                      (!= (left (read (slot "left-kind"))) (right "dense"))
+                      (then (fail))
+                      (else (result 0)))
+                    (if
+                      (!=
+                        (left (array-size (slot "left")))
+                        (right (mul (left (read (slot "rows"))) (right (read (slot "inner"))))))
+                      (then (fail))
+                      (else (result 0)))))))))
+        (check-right
+          (body
+            (do
+              (do (if (< (left (read (slot "columns"))) (right 0)) (then (fail)) (else (result 0))))
+              (if
+                (== (left (read (slot "right-kind"))) (right "identity"))
+                (then
+                  (do
+                    (if
+                      (!= (left (read (slot "inner"))) (right (read (slot "columns"))))
+                      (then (fail))
+                      (else (result 0)))
+                    (if
+                      (!= (left (array-size (slot "right"))) (right 0))
+                      (then (fail))
+                      (else (result 0)))))
+                (else
+                  (do
+                    (if
+                      (!= (left (read (slot "right-kind"))) (right "dense"))
+                      (then (fail))
+                      (else (result 0)))
+                    (if
+                      (!=
+                        (left (array-size (slot "right")))
+                        (right (mul (left (read (slot "inner"))) (right (read (slot "columns"))))))
+                      (then (fail))
+                      (else (result 0)))))))))
+        (round
+          (body
+            (do
+              (write (slot "quotient") (value (div (left (read (slot "sum"))) (right 1000000))))
+              (write (slot "remainder") (value (rem (left (read (slot "sum"))) (right 1000000))))
+              (if
+                (>= (left (read (slot "remainder"))) (right 500000))
+                (then
+                  (write (slot "quotient") (value (add (left (read (slot "quotient"))) (right 1)))))
+                (else (result 0)))
+              (if
+                (<= (left (read (slot "remainder"))) (right -500000))
+                (then
+                  (write (slot "quotient") (value (sub (left (read (slot "quotient"))) (right 1)))))
+                (else (result 0)))
+              (read (slot "quotient")))))
+        (commit
+          (body
+            (do
+              (write (slot "result") (value (read (slot "pending"))))
+              (write (slot "result-kind") (value (read (slot "output-kind"))))
+              (write (slot "result-rows") (value (read (slot "rows"))))
+              (write (slot "result-columns") (value (read (slot "output-columns"))))
+              (read (slot "result")))))
+        (apply-dense
+          (body
+            (do
+              (write (slot "pending") (value (array-new (size (read (slot "rows"))) (value 0))))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "rows"))))
+                  (body
+                    (do
+                      (do
+                        (write (slot "sum") (value 0))
+                        (do
+                          (write (slot "k") (value 0))
+                          (while
+                            (< (left (read (slot "k"))) (right (read (slot "inner"))))
+                            (body
+                              (do
+                                (write
+                                  (slot "sum")
+                                  (value
+                                    (add
+                                      (left (read (slot "sum")))
+                                      (right
+                                        (mul
+                                          (left
+                                            (array-get
+                                              (slot "left")
+                                              (index
+                                                (add
+                                                  (left
+                                                    (mul
+                                                      (left (read (slot "i")))
+                                                      (right (read (slot "inner")))))
+                                                  (right (read (slot "k")))))))
+                                          (right
+                                            (array-get (slot "input") (index (read (slot "k"))))))))))
+                                (write (slot "k") (value (add (left (read (slot "k"))) (right 1))))))))
+                        (array-set
+                          (slot "pending")
+                          (index (read (slot "i")))
+                          (value (call (selector "round")))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1)))))))))))
+        (apply
+          (body
+            (do
+              (call (selector "check-left"))
+              (if
+                (!= (left (array-size (slot "input"))) (right (read (slot "inner"))))
+                (then (fail))
+                (else (result 0)))
+              (if
+                (== (left (read (slot "left-kind"))) (right "identity"))
+                (then (write (slot "pending") (value (read (slot "input")))))
+                (else (call (selector "apply-dense"))))
+              (write (slot "output-kind") (value "vector"))
+              (write (slot "output-columns") (value 1))
+              (call (selector "commit")))))
+        (compose-dense
+          (body
+            (do
+              (write
+                (slot "pending")
+                (value
+                  (array-new
+                    (size (mul (left (read (slot "rows"))) (right (read (slot "columns")))))
+                    (value 0))))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "rows"))))
+                  (body
+                    (do
+                      (do
+                        (write (slot "j") (value 0))
+                        (while
+                          (< (left (read (slot "j"))) (right (read (slot "columns"))))
+                          (body
+                            (do
+                              (do
+                                (write (slot "sum") (value 0))
+                                (do
+                                  (write (slot "k") (value 0))
+                                  (while
+                                    (< (left (read (slot "k"))) (right (read (slot "inner"))))
+                                    (body
+                                      (do
+                                        (write
+                                          (slot "sum")
+                                          (value
+                                            (add
+                                              (left (read (slot "sum")))
+                                              (right
+                                                (mul
+                                                  (left
+                                                    (array-get
+                                                      (slot "left")
+                                                      (index
+                                                        (add
+                                                          (left
+                                                            (mul
+                                                              (left (read (slot "i")))
+                                                              (right (read (slot "inner")))))
+                                                          (right (read (slot "k")))))))
+                                                  (right
+                                                    (array-get
+                                                      (slot "right")
+                                                      (index
+                                                        (add
+                                                          (left
+                                                            (mul
+                                                              (left (read (slot "k")))
+                                                              (right (read (slot "columns")))))
+                                                          (right (read (slot "j"))))))))))))
+                                        (write
+                                          (slot "k")
+                                          (value (add (left (read (slot "k"))) (right 1))))))))
+                                (array-set
+                                  (slot "pending")
+                                  (index
+                                    (add
+                                      (left
+                                        (mul
+                                          (left (read (slot "i")))
+                                          (right (read (slot "columns")))))
+                                      (right (read (slot "j")))))
+                                  (value (call (selector "round")))))
+                              (write (slot "j") (value (add (left (read (slot "j"))) (right 1))))))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (write (slot "output-kind") (value "dense")))))
+        (compose
+          (body
+            (do
+              (call (selector "check-left"))
+              (call (selector "check-right"))
+              (if
+                (== (left (read (slot "left-kind"))) (right "identity"))
+                (then
+                  (do
+                    (write (slot "pending") (value (read (slot "right"))))
+                    (write (slot "output-kind") (value (read (slot "right-kind"))))))
+                (else
+                  (if
+                    (== (left (read (slot "right-kind"))) (right "identity"))
+                    (then
+                      (do
+                        (write (slot "pending") (value (read (slot "left"))))
+                        (write (slot "output-kind") (value "dense"))))
+                    (else (call (selector "compose-dense"))))))
+              (write (slot "output-columns") (value (read (slot "columns"))))
+              (call (selector "commit")))))
+        (materialize
+          (body
+            (do
+              (call (selector "check-left"))
+              (if
+                (== (left (read (slot "left-kind"))) (right "identity"))
+                (then
+                  (do
+                    (write
+                      (slot "pending")
+                      (value
+                        (array-new
+                          (size (mul (left (read (slot "rows"))) (right (read (slot "inner")))))
+                          (value 0))))
+                    (do
+                      (write (slot "i") (value 0))
+                      (while
+                        (< (left (read (slot "i"))) (right (read (slot "rows"))))
+                        (body
+                          (do
+                            (array-set
+                              (slot "pending")
+                              (index
+                                (add
+                                  (left
+                                    (mul (left (read (slot "i"))) (right (read (slot "inner")))))
+                                  (right (read (slot "i")))))
+                              (value 1000000))
+                            (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))))
+                (else (write (slot "pending") (value (read (slot "left"))))))
+              (write (slot "output-kind") (value "dense"))
+              (write (slot "output-columns") (value (read (slot "inner"))))
+              (call (selector "commit")))))))))

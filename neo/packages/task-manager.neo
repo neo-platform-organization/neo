@@ -1,0 +1,2471 @@
+// Ordinary neo app: inspect open apps and request navigation or window close.
+(package
+  (manifest
+    (schema 1)
+    (id "neo.apps.task-manager")
+    (version
+      (major 0)
+      (minor 1)
+      (patch 0)
+    )
+    (dependencies
+      (canvas
+        (id "neo.ui.canvas")
+        (version
+          (major 0)
+          (minor 1)
+          (patch 0)
+        )
+      )
+    )
+    (exports
+      (task-manager
+        (path "contents/task-manager")
+        (mode "copy")
+        (rights 9)
+      )
+    )
+    (imports)
+    (bindings)
+  )
+  (contents
+    (task-manager
+      (width 0)
+      (height 0)
+      (x 0)
+      (y 0)
+      (px 0)
+      (py 0)
+      (clip-left 0)
+      (clip-top 0)
+      (clip-right 0)
+      (clip-bottom 0)
+      (address 0)
+      (i 0)
+      (row 0)
+      (column 0)
+      (power 0)
+      (bits 0)
+      (code 0)
+      (cursor 0)
+      (sx 0)
+      (sy 0)
+      (drawn 0)
+      (rect-width 0)
+      (rect-height 0)
+      (left 0)
+      (top 0)
+      (right 0)
+      (bottom 0)
+      (scale 1)
+      (max-chars 80)
+      (text "")
+      (bytes [])
+      (font [0 0 0 0 0 0 0 4 4 4 4 4 0 4 10 10 0 0 0 0 0 10 31 10 10 31 10 0 14 17 1 2 4 0 4 17 2 4 4 8 17 0 14 17 1 2 4 0 4 4 4 0 0 0 0 0 2 4 8 8 8 4 2 8 4 2 2 2 4 8 0 21 14 31 14 21 0 0 4 4 31 4 4 0 0 0 0 0 4 4 8 0 0 0 31 0 0 0 0 0 0 0 0 12 12 1 2 2 4 8 8 16 14 17 19 21 25 17 14 4 12 4 4 4 4 14 14 17 1 2 4 8 31 30 1 1 14 1 1 30 2 6 10 18 31 2 2 31 16 16 30 1 1 30 14 16 16 30 17 17 14 31 1 2 4 8 8 8 14 17 17 14 17 17 14 14 17 17 15 1 1 14 0 12 12 0 12 12 0 0 4 4 0 4 4 8 1 2 4 8 4 2 1 0 0 31 0 31 0 0 16 8 4 2 4 8 16 14 17 1 2 4 0 4 14 17 23 21 23 16 14 14 17 17 31 17 17 17 30 17 17 30 17 17 30 14 17 16 16 16 17 14 30 17 17 17 17 17 30 31 16 16 30 16 16 31 31 16 16 30 16 16 16 14 17 16 23 17 17 15 17 17 17 31 17 17 17 14 4 4 4 4 4 14 7 2 2 2 18 18 12 17 18 20 24 20 18 17 16 16 16 16 16 16 31 17 27 21 21 17 17 17 17 25 21 19 17 17 17 14 17 17 17 17 17 14 30 17 17 30 16 16 16 14 17 17 17 21 18 13 30 17 17 30 20 18 17 15 16 16 14 1 1 30 31 4 4 4 4 4 4 17 17 17 17 17 17 14 17 17 17 17 17 10 4 17 17 17 21 21 21 10 17 17 10 4 10 17 17 17 17 10 4 4 4 4 31 1 2 4 8 16 31 14 8 8 8 8 8 14 16 8 8 4 2 2 1 14 2 2 2 2 2 14 14 17 1 2 4 0 4 0 0 0 0 0 0 31 14 17 1 2 4 0 4 14 17 17 31 17 17 17 30 17 17 30 17 17 30 14 17 16 16 16 17 14 30 17 17 17 17 17 30 31 16 16 30 16 16 31 31 16 16 30 16 16 16 14 17 16 23 17 17 15 17 17 17 31 17 17 17 14 4 4 4 4 4 14 7 2 2 2 18 18 12 17 18 20 24 20 18 17 16 16 16 16 16 16 31 17 27 21 21 17 17 17 17 25 21 19 17 17 17 14 17 17 17 17 17 14 30 17 17 30 16 16 16 14 17 17 17 21 18 13 30 17 17 30 20 18 17 15 16 16 14 1 1 30 31 4 4 4 4 4 4 17 17 17 17 17 17 14 17 17 17 17 17 10 4 17 17 17 21 21 21 10 17 17 10 4 10 17 17 17 17 10 4 4 4 4 31 1 2 4 8 16 31 14 17 1 2 4 0 4 4 4 4 4 4 4 4 14 17 1 2 4 0 4 14 17 1 2 4 0 4])
+      (red 255)
+      (green 255)
+      (blue 255)
+      (alpha 255)
+      (title "Task Manager")
+      (task-managed true)
+      (t-ready false)
+      (t-dirty true)
+      (t-revision -1)
+      (t-phase 0)
+      (t-row 0)
+      (t-selected 0)
+      (t-pick 0)
+      (t-mx 0)
+      (t-my 0)
+      (t-event "")
+      (t-action "")
+      (handlers
+        (setup
+          (body
+            (do
+              (write
+                (slot "width")
+                (value
+                  (buffer-width
+                    (target "buffer")
+                  )
+                )
+              )
+              (write
+                (slot "height")
+                (value
+                  (buffer-height
+                    (target "buffer")
+                  )
+                )
+              )
+              (write
+                (slot "clip-left")
+                (value 0)
+              )
+              (write
+                (slot "clip-top")
+                (value 0)
+              )
+              (write
+                (slot "clip-right")
+                (value
+                  (read
+                    (slot "width")
+                  )
+                )
+              )
+              (write
+                (slot "clip-bottom")
+                (value
+                  (read
+                    (slot "height")
+                  )
+                )
+              )
+              (result true)
+            )
+          )
+        )
+        (validate
+          (body
+            (do
+              (if
+                (<=
+                  (left
+                    (read
+                      (slot "scale")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (<
+                  (left
+                    (read
+                      (slot "red")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (>
+                  (left
+                    (read
+                      (slot "red")
+                    )
+                  )
+                  (right 255)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (<
+                  (left
+                    (read
+                      (slot "green")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (>
+                  (left
+                    (read
+                      (slot "green")
+                    )
+                  )
+                  (right 255)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (<
+                  (left
+                    (read
+                      (slot "blue")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (>
+                  (left
+                    (read
+                      (slot "blue")
+                    )
+                  )
+                  (right 255)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (<
+                  (left
+                    (read
+                      (slot "alpha")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (>
+                  (left
+                    (read
+                      (slot "alpha")
+                    )
+                  )
+                  (right 255)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (<
+                  (left
+                    (read
+                      (slot "clip-left")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (<
+                  (left
+                    (read
+                      (slot "clip-top")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (>
+                  (left
+                    (read
+                      (slot "clip-right")
+                    )
+                  )
+                  (right
+                    (read
+                      (slot "width")
+                    )
+                  )
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (>
+                  (left
+                    (read
+                      (slot "clip-bottom")
+                    )
+                  )
+                  (right
+                    (read
+                      (slot "height")
+                    )
+                  )
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (<
+                  (left
+                    (read
+                      (slot "clip-right")
+                    )
+                  )
+                  (right
+                    (read
+                      (slot "clip-left")
+                    )
+                  )
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (<
+                  (left
+                    (read
+                      (slot "clip-bottom")
+                    )
+                  )
+                  (right
+                    (read
+                      (slot "clip-top")
+                    )
+                  )
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+            )
+          )
+        )
+        (pixel
+          (body
+            (do
+              (if
+                (and
+                  (left
+                    (and
+                      (left
+                        (>=
+                          (left
+                            (read
+                              (slot "px")
+                            )
+                          )
+                          (right
+                            (read
+                              (slot "clip-left")
+                            )
+                          )
+                        )
+                      )
+                      (right
+                        (<
+                          (left
+                            (read
+                              (slot "px")
+                            )
+                          )
+                          (right
+                            (read
+                              (slot "clip-right")
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                  (right
+                    (and
+                      (left
+                        (>=
+                          (left
+                            (read
+                              (slot "py")
+                            )
+                          )
+                          (right
+                            (read
+                              (slot "clip-top")
+                            )
+                          )
+                        )
+                      )
+                      (right
+                        (<
+                          (left
+                            (read
+                              (slot "py")
+                            )
+                          )
+                          (right
+                            (read
+                              (slot "clip-bottom")
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+                (then
+                  (do
+                    (write
+                      (slot "address")
+                      (value
+                        (mul
+                          (left
+                            (add
+                              (left
+                                (mul
+                                  (left
+                                    (read
+                                      (slot "py")
+                                    )
+                                  )
+                                  (right
+                                    (read
+                                      (slot "width")
+                                    )
+                                  )
+                                )
+                              )
+                              (right
+                                (read
+                                  (slot "px")
+                                )
+                              )
+                            )
+                          )
+                          (right 4)
+                        )
+                      )
+                    )
+                    (buffer-write
+                      (target "buffer")
+                      (index
+                        (add
+                          (left
+                            (read
+                              (slot "address")
+                            )
+                          )
+                          (right 0)
+                        )
+                      )
+                      (value
+                        (read
+                          (slot "red")
+                        )
+                      )
+                    )
+                    (buffer-write
+                      (target "buffer")
+                      (index
+                        (add
+                          (left
+                            (read
+                              (slot "address")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                      (value
+                        (read
+                          (slot "green")
+                        )
+                      )
+                    )
+                    (buffer-write
+                      (target "buffer")
+                      (index
+                        (add
+                          (left
+                            (read
+                              (slot "address")
+                            )
+                          )
+                          (right 2)
+                        )
+                      )
+                      (value
+                        (read
+                          (slot "blue")
+                        )
+                      )
+                    )
+                    (buffer-write
+                      (target "buffer")
+                      (index
+                        (add
+                          (left
+                            (read
+                              (slot "address")
+                            )
+                          )
+                          (right 3)
+                        )
+                      )
+                      (value
+                        (read
+                          (slot "alpha")
+                        )
+                      )
+                    )
+                    (write
+                      (slot "drawn")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "drawn")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                  )
+                )
+                (else
+                  (result 0)
+                )
+              )
+            )
+          )
+        )
+        (text
+          (body
+            (do
+              (call
+                (selector "validate")
+              )
+              (if
+                (<
+                  (left
+                    (read
+                      (slot "max-chars")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "bytes")
+                (value
+                  (text-bytes
+                    (value
+                      (read
+                        (slot "text")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "i")
+                (value 0)
+              )
+              (write
+                (slot "drawn")
+                (value 0)
+              )
+              (write
+                (slot "cursor")
+                (value
+                  (read
+                    (slot "x")
+                  )
+                )
+              )
+              (while
+                (and
+                  (left
+                    (<
+                      (left
+                        (read
+                          (slot "i")
+                        )
+                      )
+                      (right
+                        (array-size
+                          (slot "bytes")
+                        )
+                      )
+                    )
+                  )
+                  (right
+                    (<
+                      (left
+                        (read
+                          (slot "i")
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "max-chars")
+                        )
+                      )
+                    )
+                  )
+                )
+                (body
+                  (do
+                    (write
+                      (slot "code")
+                      (value
+                        (array-get
+                          (slot "bytes")
+                          (index
+                            (read
+                              (slot "i")
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (if
+                      (or
+                        (left
+                          (<
+                            (left
+                              (read
+                                (slot "code")
+                              )
+                            )
+                            (right 32)
+                          )
+                        )
+                        (right
+                          (>
+                            (left
+                              (read
+                                (slot "code")
+                              )
+                            )
+                            (right 126)
+                          )
+                        )
+                      )
+                      (then
+                        (write
+                          (slot "code")
+                          (value 63)
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (write
+                      (slot "row")
+                      (value 0)
+                    )
+                    (while
+                      (<
+                        (left
+                          (read
+                            (slot "row")
+                          )
+                        )
+                        (right 7)
+                      )
+                      (body
+                        (do
+                          (write
+                            (slot "bits")
+                            (value
+                              (array-get
+                                (slot "font")
+                                (index
+                                  (add
+                                    (left
+                                      (mul
+                                        (left
+                                          (sub
+                                            (left
+                                              (read
+                                                (slot "code")
+                                              )
+                                            )
+                                            (right 32)
+                                          )
+                                        )
+                                        (right 7)
+                                      )
+                                    )
+                                    (right
+                                      (read
+                                        (slot "row")
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (write
+                            (slot "column")
+                            (value 0)
+                          )
+                          (write
+                            (slot "power")
+                            (value 16)
+                          )
+                          (while
+                            (<
+                              (left
+                                (read
+                                  (slot "column")
+                                )
+                              )
+                              (right 5)
+                            )
+                            (body
+                              (do
+                                (if
+                                  (!=
+                                    (left
+                                      (rem
+                                        (left
+                                          (div
+                                            (left
+                                              (read
+                                                (slot "bits")
+                                              )
+                                            )
+                                            (right
+                                              (read
+                                                (slot "power")
+                                              )
+                                            )
+                                          )
+                                        )
+                                        (right 2)
+                                      )
+                                    )
+                                    (right 0)
+                                  )
+                                  (then
+                                    (do
+                                      (write
+                                        (slot "sy")
+                                        (value 0)
+                                      )
+                                      (while
+                                        (<
+                                          (left
+                                            (read
+                                              (slot "sy")
+                                            )
+                                          )
+                                          (right
+                                            (read
+                                              (slot "scale")
+                                            )
+                                          )
+                                        )
+                                        (body
+                                          (do
+                                            (write
+                                              (slot "sx")
+                                              (value 0)
+                                            )
+                                            (while
+                                              (<
+                                                (left
+                                                  (read
+                                                    (slot "sx")
+                                                  )
+                                                )
+                                                (right
+                                                  (read
+                                                    (slot "scale")
+                                                  )
+                                                )
+                                              )
+                                              (body
+                                                (do
+                                                  (write
+                                                    (slot "px")
+                                                    (value
+                                                      (add
+                                                        (left
+                                                          (add
+                                                            (left
+                                                              (read
+                                                                (slot "cursor")
+                                                              )
+                                                            )
+                                                            (right
+                                                              (mul
+                                                                (left
+                                                                  (read
+                                                                    (slot "column")
+                                                                  )
+                                                                )
+                                                                (right
+                                                                  (read
+                                                                    (slot "scale")
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                        (right
+                                                          (read
+                                                            (slot "sx")
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                  (write
+                                                    (slot "py")
+                                                    (value
+                                                      (add
+                                                        (left
+                                                          (add
+                                                            (left
+                                                              (read
+                                                                (slot "y")
+                                                              )
+                                                            )
+                                                            (right
+                                                              (mul
+                                                                (left
+                                                                  (read
+                                                                    (slot "row")
+                                                                  )
+                                                                )
+                                                                (right
+                                                                  (read
+                                                                    (slot "scale")
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                        (right
+                                                          (read
+                                                            (slot "sy")
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                  (call
+                                                    (selector "pixel")
+                                                  )
+                                                  (write
+                                                    (slot "sx")
+                                                    (value
+                                                      (add
+                                                        (left
+                                                          (read
+                                                            (slot "sx")
+                                                          )
+                                                        )
+                                                        (right 1)
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                            (write
+                                              (slot "sy")
+                                              (value
+                                                (add
+                                                  (left
+                                                    (read
+                                                      (slot "sy")
+                                                    )
+                                                  )
+                                                  (right 1)
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                  (else
+                                    (result 0)
+                                  )
+                                )
+                                (write
+                                  (slot "power")
+                                  (value
+                                    (div
+                                      (left
+                                        (read
+                                          (slot "power")
+                                        )
+                                      )
+                                      (right 2)
+                                    )
+                                  )
+                                )
+                                (write
+                                  (slot "column")
+                                  (value
+                                    (add
+                                      (left
+                                        (read
+                                          (slot "column")
+                                        )
+                                      )
+                                      (right 1)
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (write
+                            (slot "row")
+                            (value
+                              (add
+                                (left
+                                  (read
+                                    (slot "row")
+                                  )
+                                )
+                                (right 1)
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "cursor")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "cursor")
+                            )
+                          )
+                          (right
+                            (mul
+                              (left 6)
+                              (right
+                                (read
+                                  (slot "scale")
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "i")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "i")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (result true)
+            )
+          )
+        )
+        (rect
+          (body
+            (do
+              (call
+                (selector "validate")
+              )
+              (if
+                (<
+                  (left
+                    (read
+                      (slot "rect-width")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (<
+                  (left
+                    (read
+                      (slot "rect-height")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "drawn")
+                (value 0)
+              )
+              (write
+                (slot "left")
+                (value
+                  (if
+                    (<
+                      (left
+                        (read
+                          (slot "x")
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "clip-left")
+                        )
+                      )
+                    )
+                    (then
+                      (read
+                        (slot "clip-left")
+                      )
+                    )
+                    (else
+                      (read
+                        (slot "x")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "top")
+                (value
+                  (if
+                    (<
+                      (left
+                        (read
+                          (slot "y")
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "clip-top")
+                        )
+                      )
+                    )
+                    (then
+                      (read
+                        (slot "clip-top")
+                      )
+                    )
+                    (else
+                      (read
+                        (slot "y")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "right")
+                (value
+                  (if
+                    (>
+                      (left
+                        (add
+                          (left
+                            (read
+                              (slot "x")
+                            )
+                          )
+                          (right
+                            (read
+                              (slot "rect-width")
+                            )
+                          )
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "clip-right")
+                        )
+                      )
+                    )
+                    (then
+                      (read
+                        (slot "clip-right")
+                      )
+                    )
+                    (else
+                      (add
+                        (left
+                          (read
+                            (slot "x")
+                          )
+                        )
+                        (right
+                          (read
+                            (slot "rect-width")
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "bottom")
+                (value
+                  (if
+                    (>
+                      (left
+                        (add
+                          (left
+                            (read
+                              (slot "y")
+                            )
+                          )
+                          (right
+                            (read
+                              (slot "rect-height")
+                            )
+                          )
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "clip-bottom")
+                        )
+                      )
+                    )
+                    (then
+                      (read
+                        (slot "clip-bottom")
+                      )
+                    )
+                    (else
+                      (add
+                        (left
+                          (read
+                            (slot "y")
+                          )
+                        )
+                        (right
+                          (read
+                            (slot "rect-height")
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "py")
+                (value
+                  (read
+                    (slot "top")
+                  )
+                )
+              )
+              (while
+                (<
+                  (left
+                    (read
+                      (slot "py")
+                    )
+                  )
+                  (right
+                    (read
+                      (slot "bottom")
+                    )
+                  )
+                )
+                (body
+                  (do
+                    (write
+                      (slot "px")
+                      (value
+                        (read
+                          (slot "left")
+                        )
+                      )
+                    )
+                    (while
+                      (<
+                        (left
+                          (read
+                            (slot "px")
+                          )
+                        )
+                        (right
+                          (read
+                            (slot "right")
+                          )
+                        )
+                      )
+                      (body
+                        (do
+                          (call
+                            (selector "pixel")
+                          )
+                          (write
+                            (slot "px")
+                            (value
+                              (add
+                                (left
+                                  (read
+                                    (slot "px")
+                                  )
+                                )
+                                (right 1)
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "py")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "py")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (result true)
+            )
+          )
+        )
+        (resume
+          (body
+            (do
+              (call
+                (selector "setup")
+              )
+              (write
+                (slot "t-ready")
+                (value true)
+              )
+              (write
+                (slot "t-dirty")
+                (value true)
+              )
+              (write
+                (slot "t-revision")
+                (value -1)
+              )
+              (write
+                (slot "t-phase")
+                (value 0)
+              )
+            )
+          )
+        )
+        (input
+          (body
+            (do
+              (write
+                (slot "t-event")
+                (value
+                  (window-event
+                    (target "window")
+                    (field "type")
+                  )
+                )
+              )
+              (if
+                (and
+                  (left
+                    (==
+                      (left
+                        (read
+                          (slot "t-event")
+                        )
+                      )
+                      (right "key")
+                    )
+                  )
+                  (right
+                    (window-event
+                      (target "window")
+                      (field "pressed")
+                    )
+                  )
+                )
+                (then
+                  (do
+                    (if
+                      (==
+                        (left
+                          (window-event
+                            (target "window")
+                            (field "key")
+                          )
+                        )
+                        (right "up")
+                      )
+                      (then
+                        (write
+                          (slot "t-selected")
+                          (value
+                            (if
+                              (>
+                                (left 0)
+                                (right
+                                  (sub
+                                    (left
+                                      (read
+                                        (slot "t-selected")
+                                      )
+                                    )
+                                    (right 1)
+                                  )
+                                )
+                              )
+                              (then 0)
+                              (else
+                                (sub
+                                  (left
+                                    (read
+                                      (slot "t-selected")
+                                    )
+                                  )
+                                  (right 1)
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (if
+                      (==
+                        (left
+                          (window-event
+                            (target "window")
+                            (field "key")
+                          )
+                        )
+                        (right "down")
+                      )
+                      (then
+                        (write
+                          (slot "t-selected")
+                          (value
+                            (if
+                              (<
+                                (left
+                                  (sub
+                                    (left
+                                      (child-count
+                                        (target
+                                          (child
+                                            (target
+                                              (connection
+                                                (target
+                                                  (self)
+                                                )
+                                                (name "desktop-model")
+                                              )
+                                            )
+                                            (name "windows")
+                                          )
+                                        )
+                                      )
+                                    )
+                                    (right 1)
+                                  )
+                                )
+                                (right
+                                  (add
+                                    (left
+                                      (read
+                                        (slot "t-selected")
+                                      )
+                                    )
+                                    (right 1)
+                                  )
+                                )
+                              )
+                              (then
+                                (sub
+                                  (left
+                                    (child-count
+                                      (target
+                                        (child
+                                          (target
+                                            (connection
+                                              (target
+                                                (self)
+                                              )
+                                              (name "desktop-model")
+                                            )
+                                          )
+                                          (name "windows")
+                                        )
+                                      )
+                                    )
+                                  )
+                                  (right 1)
+                                )
+                              )
+                              (else
+                                (add
+                                  (left
+                                    (read
+                                      (slot "t-selected")
+                                    )
+                                  )
+                                  (right 1)
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (if
+                      (==
+                        (left
+                          (window-event
+                            (target "window")
+                            (field "key")
+                          )
+                        )
+                        (right "enter")
+                      )
+                      (then
+                        (do
+                          (write
+                            (slot "t-action")
+                            (value "focus")
+                          )
+                          (call
+                            (selector "request")
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (if
+                      (==
+                        (left
+                          (window-event
+                            (target "window")
+                            (field "key")
+                          )
+                        )
+                        (right "delete")
+                      )
+                      (then
+                        (do
+                          (write
+                            (slot "t-action")
+                            (value "close")
+                          )
+                          (call
+                            (selector "request")
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (write
+                      (slot "t-dirty")
+                      (value true)
+                    )
+                    (write
+                      (slot "t-phase")
+                      (value 0)
+                    )
+                  )
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (and
+                  (left
+                    (and
+                      (left
+                        (==
+                          (left
+                            (read
+                              (slot "t-event")
+                            )
+                          )
+                          (right "button")
+                        )
+                      )
+                      (right
+                        (window-event
+                          (target "window")
+                          (field "pressed")
+                        )
+                      )
+                    )
+                  )
+                  (right
+                    (==
+                      (left
+                        (window-event
+                          (target "window")
+                          (field "button")
+                        )
+                      )
+                      (right 1)
+                    )
+                  )
+                )
+                (then
+                  (do
+                    (write
+                      (slot "t-mx")
+                      (value
+                        (window-event
+                          (target "window")
+                          (field "x")
+                        )
+                      )
+                    )
+                    (write
+                      (slot "t-my")
+                      (value
+                        (window-event
+                          (target "window")
+                          (field "y")
+                        )
+                      )
+                    )
+                    (if
+                      (and
+                        (left
+                          (>=
+                            (left
+                              (read
+                                (slot "t-my")
+                              )
+                            )
+                            (right 80)
+                          )
+                        )
+                        (right
+                          (<
+                            (left
+                              (read
+                                (slot "t-my")
+                              )
+                            )
+                            (right 320)
+                          )
+                        )
+                      )
+                      (then
+                        (do
+                          (write
+                            (slot "t-pick")
+                            (value
+                              (div
+                                (left
+                                  (sub
+                                    (left
+                                      (read
+                                        (slot "t-my")
+                                      )
+                                    )
+                                    (right 80)
+                                  )
+                                )
+                                (right 30)
+                              )
+                            )
+                          )
+                          (if
+                            (<
+                              (left
+                                (read
+                                  (slot "t-pick")
+                                )
+                              )
+                              (right
+                                (child-count
+                                  (target
+                                    (child
+                                      (target
+                                        (connection
+                                          (target
+                                            (self)
+                                          )
+                                          (name "desktop-model")
+                                        )
+                                      )
+                                      (name "windows")
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                            (then
+                              (do
+                                (write
+                                  (slot "t-selected")
+                                  (value
+                                    (read
+                                      (slot "t-pick")
+                                    )
+                                  )
+                                )
+                                (write
+                                  (slot "t-dirty")
+                                  (value true)
+                                )
+                              )
+                            )
+                            (else
+                              (result 0)
+                            )
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (if
+                      (and
+                        (left
+                          (>=
+                            (left
+                              (read
+                                (slot "t-my")
+                              )
+                            )
+                            (right 400)
+                          )
+                        )
+                        (right
+                          (<
+                            (left
+                              (read
+                                (slot "t-my")
+                              )
+                            )
+                            (right 446)
+                          )
+                        )
+                      )
+                      (then
+                        (if
+                          (<
+                            (left
+                              (read
+                                (slot "t-mx")
+                              )
+                            )
+                            (right 220)
+                          )
+                          (then
+                            (do
+                              (write
+                                (slot "t-action")
+                                (value "focus")
+                              )
+                              (call
+                                (selector "request")
+                              )
+                            )
+                          )
+                          (else
+                            (if
+                              (<
+                                (left
+                                  (read
+                                    (slot "t-mx")
+                                  )
+                                )
+                                (right 440)
+                              )
+                              (then
+                                (do
+                                  (write
+                                    (slot "t-action")
+                                    (value "close")
+                                  )
+                                  (call
+                                    (selector "request")
+                                  )
+                                )
+                              )
+                              (else
+                                (result 0)
+                              )
+                            )
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                  )
+                )
+                (else
+                  (result 0)
+                )
+              )
+            )
+          )
+        )
+        (request
+          (body
+            (do
+              (do
+                (if
+                  (and
+                    (left
+                      (>=
+                        (left
+                          (read
+                            (slot "t-selected")
+                          )
+                        )
+                        (right 0)
+                      )
+                    )
+                    (right
+                      (<
+                        (left
+                          (read
+                            (slot "t-selected")
+                          )
+                        )
+                        (right
+                          (child-count
+                            (target
+                              (child
+                                (target
+                                  (connection
+                                    (target
+                                      (self)
+                                    )
+                                    (name "desktop-model")
+                                  )
+                                )
+                                (name "windows")
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                  (then
+                    (do
+                      (object-write
+                        (target
+                          (child
+                            (target
+                              (connection
+                                (target
+                                  (self)
+                                )
+                                (name "desktop-request")
+                              )
+                            )
+                            (name "action")
+                          )
+                        )
+                        (value
+                          (read
+                            (slot "t-action")
+                          )
+                        )
+                      )
+                      (object-write
+                        (target
+                          (child
+                            (target
+                              (connection
+                                (target
+                                  (self)
+                                )
+                                (name "desktop-request")
+                              )
+                            )
+                            (name "name")
+                          )
+                        )
+                        (value
+                          (object-name
+                            (target
+                              (child-at
+                                (target
+                                  (child
+                                    (target
+                                      (connection
+                                        (target
+                                          (self)
+                                        )
+                                        (name "desktop-model")
+                                      )
+                                    )
+                                    (name "windows")
+                                  )
+                                )
+                                (index
+                                  (read
+                                    (slot "t-selected")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                  (else
+                    (result 0)
+                  )
+                )
+              )
+            )
+          )
+        )
+        (frame
+          (body
+            (do
+              (if
+                (not
+                  (value
+                    (read
+                      (slot "t-ready")
+                    )
+                  )
+                )
+                (then
+                  (call
+                    (selector "resume")
+                  )
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (!=
+                  (left
+                    (inspect
+                      (target
+                        (child
+                          (target
+                            (connection
+                              (target
+                                (self)
+                              )
+                              (name "desktop-model")
+                            )
+                          )
+                          (name "revision")
+                        )
+                      )
+                    )
+                  )
+                  (right
+                    (read
+                      (slot "t-revision")
+                    )
+                  )
+                )
+                (then
+                  (do
+                    (write
+                      (slot "t-revision")
+                      (value
+                        (inspect
+                          (target
+                            (child
+                              (target
+                                (connection
+                                  (target
+                                    (self)
+                                  )
+                                  (name "desktop-model")
+                                )
+                              )
+                              (name "revision")
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "t-dirty")
+                      (value true)
+                    )
+                    (write
+                      (slot "t-phase")
+                      (value 0)
+                    )
+                  )
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (>=
+                  (left
+                    (read
+                      (slot "t-selected")
+                    )
+                  )
+                  (right
+                    (child-count
+                      (target
+                        (child
+                          (target
+                            (connection
+                              (target
+                                (self)
+                              )
+                              (name "desktop-model")
+                            )
+                          )
+                          (name "windows")
+                        )
+                      )
+                    )
+                  )
+                )
+                (then
+                  (write
+                    (slot "t-selected")
+                    (value
+                      (if
+                        (>
+                          (left 0)
+                          (right
+                            (sub
+                              (left
+                                (child-count
+                                  (target
+                                    (child
+                                      (target
+                                        (connection
+                                          (target
+                                            (self)
+                                          )
+                                          (name "desktop-model")
+                                        )
+                                      )
+                                      (name "windows")
+                                    )
+                                  )
+                                )
+                              )
+                              (right 1)
+                            )
+                          )
+                        )
+                        (then 0)
+                        (else
+                          (sub
+                            (left
+                              (child-count
+                                (target
+                                  (child
+                                    (target
+                                      (connection
+                                        (target
+                                          (self)
+                                        )
+                                        (name "desktop-model")
+                                      )
+                                    )
+                                    (name "windows")
+                                  )
+                                )
+                              )
+                            )
+                            (right 1)
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (read
+                  (slot "t-dirty")
+                )
+                (then
+                  (do
+                    (if
+                      (==
+                        (left
+                          (read
+                            (slot "t-phase")
+                          )
+                        )
+                        (right 0)
+                      )
+                      (then
+                        (do
+                          (buffer-fill
+                            (target
+                              (connection
+                                (target
+                                  (self)
+                                )
+                                (name "buffer")
+                              )
+                            )
+                            (value 0)
+                          )
+                          (do
+                            (write
+                              (slot "x")
+                              (value 18)
+                            )
+                            (write
+                              (slot "y")
+                              (value 18)
+                            )
+                            (write
+                              (slot "text")
+                              (value "TASK MANAGER")
+                            )
+                            (write
+                              (slot "max-chars")
+                              (value 40)
+                            )
+                            (write
+                              (slot "scale")
+                              (value 1)
+                            )
+                            (call
+                              (selector "text")
+                            )
+                          )
+                          (do
+                            (write
+                              (slot "x")
+                              (value 18)
+                            )
+                            (write
+                              (slot "y")
+                              (value 48)
+                            )
+                            (write
+                              (slot "text")
+                              (value
+                                (text-concat
+                                  (left "OPEN WINDOWS: ")
+                                  (right
+                                    (to-text
+                                      (value
+                                        (child-count
+                                          (target
+                                            (child
+                                              (target
+                                                (connection
+                                                  (target
+                                                    (self)
+                                                  )
+                                                  (name "desktop-model")
+                                                )
+                                              )
+                                              (name "windows")
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                            (write
+                              (slot "max-chars")
+                              (value 40)
+                            )
+                            (write
+                              (slot "scale")
+                              (value 1)
+                            )
+                            (call
+                              (selector "text")
+                            )
+                          )
+                          (write
+                            (slot "t-row")
+                            (value 0)
+                          )
+                          (write
+                            (slot "t-phase")
+                            (value 1)
+                          )
+                        )
+                      )
+                      (else
+                        (if
+                          (==
+                            (left
+                              (read
+                                (slot "t-phase")
+                              )
+                            )
+                            (right 1)
+                          )
+                          (then
+                            (do
+                              (if
+                                (<
+                                  (left
+                                    (read
+                                      (slot "t-row")
+                                    )
+                                  )
+                                  (right
+                                    (child-count
+                                      (target
+                                        (child
+                                          (target
+                                            (connection
+                                              (target
+                                                (self)
+                                              )
+                                              (name "desktop-model")
+                                            )
+                                          )
+                                          (name "windows")
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                                (then
+                                  (do
+                                    (do
+                                      (write
+                                        (slot "x")
+                                        (value 18)
+                                      )
+                                      (write
+                                        (slot "y")
+                                        (value
+                                          (add
+                                            (left 84)
+                                            (right
+                                              (mul
+                                                (left
+                                                  (read
+                                                    (slot "t-row")
+                                                  )
+                                                )
+                                                (right 30)
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                      (write
+                                        (slot "text")
+                                        (value
+                                          (text-concat
+                                            (left
+                                              (if
+                                                (==
+                                                  (left
+                                                    (read
+                                                      (slot "t-row")
+                                                    )
+                                                  )
+                                                  (right
+                                                    (read
+                                                      (slot "t-selected")
+                                                    )
+                                                  )
+                                                )
+                                                (then "> ")
+                                                (else "  ")
+                                              )
+                                            )
+                                            (right
+                                              (inspect
+                                                (target
+                                                  (child
+                                                    (target
+                                                      (child-at
+                                                        (target
+                                                          (child
+                                                            (target
+                                                              (connection
+                                                                (target
+                                                                  (self)
+                                                                )
+                                                                (name "desktop-model")
+                                                              )
+                                                            )
+                                                            (name "windows")
+                                                          )
+                                                        )
+                                                        (index
+                                                          (read
+                                                            (slot "t-row")
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                    (name "title")
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                      (write
+                                        (slot "max-chars")
+                                        (value 48)
+                                      )
+                                      (write
+                                        (slot "scale")
+                                        (value 1)
+                                      )
+                                      (call
+                                        (selector "text")
+                                      )
+                                    )
+                                    (write
+                                      (slot "t-row")
+                                      (value
+                                        (add
+                                          (left
+                                            (read
+                                              (slot "t-row")
+                                            )
+                                          )
+                                          (right 1)
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                                (else
+                                  (write
+                                    (slot "t-phase")
+                                    (value 2)
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (else
+                            (do
+                              (do
+                                (write
+                                  (slot "x")
+                                  (value 18)
+                                )
+                                (write
+                                  (slot "y")
+                                  (value 410)
+                                )
+                                (write
+                                  (slot "text")
+                                  (value "[ENTER] GO TO WINDOW")
+                                )
+                                (write
+                                  (slot "max-chars")
+                                  (value 40)
+                                )
+                                (write
+                                  (slot "scale")
+                                  (value 1)
+                                )
+                                (call
+                                  (selector "text")
+                                )
+                              )
+                              (do
+                                (write
+                                  (slot "x")
+                                  (value 240)
+                                )
+                                (write
+                                  (slot "y")
+                                  (value 410)
+                                )
+                                (write
+                                  (slot "text")
+                                  (value "[DELETE] CLOSE WINDOW")
+                                )
+                                (write
+                                  (slot "max-chars")
+                                  (value 40)
+                                )
+                                (write
+                                  (slot "scale")
+                                  (value 1)
+                                )
+                                (call
+                                  (selector "text")
+                                )
+                              )
+                              (do
+                                (write
+                                  (slot "x")
+                                  (value 18)
+                                )
+                                (write
+                                  (slot "y")
+                                  (value 450)
+                                )
+                                (write
+                                  (slot "text")
+                                  (value "SELECT AN APP WITH ARROWS OR CLICK ITS ROW")
+                                )
+                                (write
+                                  (slot "max-chars")
+                                  (value 80)
+                                )
+                                (write
+                                  (slot "scale")
+                                  (value 1)
+                                )
+                                (call
+                                  (selector "text")
+                                )
+                              )
+                              (write
+                                (slot "t-dirty")
+                                (value false)
+                              )
+                              (write
+                                (slot "t-phase")
+                                (value 0)
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (window-present
+                      (target "window")
+                      (buffer "buffer")
+                    )
+                  )
+                )
+                (else
+                  (result 0)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)

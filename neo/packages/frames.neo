@@ -1,0 +1,668 @@
+// Explicit spaces, parent frames and bounded coordinate conversion.
+(package
+  (manifest
+    (schema 1)
+    (id "neo.spatial.frames")
+    (version (major 0) (minor 1) (patch 0))
+    (dependencies (maths (id "neo.maths.matrix") (version (major 0) (minor 3) (patch 0))))
+    (exports
+      (space (path "contents/space") (mode "copy") (rights 9))
+      (frame (path "contents/frame") (mode "copy") (rights 9))
+      (converter (path "contents/converter") (mode "copy") (rights 9)))
+    (imports)
+    (bindings))
+  (contents
+    (space
+      (dimension 0)
+      (axes [])
+      (axis-units [])
+      (metric "euclidean")
+      (scale 1000000)
+      (i 0)
+      (handlers
+        (initialize
+          (body
+            (do
+              (do
+                (if (< (left (read (slot "dimension"))) (right 0)) (then (fail)) (else (result 0))))
+              (write (slot "axes") (value (array-new (size (read (slot "dimension"))) (value 0))))
+              (write
+                (slot "axis-units")
+                (value (array-new (size (read (slot "dimension"))) (value 0))))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "dimension"))))
+                  (body
+                    (do
+                      (array-set (slot "axes") (index (read (slot "i"))) (value (read (slot "i"))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (result true))))))
+    (frame
+      (dimension 0)
+      (root true)
+      (linear-kind "identity")
+      (linear [])
+      (translation [])
+      (handlers
+        (initialize
+          (body
+            (do
+              (write
+                (slot "dimension")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "space")))
+                        (name "dimension"))))))
+              (do
+                (if (< (left (read (slot "dimension"))) (right 0)) (then (fail)) (else (result 0))))
+              (write (slot "linear-kind") (value "identity"))
+              (write (slot "linear") (value []))
+              (write
+                (slot "translation")
+                (value (array-new (size (read (slot "dimension"))) (value 0))))
+              (result true))))))
+    (converter
+      (dimension 0)
+      (j 0)
+      (count 0)
+      (source-count 0)
+      (target-count 0)
+      (index 0)
+      (kind "point")
+      (endpoint "source")
+      (path-name "source-path")
+      (walking false)
+      (input [])
+      (result [])
+      (pending [])
+      (axes [])
+      (units [])
+      (root-linear [])
+      (root-translation [])
+      (handlers
+        (build-path
+          (body
+            (do
+              (if
+                (has-child (target (self)) (name (read (slot "path-name"))))
+                (then
+                  (object-delete (target (child (target (self)) (name (read (slot "path-name")))))))
+                (else (result 0)))
+              (object-create (target (self)) (name (read (slot "path-name"))) (value (result 0)))
+              (do
+                (connect
+                  (target (self))
+                  (name "next-cursor")
+                  (value (connection (target (self)) (name (read (slot "endpoint")))))
+                  (rights 33))
+                (attempt
+                  (body (disconnect (target (self)) (name "cursor")))
+                  (recover
+                    (if
+                      (!= (left (failure (field "status"))) (right "unavailable"))
+                      (then (rethrow))
+                      (else (result 0)))))
+                (connect
+                  (target (self))
+                  (name "cursor")
+                  (value (connection (target (self)) (name "next-cursor")))
+                  (rights 33))
+                (disconnect (target (self)) (name "next-cursor")))
+              (write (slot "count") (value 0))
+              (write (slot "walking") (value true))
+              (while
+                (read (slot "walking"))
+                (body
+                  (do
+                    (if
+                      (!=
+                        (left
+                          (inspect
+                            (target
+                              (child
+                                (target (connection (target (self)) (name "cursor")))
+                                (name "dimension")))))
+                        (right (read (slot "dimension"))))
+                      (then (fail))
+                      (else (result 0)))
+                    (if
+                      (==
+                        (left
+                          (same
+                            (left
+                              (connection
+                                (target (connection (target (self)) (name "cursor")))
+                                (name "space")))
+                            (right
+                              (connection
+                                (target (connection (target (self)) (name "source")))
+                                (name "space")))))
+                        (right false))
+                      (then (fail))
+                      (else (result 0)))
+                    (do
+                      (write (slot "j") (value 0))
+                      (while
+                        (< (left (read (slot "j"))) (right (read (slot "count"))))
+                        (body
+                          (do
+                            (if
+                              (same
+                                (left
+                                  (connection
+                                    (target
+                                      (child
+                                        (target
+                                          (child (target (self)) (name (read (slot "path-name")))))
+                                        (name (to-text (value (read (slot "j")))))))
+                                    (name "frame")))
+                                (right (connection (target (self)) (name "cursor"))))
+                              (then (fail))
+                              (else (result 0)))
+                            (write (slot "j") (value (add (left (read (slot "j"))) (right 1))))))))
+                    (object-create
+                      (target (child (target (self)) (name (read (slot "path-name")))))
+                      (name (to-text (value (read (slot "count")))))
+                      (value (result 0)))
+                    (connect
+                      (target
+                        (child
+                          (target (child (target (self)) (name (read (slot "path-name")))))
+                          (name (to-text (value (read (slot "count")))))))
+                      (name "frame")
+                      (value (connection (target (self)) (name "cursor")))
+                      (rights 33))
+                    (write (slot "count") (value (add (left (read (slot "count"))) (right 1))))
+                    (if
+                      (inspect
+                        (target
+                          (child
+                            (target (connection (target (self)) (name "cursor")))
+                            (name "root"))))
+                      (then
+                        (do
+                          (if
+                            (!=
+                              (left
+                                (inspect
+                                  (target
+                                    (child
+                                      (target (connection (target (self)) (name "cursor")))
+                                      (name "linear-kind")))))
+                              (right "identity"))
+                            (then (fail))
+                            (else (result 0)))
+                          (write
+                            (slot "root-linear")
+                            (value
+                              (inspect
+                                (target
+                                  (child
+                                    (target (connection (target (self)) (name "cursor")))
+                                    (name "linear"))))))
+                          (if
+                            (!= (left (array-size (slot "root-linear"))) (right 0))
+                            (then (fail))
+                            (else (result 0)))
+                          (write
+                            (slot "root-translation")
+                            (value
+                              (inspect
+                                (target
+                                  (child
+                                    (target (connection (target (self)) (name "cursor")))
+                                    (name "translation"))))))
+                          (if
+                            (!=
+                              (left (array-size (slot "root-translation")))
+                              (right (read (slot "dimension"))))
+                            (then (fail))
+                            (else (result 0)))
+                          (do
+                            (write (slot "j") (value 0))
+                            (while
+                              (< (left (read (slot "j"))) (right (read (slot "dimension"))))
+                              (body
+                                (do
+                                  (if
+                                    (!=
+                                      (left
+                                        (array-get
+                                          (slot "root-translation")
+                                          (index (read (slot "j")))))
+                                      (right 0))
+                                    (then (fail))
+                                    (else (result 0)))
+                                  (write
+                                    (slot "j")
+                                    (value (add (left (read (slot "j"))) (right 1))))))))
+                          (write (slot "walking") (value false))))
+                      (else
+                        (do
+                          (connect
+                            (target (self))
+                            (name "next-cursor")
+                            (value
+                              (connection
+                                (target (connection (target (self)) (name "cursor")))
+                                (name "parent")))
+                            (rights 33))
+                          (attempt
+                            (body (disconnect (target (self)) (name "cursor")))
+                            (recover
+                              (if
+                                (!= (left (failure (field "status"))) (right "unavailable"))
+                                (then (rethrow))
+                                (else (result 0)))))
+                          (connect
+                            (target (self))
+                            (name "cursor")
+                            (value (connection (target (self)) (name "next-cursor")))
+                            (rights 33))
+                          (disconnect (target (self)) (name "next-cursor")))))))))))
+        (convert
+          (body
+            (do
+              (if
+                (!= (left (read (slot "kind"))) (right "point"))
+                (then
+                  (if
+                    (!= (left (read (slot "kind"))) (right "displacement"))
+                    (then (fail))
+                    (else (result 0))))
+                (else (result 0)))
+              (do
+                (write
+                  (slot "dimension")
+                  (value
+                    (inspect
+                      (target
+                        (child
+                          (target
+                            (connection
+                              (target (connection (target (self)) (name "source")))
+                              (name "space")))
+                          (name "dimension"))))))
+                (do
+                  (if
+                    (< (left (read (slot "dimension"))) (right 0))
+                    (then (fail))
+                    (else (result 0))))
+                (if
+                  (!=
+                    (left
+                      (inspect
+                        (target
+                          (child
+                            (target
+                              (connection
+                                (target (connection (target (self)) (name "source")))
+                                (name "space")))
+                            (name "scale")))))
+                    (right 1000000))
+                  (then (fail))
+                  (else (result 0)))
+                (if
+                  (!=
+                    (left
+                      (inspect
+                        (target
+                          (child
+                            (target
+                              (connection
+                                (target (connection (target (self)) (name "source")))
+                                (name "space")))
+                            (name "metric")))))
+                    (right "euclidean"))
+                  (then (fail))
+                  (else (result 0)))
+                (write
+                  (slot "axes")
+                  (value
+                    (inspect
+                      (target
+                        (child
+                          (target
+                            (connection
+                              (target (connection (target (self)) (name "source")))
+                              (name "space")))
+                          (name "axes"))))))
+                (write
+                  (slot "units")
+                  (value
+                    (inspect
+                      (target
+                        (child
+                          (target
+                            (connection
+                              (target (connection (target (self)) (name "source")))
+                              (name "space")))
+                          (name "axis-units"))))))
+                (if
+                  (!= (left (array-size (slot "axes"))) (right (read (slot "dimension"))))
+                  (then (fail))
+                  (else (result 0)))
+                (if
+                  (!= (left (array-size (slot "units"))) (right (read (slot "dimension"))))
+                  (then (fail))
+                  (else (result 0)))
+                (do
+                  (write (slot "j") (value 0))
+                  (while
+                    (< (left (read (slot "j"))) (right (read (slot "dimension"))))
+                    (body
+                      (do
+                        (do
+                          (if
+                            (!=
+                              (left (array-get (slot "axes") (index (read (slot "j")))))
+                              (right (read (slot "j"))))
+                            (then (fail))
+                            (else (result 0)))
+                          (if
+                            (<
+                              (left (array-get (slot "units") (index (read (slot "j")))))
+                              (right 0))
+                            (then (fail))
+                            (else (result 0))))
+                        (write (slot "j") (value (add (left (read (slot "j"))) (right 1)))))))))
+              (if
+                (!= (left (array-size (slot "input"))) (right (read (slot "dimension"))))
+                (then (fail))
+                (else (result 0)))
+              (write (slot "endpoint") (value "source"))
+              (write (slot "path-name") (value "source-path"))
+              (call (selector "build-path"))
+              (write (slot "source-count") (value (read (slot "count"))))
+              (do
+                (connect
+                  (target (self))
+                  (name "next-cursor")
+                  (value (connection (target (self)) (name "cursor")))
+                  (rights 33))
+                (attempt
+                  (body (disconnect (target (self)) (name "source-root")))
+                  (recover
+                    (if
+                      (!= (left (failure (field "status"))) (right "unavailable"))
+                      (then (rethrow))
+                      (else (result 0)))))
+                (connect
+                  (target (self))
+                  (name "source-root")
+                  (value (connection (target (self)) (name "next-cursor")))
+                  (rights 33))
+                (disconnect (target (self)) (name "next-cursor")))
+              (write (slot "endpoint") (value "target"))
+              (write (slot "path-name") (value "target-path"))
+              (call (selector "build-path"))
+              (if
+                (==
+                  (left
+                    (same
+                      (left (connection (target (self)) (name "source-root")))
+                      (right (connection (target (self)) (name "cursor")))))
+                  (right false))
+                (then (fail))
+                (else (result 0)))
+              (write (slot "target-count") (value (read (slot "count"))))
+              (write (slot "pending") (value (read (slot "input"))))
+              (write (slot "path-name") (value "source-path"))
+              (do
+                (write (slot "index") (value 0))
+                (while
+                  (<
+                    (left (read (slot "index")))
+                    (right (sub (left (read (slot "source-count"))) (right 1))))
+                  (body
+                    (do
+                      (do
+                        (do
+                          (object-write
+                            (target
+                              (child
+                                (target (connection (target (self)) (name "calculator")))
+                                (name "rows")))
+                            (value (read (slot "dimension"))))
+                          (object-write
+                            (target
+                              (child
+                                (target (connection (target (self)) (name "calculator")))
+                                (name "inner")))
+                            (value (read (slot "dimension"))))
+                          (object-write
+                            (target
+                              (child
+                                (target (connection (target (self)) (name "calculator")))
+                                (name "left-kind")))
+                            (value
+                              (inspect
+                                (target
+                                  (child
+                                    (target
+                                      (connection
+                                        (target
+                                          (child
+                                            (target
+                                              (child
+                                                (target (self))
+                                                (name (read (slot "path-name")))))
+                                            (name (to-text (value (read (slot "index")))))))
+                                        (name "frame")))
+                                    (name "linear-kind"))))))
+                          (object-write
+                            (target
+                              (child
+                                (target (connection (target (self)) (name "calculator")))
+                                (name "left")))
+                            (value
+                              (inspect
+                                (target
+                                  (child
+                                    (target
+                                      (connection
+                                        (target
+                                          (child
+                                            (target
+                                              (child
+                                                (target (self))
+                                                (name (read (slot "path-name")))))
+                                            (name (to-text (value (read (slot "index")))))))
+                                        (name "frame")))
+                                    (name "linear"))))))
+                          (object-write
+                            (target
+                              (child
+                                (target (connection (target (self)) (name "calculator")))
+                                (name "left-translation")))
+                            (value
+                              (inspect
+                                (target
+                                  (child
+                                    (target
+                                      (connection
+                                        (target
+                                          (child
+                                            (target
+                                              (child
+                                                (target (self))
+                                                (name (read (slot "path-name")))))
+                                            (name (to-text (value (read (slot "index")))))))
+                                        (name "frame")))
+                                    (name "translation")))))))
+                        (object-write
+                          (target
+                            (child
+                              (target (connection (target (self)) (name "calculator")))
+                              (name "input")))
+                          (value (read (slot "pending"))))
+                        (if
+                          (== (left (read (slot "kind"))) (right "point"))
+                          (then
+                            (invoke
+                              (target (connection (target (self)) (name "calculator")))
+                              (selector "point")))
+                          (else
+                            (invoke
+                              (target (connection (target (self)) (name "calculator")))
+                              (selector "apply"))))
+                        (write
+                          (slot "pending")
+                          (value
+                            (inspect
+                              (target
+                                (child
+                                  (target (connection (target (self)) (name "calculator")))
+                                  (name "result")))))))
+                      (write (slot "index") (value (add (left (read (slot "index"))) (right 1))))))))
+              (write (slot "path-name") (value "target-path"))
+              (write (slot "index") (value (sub (left (read (slot "target-count"))) (right 2))))
+              (while
+                (>= (left (read (slot "index"))) (right 0))
+                (body
+                  (do
+                    (do
+                      (do
+                        (object-write
+                          (target
+                            (child
+                              (target (connection (target (self)) (name "calculator")))
+                              (name "rows")))
+                          (value (read (slot "dimension"))))
+                        (object-write
+                          (target
+                            (child
+                              (target (connection (target (self)) (name "calculator")))
+                              (name "inner")))
+                          (value (read (slot "dimension"))))
+                        (object-write
+                          (target
+                            (child
+                              (target (connection (target (self)) (name "calculator")))
+                              (name "left-kind")))
+                          (value
+                            (inspect
+                              (target
+                                (child
+                                  (target
+                                    (connection
+                                      (target
+                                        (child
+                                          (target
+                                            (child (target (self)) (name (read (slot "path-name")))))
+                                          (name (to-text (value (read (slot "index")))))))
+                                      (name "frame")))
+                                  (name "linear-kind"))))))
+                        (object-write
+                          (target
+                            (child
+                              (target (connection (target (self)) (name "calculator")))
+                              (name "left")))
+                          (value
+                            (inspect
+                              (target
+                                (child
+                                  (target
+                                    (connection
+                                      (target
+                                        (child
+                                          (target
+                                            (child (target (self)) (name (read (slot "path-name")))))
+                                          (name (to-text (value (read (slot "index")))))))
+                                      (name "frame")))
+                                  (name "linear"))))))
+                        (object-write
+                          (target
+                            (child
+                              (target (connection (target (self)) (name "calculator")))
+                              (name "left-translation")))
+                          (value
+                            (inspect
+                              (target
+                                (child
+                                  (target
+                                    (connection
+                                      (target
+                                        (child
+                                          (target
+                                            (child (target (self)) (name (read (slot "path-name")))))
+                                          (name (to-text (value (read (slot "index")))))))
+                                      (name "frame")))
+                                  (name "translation")))))))
+                      (if
+                        (== (left (read (slot "kind"))) (right "point"))
+                        (then
+                          (invoke
+                            (target (connection (target (self)) (name "calculator")))
+                            (selector "affine-invert")))
+                        (else
+                          (invoke
+                            (target (connection (target (self)) (name "calculator")))
+                            (selector "invert"))))
+                      (object-write
+                        (target
+                          (child
+                            (target (connection (target (self)) (name "calculator")))
+                            (name "left-kind")))
+                        (value
+                          (inspect
+                            (target
+                              (child
+                                (target (connection (target (self)) (name "calculator")))
+                                (name "result-kind"))))))
+                      (object-write
+                        (target
+                          (child
+                            (target (connection (target (self)) (name "calculator")))
+                            (name "left")))
+                        (value
+                          (inspect
+                            (target
+                              (child
+                                (target (connection (target (self)) (name "calculator")))
+                                (name "result"))))))
+                      (if
+                        (== (left (read (slot "kind"))) (right "point"))
+                        (then
+                          (object-write
+                            (target
+                              (child
+                                (target (connection (target (self)) (name "calculator")))
+                                (name "left-translation")))
+                            (value
+                              (inspect
+                                (target
+                                  (child
+                                    (target (connection (target (self)) (name "calculator")))
+                                    (name "result-translation")))))))
+                        (else (result 0)))
+                      (object-write
+                        (target
+                          (child
+                            (target (connection (target (self)) (name "calculator")))
+                            (name "input")))
+                        (value (read (slot "pending"))))
+                      (if
+                        (== (left (read (slot "kind"))) (right "point"))
+                        (then
+                          (invoke
+                            (target (connection (target (self)) (name "calculator")))
+                            (selector "point")))
+                        (else
+                          (invoke
+                            (target (connection (target (self)) (name "calculator")))
+                            (selector "apply"))))
+                      (write
+                        (slot "pending")
+                        (value
+                          (inspect
+                            (target
+                              (child
+                                (target (connection (target (self)) (name "calculator")))
+                                (name "result")))))))
+                    (write (slot "index") (value (sub (left (read (slot "index"))) (right 1)))))))
+              (write (slot "result") (value (read (slot "pending"))))
+              (read (slot "result")))))))))

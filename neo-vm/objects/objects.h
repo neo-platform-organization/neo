@@ -106,6 +106,8 @@ neo_status neo_capability_restrict(neo_vm *vm, const neo_capability *source,
 neo_status neo_object_create(neo_vm *vm, const neo_capability *parent,
                              const char *name, neo_value value,
                              const neo_capability **out_object);
+/** Named lookup returns CONFLICT for repeated names in an ordered do sequence;
+ * use child_at to address those operations by position. Ordinary names are unique. */
 neo_status neo_object_child(neo_vm *vm, const neo_capability *parent,
                             const char *name, const neo_capability **out_child);
 neo_status neo_object_read(neo_vm *vm, const neo_capability *object,
@@ -119,6 +121,8 @@ neo_status neo_object_child_count(neo_vm *vm, const neo_capability *object,
 neo_status neo_object_connect(neo_vm *vm, const neo_capability *object,
                               const char *name, const neo_capability *target,
                               unsigned rights);
+/** WRITE-authorized removal of a link; target identity is unaffected. */
+neo_status neo_object_disconnect(neo_vm *vm, const neo_capability *object, const char *name);
 neo_status neo_object_connection(neo_vm *vm, const neo_capability *object,
                                  const char *name, const neo_capability **out_target);
 neo_status neo_object_copy(neo_vm *vm, const neo_capability *source,
@@ -127,6 +131,8 @@ neo_status neo_object_copy(neo_vm *vm, const neo_capability *source,
 neo_status neo_object_move(neo_vm *vm, const neo_capability *source,
                            const neo_capability *destination, const char *name,
                            const neo_capability **out_copy);
+/** Rename preserves identity; requires WRITE and a free sibling name. */
+neo_status neo_object_rename(neo_vm *vm, const neo_capability *object, const char *name);
 neo_status neo_object_delete(neo_vm *vm, const neo_capability *object);
 
 /** Name is borrowed until deletion. Indexed enumeration follows creation order,
@@ -141,4 +147,12 @@ neo_status neo_array_get(neo_vm *vm, const neo_capability *object, size_t index,
 neo_status neo_array_set(neo_vm *vm, const neo_capability *object, size_t index, int64_t value);
 neo_status neo_array_size(neo_vm *vm, const neo_capability *object, size_t *out);
 
+/** Inert closed-region transfer. Imports may cross images; external edges and
+ * runtime state are rejected. No behavior runs. Source needs READ|COPY;
+ * destination needs INSERT. Output rights never exceed supplied capabilities. */
+neo_status neo_object_import(neo_vm *vm, const neo_capability *source,
+                             const neo_capability *destination, const char *name,
+                             const neo_capability **out);
+/** Closed ordinary region to a fresh inert image root; caller must unload it. */
+neo_status neo_object_extract(neo_vm *vm, const neo_capability *source, const neo_capability **out);
 #endif

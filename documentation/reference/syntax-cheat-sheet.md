@@ -15,7 +15,7 @@ can operate on the same image. These are host arguments, not neo syntax.
 | `make -s path` | Print the executable path selected from normalized `uname` architecture/OS. |
 | `make` | Build `build/x86_64/Linux/neo`, including the Linux X11 provider. |
 | `make WITH_X11=0` | Build the same binary without X11; GUI requests report unsupported. |
-| `./build/x86_64/Linux/neo [--cli] [--gui] IMAGE ACTOR [HANDLER]` | Common launch form; mode flags precede the image. |
+| `./build/x86_64/Linux/neo [--cli] [--gui] IMAGE [ACTOR [HANDLER]]` | Common launch form; mode flags precede the image. |
 | `--cli` | Grant stdin/stdout/stderr; without GUI, invoke once. Default mode if neither flag is given. |
 | `--gui` | Grant window and pixel buffer; invoke repeatedly until close or failure. |
 | `--cli --gui` | Both resource sets, same VM and receiver, using the GUI loop. |
@@ -30,7 +30,7 @@ can operate on the same image. These are host arguments, not neo syntax.
 | `./build/x86_64/Linux/neo tick IMAGE TICKS [STEP_BUDGET]` | Run the existing scheduler for a bounded number of ticks. |
 
 ```sh
-./build/x86_64/Linux/neo --cli neo/neo-os/image.neo browser demo
+./build/x86_64/Linux/neo --cli neo/neo-os/image.neo
 ./build/x86_64/Linux/neo --gui neo/cube.neo cube
 ./build/x86_64/Linux/neo --cli --gui neo/cube.neo cube
 ```
@@ -106,7 +106,7 @@ Payloads are dynamically typed: writing text into an integer field changes its k
 | Primitive | Source example | Behavior |
 | --- | --- | --- |
 | `call` | `(call (selector "r-line"))` | Invoke a local handler; same receiver/authority, shared execution budget, separate return boundary. |
-| `do` | `(do (first (write (slot "n") (value 1))) (second (read (slot "n"))))` | Evaluate children in order; return the last result, or unit if empty. Named wrappers allow repeated operations without duplicate sibling names. |
+| `do` | `(do (write (slot "n") (value 1)) (write (slot "n") (value 2)))` | Evaluate children in order; return the last result, or unit if empty. Repeated operation names are allowed in primitive `do`; named lookup of ambiguous children reports conflict. Named wrappers remain valid. |
 | `if` | `(if (condition true) (then 1) (else 0))` | Evaluate the boolean condition and only the selected branch. Use `(else)` for a unit branch. |
 | `while` | `(while (condition false) (body))` | Reevaluate the boolean condition before each iteration; evaluate `body` while true. Normal result is unit. |
 | `return` | `(return (value 7))` | End the current invocation, including from inside nested expressions. |
@@ -186,6 +186,10 @@ These names have meaning in specific positions. They are not all primitive keywo
 | `body` | Handler's expression wrapper; also the loop body argument of `while`. |
 | `tick` | Optional periodic handler recognized by the scheduler. Not a primitive. |
 | `condition`, `then`, `else` | Named operands of control flow objects. `condition` is not itself an operation. |
+
+`if` and `while` also accept a direct first-child predicate when no named
+`condition` exists, for example `(if (has-child (target (self)) (name "ready"))
+(then 1) (else 0))`. A branch cannot stand in for a missing predicate.
 | `left`, `right` | Named operands of binary operations. |
 | `value` | Operand used by `not`, `return`, `write`, and `send`. |
 | `slot` | Text operand naming an immediate receiver field for `read` or `write`. |
@@ -241,7 +245,7 @@ An explicit unknown primitive binding can load but fails when evaluated. Unknown
 | Spatial objects | No built-in spatial operations or dimensional types yet. |
 | Recovery | No language-level failure handlers yet; the host can retry or discard failed activity. |
 | Persistence | Ordinary quiescent graphs only; active messages, ETHER, scheduler state, streams, windows, and pixel buffers cannot yet be serialized. |
-| Format limits | 1 MiB source/output, 4096 objects, 128 containment levels, 4096 decoded bytes per token. |
+| Format limits | 4 MiB source/output, 131072 objects, 128 containment levels, 4096 decoded bytes per token (shared native profile). |
 
 See the [runtime reference](../../neo/documentation/runtime-format.md) for authority restrictions, failure behavior, scheduler details, and persistence guarantees.
 
@@ -266,3 +270,34 @@ can replace an array. Matrix shape is an image-level convention; see
 | `platform-info` | `(platform-info (field "environment"))` | Read host-configured metadata; returns text or a provider boolean. Never grants I/O authority. |
 
 See [platform fields and errors](platform-interface.md).
+
+## Live terminal session
+
+`neo live IMAGE` keeps one image loaded for inspection, editing, invocation, and
+explicit scheduling. See the [live image guide](live-image.md) for commands,
+a working counter experiment, authority boundaries, and save limitations. The
+operator interface remains native C. Partial message checkpoints are supported;
+see the [verified foundation](runtime-foundation.md) for current limits.
+
+## Explicit failure recovery
+
+| Primitive | Example | Meaning |
+| --- | --- | --- |
+| `attempt` | `(attempt (body (div (left 1) (right 0))) (recover 42))` | Return the body result, or evaluate recovery after an ordinary failure. Earlier writes remain. |
+| `failure` | `(failure (field "status"))` | Read the currently caught status description; `operation` and `receiver` return diagnostic IDs, not authority. |
+| `rethrow` | `(rethrow)` | Propagate the caught failure and its original location. |
+
+Recovery shares the remaining execution budget. Host limits and allocation failure
+are not catchable. Nested recovery restores the enclosing diagnostic scope; outside
+recovery, `failure` and `rethrow` report bad state. No automatic retry or rollback.
+
+For protected object inspection in recovery, use
+`(failure (field "operation-reference") (target EXISTING_CAPABILITY))` or
+`receiver-reference`. The supplied READ scope must contain the recorded location;
+returned rights exclude mutation and execution.
+
+`(message-release (target MESSAGE_REFERENCE))` explicitly reclaims a completed,
+unsubmitted, or receiver-orphaned message under cleanup authority. RELEASE is
+message-policy bit 8; read/inspection alone do not grant it. Live pending,
+accepted and processing work is protected. See [messages and failures](message-lifecycle.md)
+for exact state/permission restrictions and stale-link behavior.

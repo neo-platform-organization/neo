@@ -1,0 +1,2421 @@
+// Exact rational homogeneous edge intervals and generated projected topology.
+(package
+  (manifest
+    (schema 1)
+    (id "neo.render.segment-clipper")
+    (version
+      (major 0)
+      (minor 1)
+      (patch 0)
+    )
+    (dependencies)
+    (exports
+      (clipper
+        (path "contents/clipper")
+        (mode "copy")
+        (rights 9)
+      )
+    )
+    (imports)
+    (bindings)
+  )
+  (contents
+    (clipper #generated
+      @source #generated 1
+      (source-count 0)
+      (near 0)
+      (far 0)
+      (edge-count 0)
+      (edge 0)
+      (kept 0)
+      (a 0)
+      (b 0)
+      (aw 0)
+      (bw 0)
+      (lo-n 0)
+      (lo-d 0)
+      (hi-n 0)
+      (hi-d 0)
+      (da 0)
+      (db 0)
+      (cn 0)
+      (cd 0)
+      (gcd-a 0)
+      (gcd-b 0)
+      (gcd-next 0)
+      (tn 0)
+      (td 0)
+      (endpoint 0)
+      (j 0)
+      (i 0)
+      (row 0)
+      (denominator 0)
+      (scaled 0)
+      (quotient 0)
+      (remainder 0)
+      (result-vertex-count 0)
+      (result-source-count 0)
+      (vertex-count 0)
+      (accepted-segments 0)
+      (homogeneous [])
+      (input-segments [])
+      (pending [])
+      (pending-edges [])
+      (pending-numerators [])
+      (pending-denominators [])
+      (output [])
+      (output-indices [])
+      (output-edges [])
+      (output-numerators [])
+      (output-denominators [])
+      (result [])
+      (vertices [])
+      (segments [])
+      (source-indices [])
+      (edge-indices [])
+      (parameter-numerators [])
+      (parameter-denominators [])
+      (points [])
+      (triangles [])
+      (dimension 2)
+      (result-dimension 2)
+      (clip-volume true)
+      (rejected false)
+      (handlers
+        (reduce
+          (body
+            (do
+              (write
+                (slot "gcd-a")
+                (value
+                  (if
+                    (<
+                      (left
+                        (read
+                          (slot "cn")
+                        )
+                      )
+                      (right 0)
+                    )
+                    (then
+                      (sub
+                        (left 0)
+                        (right
+                          (read
+                            (slot "cn")
+                          )
+                        )
+                      )
+                    )
+                    (else
+                      (read
+                        (slot "cn")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "gcd-b")
+                (value
+                  (read
+                    (slot "cd")
+                  )
+                )
+              )
+              (while
+                (!=
+                  (left
+                    (read
+                      (slot "gcd-b")
+                    )
+                  )
+                  (right 0)
+                )
+                (body
+                  (do
+                    (write
+                      (slot "gcd-next")
+                      (value
+                        (rem
+                          (left
+                            (read
+                              (slot "gcd-a")
+                            )
+                          )
+                          (right
+                            (read
+                              (slot "gcd-b")
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "gcd-a")
+                      (value
+                        (read
+                          (slot "gcd-b")
+                        )
+                      )
+                    )
+                    (write
+                      (slot "gcd-b")
+                      (value
+                        (read
+                          (slot "gcd-next")
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "cn")
+                (value
+                  (div
+                    (left
+                      (read
+                        (slot "cn")
+                      )
+                    )
+                    (right
+                      (read
+                        (slot "gcd-a")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "cd")
+                (value
+                  (div
+                    (left
+                      (read
+                        (slot "cd")
+                      )
+                    )
+                    (right
+                      (read
+                        (slot "gcd-a")
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+        (plane
+          (body
+            (do
+              (if
+                (and
+                  (left
+                    (<
+                      (left
+                        (read
+                          (slot "da")
+                        )
+                      )
+                      (right 0)
+                    )
+                  )
+                  (right
+                    (<
+                      (left
+                        (read
+                          (slot "db")
+                        )
+                      )
+                      (right 0)
+                    )
+                  )
+                )
+                (then
+                  (write
+                    (slot "rejected")
+                    (value true)
+                  )
+                )
+                (else
+                  (if
+                    (<
+                      (left
+                        (read
+                          (slot "da")
+                        )
+                      )
+                      (right 0)
+                    )
+                    (then
+                      (do
+                        (write
+                          (slot "cn")
+                          (value
+                            (sub
+                              (left 0)
+                              (right
+                                (read
+                                  (slot "da")
+                                )
+                              )
+                            )
+                          )
+                        )
+                        (write
+                          (slot "cd")
+                          (value
+                            (sub
+                              (left
+                                (read
+                                  (slot "db")
+                                )
+                              )
+                              (right
+                                (read
+                                  (slot "da")
+                                )
+                              )
+                            )
+                          )
+                        )
+                        (call
+                          (selector "reduce")
+                        )
+                        (if
+                          (>
+                            (left
+                              (mul
+                                (left
+                                  (read
+                                    (slot "cn")
+                                  )
+                                )
+                                (right
+                                  (read
+                                    (slot "lo-d")
+                                  )
+                                )
+                              )
+                            )
+                            (right
+                              (mul
+                                (left
+                                  (read
+                                    (slot "lo-n")
+                                  )
+                                )
+                                (right
+                                  (read
+                                    (slot "cd")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (then
+                            (do
+                              (write
+                                (slot "lo-n")
+                                (value
+                                  (read
+                                    (slot "cn")
+                                  )
+                                )
+                              )
+                              (write
+                                (slot "lo-d")
+                                (value
+                                  (read
+                                    (slot "cd")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (else
+                            (result 0)
+                          )
+                        )
+                      )
+                    )
+                    (else
+                      (if
+                        (<
+                          (left
+                            (read
+                              (slot "db")
+                            )
+                          )
+                          (right 0)
+                        )
+                        (then
+                          (do
+                            (write
+                              (slot "cn")
+                              (value
+                                (read
+                                  (slot "da")
+                                )
+                              )
+                            )
+                            (write
+                              (slot "cd")
+                              (value
+                                (sub
+                                  (left
+                                    (read
+                                      (slot "da")
+                                    )
+                                  )
+                                  (right
+                                    (read
+                                      (slot "db")
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                            (call
+                              (selector "reduce")
+                            )
+                            (if
+                              (<
+                                (left
+                                  (mul
+                                    (left
+                                      (read
+                                        (slot "cn")
+                                      )
+                                    )
+                                    (right
+                                      (read
+                                        (slot "hi-d")
+                                      )
+                                    )
+                                  )
+                                )
+                                (right
+                                  (mul
+                                    (left
+                                      (read
+                                        (slot "hi-n")
+                                      )
+                                    )
+                                    (right
+                                      (read
+                                        (slot "cd")
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                              (then
+                                (do
+                                  (write
+                                    (slot "hi-n")
+                                    (value
+                                      (read
+                                        (slot "cn")
+                                      )
+                                    )
+                                  )
+                                  (write
+                                    (slot "hi-d")
+                                    (value
+                                      (read
+                                        (slot "cd")
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                              (else
+                                (result 0)
+                              )
+                            )
+                          )
+                        )
+                        (else
+                          (result 0)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+        (endpoint
+          (body
+            (do
+              (write
+                (slot "denominator")
+                (value
+                  (add
+                    (left
+                      (mul
+                        (left
+                          (array-get
+                            (slot "homogeneous")
+                            (index
+                              (add
+                                (left
+                                  (read
+                                    (slot "a")
+                                  )
+                                )
+                                (right 2)
+                              )
+                            )
+                          )
+                        )
+                        (right
+                          (sub
+                            (left
+                              (read
+                                (slot "td")
+                              )
+                            )
+                            (right
+                              (read
+                                (slot "tn")
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (right
+                      (mul
+                        (left
+                          (array-get
+                            (slot "homogeneous")
+                            (index
+                              (add
+                                (left
+                                  (read
+                                    (slot "b")
+                                  )
+                                )
+                                (right 2)
+                              )
+                            )
+                          )
+                        )
+                        (right
+                          (read
+                            (slot "tn")
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (if
+                (<=
+                  (left
+                    (read
+                      (slot "denominator")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (array-set
+                (slot "pending-numerators")
+                (index
+                  (add
+                    (left
+                      (mul
+                        (left
+                          (read
+                            (slot "kept")
+                          )
+                        )
+                        (right 2)
+                      )
+                    )
+                    (right
+                      (read
+                        (slot "endpoint")
+                      )
+                    )
+                  )
+                )
+                (value
+                  (read
+                    (slot "tn")
+                  )
+                )
+              )
+              (array-set
+                (slot "pending-denominators")
+                (index
+                  (add
+                    (left
+                      (mul
+                        (left
+                          (read
+                            (slot "kept")
+                          )
+                        )
+                        (right 2)
+                      )
+                    )
+                    (right
+                      (read
+                        (slot "endpoint")
+                      )
+                    )
+                  )
+                )
+                (value
+                  (read
+                    (slot "td")
+                  )
+                )
+              )
+              (write
+                (slot "j")
+                (value 0)
+              )
+              (while
+                (<
+                  (left
+                    (read
+                      (slot "j")
+                    )
+                  )
+                  (right 2)
+                )
+                (body
+                  (do
+                    (write
+                      (slot "cn")
+                      (value
+                        (add
+                          (left
+                            (mul
+                              (left
+                                (array-get
+                                  (slot "homogeneous")
+                                  (index
+                                    (add
+                                      (left
+                                        (read
+                                          (slot "a")
+                                        )
+                                      )
+                                      (right
+                                        (read
+                                          (slot "j")
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                              (right
+                                (sub
+                                  (left
+                                    (read
+                                      (slot "td")
+                                    )
+                                  )
+                                  (right
+                                    (read
+                                      (slot "tn")
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (right
+                            (mul
+                              (left
+                                (array-get
+                                  (slot "homogeneous")
+                                  (index
+                                    (add
+                                      (left
+                                        (read
+                                          (slot "b")
+                                        )
+                                      )
+                                      (right
+                                        (read
+                                          (slot "j")
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                              (right
+                                (read
+                                  (slot "tn")
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "cd")
+                      (value
+                        (read
+                          (slot "denominator")
+                        )
+                      )
+                    )
+                    (call
+                      (selector "reduce")
+                    )
+                    (write
+                      (slot "scaled")
+                      (value
+                        (mul
+                          (left
+                            (read
+                              (slot "cn")
+                            )
+                          )
+                          (right 1000000)
+                        )
+                      )
+                    )
+                    (write
+                      (slot "quotient")
+                      (value
+                        (div
+                          (left
+                            (read
+                              (slot "scaled")
+                            )
+                          )
+                          (right
+                            (read
+                              (slot "cd")
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "remainder")
+                      (value
+                        (rem
+                          (left
+                            (read
+                              (slot "scaled")
+                            )
+                          )
+                          (right
+                            (read
+                              (slot "cd")
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (if
+                      (>=
+                        (left
+                          (if
+                            (<
+                              (left
+                                (read
+                                  (slot "remainder")
+                                )
+                              )
+                              (right 0)
+                            )
+                            (then
+                              (sub
+                                (left 0)
+                                (right
+                                  (read
+                                    (slot "remainder")
+                                  )
+                                )
+                              )
+                            )
+                            (else
+                              (read
+                                (slot "remainder")
+                              )
+                            )
+                          )
+                        )
+                        (right
+                          (add
+                            (left
+                              (div
+                                (left
+                                  (read
+                                    (slot "cd")
+                                  )
+                                )
+                                (right 2)
+                              )
+                            )
+                            (right
+                              (rem
+                                (left
+                                  (read
+                                    (slot "cd")
+                                  )
+                                )
+                                (right 2)
+                              )
+                            )
+                          )
+                        )
+                      )
+                      (then
+                        (write
+                          (slot "quotient")
+                          (value
+                            (if
+                              (<
+                                (left
+                                  (read
+                                    (slot "scaled")
+                                  )
+                                )
+                                (right 0)
+                              )
+                              (then
+                                (sub
+                                  (left
+                                    (read
+                                      (slot "quotient")
+                                    )
+                                  )
+                                  (right 1)
+                                )
+                              )
+                              (else
+                                (add
+                                  (left
+                                    (read
+                                      (slot "quotient")
+                                    )
+                                  )
+                                  (right 1)
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (array-set
+                      (slot "pending")
+                      (index
+                        (add
+                          (left
+                            (add
+                              (left
+                                (mul
+                                  (left
+                                    (read
+                                      (slot "kept")
+                                    )
+                                  )
+                                  (right 4)
+                                )
+                              )
+                              (right
+                                (mul
+                                  (left
+                                    (read
+                                      (slot "endpoint")
+                                    )
+                                  )
+                                  (right 2)
+                                )
+                              )
+                            )
+                          )
+                          (right
+                            (read
+                              (slot "j")
+                            )
+                          )
+                        )
+                      )
+                      (value
+                        (read
+                          (slot "quotient")
+                        )
+                      )
+                    )
+                    (write
+                      (slot "j")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "j")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+        (clip
+          (body
+            (do
+              (write
+                (slot "source-count")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target
+                          (connection
+                            (target
+                              (self)
+                            )
+                            (name "input")
+                          )
+                        )
+                        (name "result-source-count")
+                      )
+                    )
+                  )
+                )
+              )
+              (if
+                (<
+                  (left
+                    (read
+                      (slot "source-count")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (!=
+                  (left
+                    (inspect
+                      (target
+                        (child
+                          (target
+                            (connection
+                              (target
+                                (self)
+                              )
+                              (name "input")
+                            )
+                          )
+                          (name "view-dimension")
+                        )
+                      )
+                    )
+                  )
+                  (right 2)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (!=
+                  (left
+                    (inspect
+                      (target
+                        (child
+                          (target
+                            (connection
+                              (target
+                                (connection
+                                  (target
+                                    (self)
+                                  )
+                                  (name "input")
+                                )
+                              )
+                              (name "source")
+                            )
+                          )
+                          (name "vertex-count")
+                        )
+                      )
+                    )
+                  )
+                  (right
+                    (read
+                      (slot "source-count")
+                    )
+                  )
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "homogeneous")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target
+                          (connection
+                            (target
+                              (self)
+                            )
+                            (name "input")
+                          )
+                        )
+                        (name "homogeneous")
+                      )
+                    )
+                  )
+                )
+              )
+              (if
+                (!=
+                  (left
+                    (array-size
+                      (slot "homogeneous")
+                    )
+                  )
+                  (right
+                    (mul
+                      (left
+                        (read
+                          (slot "source-count")
+                        )
+                      )
+                      (right 3)
+                    )
+                  )
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "input-segments")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target
+                          (connection
+                            (target
+                              (connection
+                                (target
+                                  (self)
+                                )
+                                (name "input")
+                              )
+                            )
+                            (name "source")
+                          )
+                        )
+                        (name "segments")
+                      )
+                    )
+                  )
+                )
+              )
+              (if
+                (!=
+                  (left
+                    (rem
+                      (left
+                        (array-size
+                          (slot "input-segments")
+                        )
+                      )
+                      (right 2)
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "near")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target
+                          (connection
+                            (target
+                              (self)
+                            )
+                            (name "input")
+                          )
+                        )
+                        (name "near")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "far")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target
+                          (connection
+                            (target
+                              (self)
+                            )
+                            (name "input")
+                          )
+                        )
+                        (name "far")
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "clip-volume")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target
+                          (connection
+                            (target
+                              (self)
+                            )
+                            (name "input")
+                          )
+                        )
+                        (name "clip-volume")
+                      )
+                    )
+                  )
+                )
+              )
+              (if
+                (<=
+                  (left
+                    (read
+                      (slot "near")
+                    )
+                  )
+                  (right 0)
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (if
+                (and
+                  (left
+                    (!=
+                      (left
+                        (read
+                          (slot "far")
+                        )
+                      )
+                      (right 0)
+                    )
+                  )
+                  (right
+                    (<
+                      (left
+                        (read
+                          (slot "far")
+                        )
+                      )
+                      (right
+                        (read
+                          (slot "near")
+                        )
+                      )
+                    )
+                  )
+                )
+                (then
+                  (fail)
+                )
+                (else
+                  (result 0)
+                )
+              )
+              (write
+                (slot "clip-volume")
+                (value
+                  (not
+                    (value
+                      (not
+                        (value
+                          (read
+                            (slot "clip-volume")
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "i")
+                (value 0)
+              )
+              (while
+                (<
+                  (left
+                    (read
+                      (slot "i")
+                    )
+                  )
+                  (right
+                    (array-size
+                      (slot "input-segments")
+                    )
+                  )
+                )
+                (body
+                  (do
+                    (write
+                      (slot "row")
+                      (value
+                        (array-get
+                          (slot "input-segments")
+                          (index
+                            (read
+                              (slot "i")
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (if
+                      (<
+                        (left
+                          (read
+                            (slot "row")
+                          )
+                        )
+                        (right 0)
+                      )
+                      (then
+                        (fail)
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (if
+                      (>=
+                        (left
+                          (read
+                            (slot "row")
+                          )
+                        )
+                        (right
+                          (read
+                            (slot "source-count")
+                          )
+                        )
+                      )
+                      (then
+                        (fail)
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (write
+                      (slot "i")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "i")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "edge-count")
+                (value
+                  (div
+                    (left
+                      (array-size
+                        (slot "input-segments")
+                      )
+                    )
+                    (right 2)
+                  )
+                )
+              )
+              (write
+                (slot "pending")
+                (value
+                  (array-new
+                    (size
+                      (mul
+                        (left
+                          (read
+                            (slot "edge-count")
+                          )
+                        )
+                        (right 4)
+                      )
+                    )
+                    (value 0)
+                  )
+                )
+              )
+              (write
+                (slot "pending-edges")
+                (value
+                  (array-new
+                    (size
+                      (read
+                        (slot "edge-count")
+                      )
+                    )
+                    (value 0)
+                  )
+                )
+              )
+              (write
+                (slot "pending-numerators")
+                (value
+                  (array-new
+                    (size
+                      (mul
+                        (left
+                          (read
+                            (slot "edge-count")
+                          )
+                        )
+                        (right 2)
+                      )
+                    )
+                    (value 0)
+                  )
+                )
+              )
+              (write
+                (slot "pending-denominators")
+                (value
+                  (array-new
+                    (size
+                      (mul
+                        (left
+                          (read
+                            (slot "edge-count")
+                          )
+                        )
+                        (right 2)
+                      )
+                    )
+                    (value 0)
+                  )
+                )
+              )
+              (write
+                (slot "edge")
+                (value 0)
+              )
+              (write
+                (slot "kept")
+                (value 0)
+              )
+              (while
+                (<
+                  (left
+                    (read
+                      (slot "edge")
+                    )
+                  )
+                  (right
+                    (read
+                      (slot "edge-count")
+                    )
+                  )
+                )
+                (body
+                  (do
+                    (write
+                      (slot "a")
+                      (value
+                        (mul
+                          (left
+                            (array-get
+                              (slot "input-segments")
+                              (index
+                                (mul
+                                  (left
+                                    (read
+                                      (slot "edge")
+                                    )
+                                  )
+                                  (right 2)
+                                )
+                              )
+                            )
+                          )
+                          (right 3)
+                        )
+                      )
+                    )
+                    (write
+                      (slot "b")
+                      (value
+                        (mul
+                          (left
+                            (array-get
+                              (slot "input-segments")
+                              (index
+                                (add
+                                  (left
+                                    (mul
+                                      (left
+                                        (read
+                                          (slot "edge")
+                                        )
+                                      )
+                                      (right 2)
+                                    )
+                                  )
+                                  (right 1)
+                                )
+                              )
+                            )
+                          )
+                          (right 3)
+                        )
+                      )
+                    )
+                    (write
+                      (slot "aw")
+                      (value
+                        (array-get
+                          (slot "homogeneous")
+                          (index
+                            (add
+                              (left
+                                (read
+                                  (slot "a")
+                                )
+                              )
+                              (right 2)
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "bw")
+                      (value
+                        (array-get
+                          (slot "homogeneous")
+                          (index
+                            (add
+                              (left
+                                (read
+                                  (slot "b")
+                                )
+                              )
+                              (right 2)
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "lo-n")
+                      (value 0)
+                    )
+                    (write
+                      (slot "lo-d")
+                      (value 1)
+                    )
+                    (write
+                      (slot "hi-n")
+                      (value 1)
+                    )
+                    (write
+                      (slot "hi-d")
+                      (value 1)
+                    )
+                    (write
+                      (slot "rejected")
+                      (value false)
+                    )
+                    (if
+                      (enabled true)
+                      (then
+                        (do
+                          (write
+                            (slot "da")
+                            (value
+                              (sub
+                                (left
+                                  (read
+                                    (slot "aw")
+                                  )
+                                )
+                                (right
+                                  (read
+                                    (slot "near")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (write
+                            (slot "db")
+                            (value
+                              (sub
+                                (left
+                                  (read
+                                    (slot "bw")
+                                  )
+                                )
+                                (right
+                                  (read
+                                    (slot "near")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (call
+                            (selector "plane")
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (if
+                      (>
+                        (left
+                          (read
+                            (slot "far")
+                          )
+                        )
+                        (right 0)
+                      )
+                      (then
+                        (do
+                          (write
+                            (slot "da")
+                            (value
+                              (sub
+                                (left
+                                  (read
+                                    (slot "far")
+                                  )
+                                )
+                                (right
+                                  (read
+                                    (slot "aw")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (write
+                            (slot "db")
+                            (value
+                              (sub
+                                (left
+                                  (read
+                                    (slot "far")
+                                  )
+                                )
+                                (right
+                                  (read
+                                    (slot "bw")
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (call
+                            (selector "plane")
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (if
+                      (read
+                        (slot "clip-volume")
+                      )
+                      (then
+                        (do
+                          (write
+                            (slot "da")
+                            (value
+                              (add
+                                (left
+                                  (read
+                                    (slot "aw")
+                                  )
+                                )
+                                (right
+                                  (array-get
+                                    (slot "homogeneous")
+                                    (index
+                                      (add
+                                        (left
+                                          (read
+                                            (slot "a")
+                                          )
+                                        )
+                                        (right 0)
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (write
+                            (slot "db")
+                            (value
+                              (add
+                                (left
+                                  (read
+                                    (slot "bw")
+                                  )
+                                )
+                                (right
+                                  (array-get
+                                    (slot "homogeneous")
+                                    (index
+                                      (add
+                                        (left
+                                          (read
+                                            (slot "b")
+                                          )
+                                        )
+                                        (right 0)
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (call
+                            (selector "plane")
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (if
+                      (read
+                        (slot "clip-volume")
+                      )
+                      (then
+                        (do
+                          (write
+                            (slot "da")
+                            (value
+                              (sub
+                                (left
+                                  (read
+                                    (slot "aw")
+                                  )
+                                )
+                                (right
+                                  (array-get
+                                    (slot "homogeneous")
+                                    (index
+                                      (add
+                                        (left
+                                          (read
+                                            (slot "a")
+                                          )
+                                        )
+                                        (right 0)
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (write
+                            (slot "db")
+                            (value
+                              (sub
+                                (left
+                                  (read
+                                    (slot "bw")
+                                  )
+                                )
+                                (right
+                                  (array-get
+                                    (slot "homogeneous")
+                                    (index
+                                      (add
+                                        (left
+                                          (read
+                                            (slot "b")
+                                          )
+                                        )
+                                        (right 0)
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (call
+                            (selector "plane")
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (if
+                      (read
+                        (slot "clip-volume")
+                      )
+                      (then
+                        (do
+                          (write
+                            (slot "da")
+                            (value
+                              (add
+                                (left
+                                  (read
+                                    (slot "aw")
+                                  )
+                                )
+                                (right
+                                  (array-get
+                                    (slot "homogeneous")
+                                    (index
+                                      (add
+                                        (left
+                                          (read
+                                            (slot "a")
+                                          )
+                                        )
+                                        (right 1)
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (write
+                            (slot "db")
+                            (value
+                              (add
+                                (left
+                                  (read
+                                    (slot "bw")
+                                  )
+                                )
+                                (right
+                                  (array-get
+                                    (slot "homogeneous")
+                                    (index
+                                      (add
+                                        (left
+                                          (read
+                                            (slot "b")
+                                          )
+                                        )
+                                        (right 1)
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (call
+                            (selector "plane")
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (if
+                      (read
+                        (slot "clip-volume")
+                      )
+                      (then
+                        (do
+                          (write
+                            (slot "da")
+                            (value
+                              (sub
+                                (left
+                                  (read
+                                    (slot "aw")
+                                  )
+                                )
+                                (right
+                                  (array-get
+                                    (slot "homogeneous")
+                                    (index
+                                      (add
+                                        (left
+                                          (read
+                                            (slot "a")
+                                          )
+                                        )
+                                        (right 1)
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (write
+                            (slot "db")
+                            (value
+                              (sub
+                                (left
+                                  (read
+                                    (slot "bw")
+                                  )
+                                )
+                                (right
+                                  (array-get
+                                    (slot "homogeneous")
+                                    (index
+                                      (add
+                                        (left
+                                          (read
+                                            (slot "b")
+                                          )
+                                        )
+                                        (right 1)
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                          (call
+                            (selector "plane")
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (if
+                      (>
+                        (left
+                          (mul
+                            (left
+                              (read
+                                (slot "lo-n")
+                              )
+                            )
+                            (right
+                              (read
+                                (slot "hi-d")
+                              )
+                            )
+                          )
+                        )
+                        (right
+                          (mul
+                            (left
+                              (read
+                                (slot "hi-n")
+                              )
+                            )
+                            (right
+                              (read
+                                (slot "lo-d")
+                              )
+                            )
+                          )
+                        )
+                      )
+                      (then
+                        (write
+                          (slot "rejected")
+                          (value true)
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (if
+                      (not
+                        (value
+                          (read
+                            (slot "rejected")
+                          )
+                        )
+                      )
+                      (then
+                        (do
+                          (write
+                            (slot "endpoint")
+                            (value 0)
+                          )
+                          (write
+                            (slot "tn")
+                            (value
+                              (read
+                                (slot "lo-n")
+                              )
+                            )
+                          )
+                          (write
+                            (slot "td")
+                            (value
+                              (read
+                                (slot "lo-d")
+                              )
+                            )
+                          )
+                          (call
+                            (selector "endpoint")
+                          )
+                          (write
+                            (slot "endpoint")
+                            (value 1)
+                          )
+                          (write
+                            (slot "tn")
+                            (value
+                              (read
+                                (slot "hi-n")
+                              )
+                            )
+                          )
+                          (write
+                            (slot "td")
+                            (value
+                              (read
+                                (slot "hi-d")
+                              )
+                            )
+                          )
+                          (call
+                            (selector "endpoint")
+                          )
+                          (array-set
+                            (slot "pending-edges")
+                            (index
+                              (read
+                                (slot "kept")
+                              )
+                            )
+                            (value
+                              (read
+                                (slot "edge")
+                              )
+                            )
+                          )
+                          (write
+                            (slot "kept")
+                            (value
+                              (add
+                                (left
+                                  (read
+                                    (slot "kept")
+                                  )
+                                )
+                                (right 1)
+                              )
+                            )
+                          )
+                        )
+                      )
+                      (else
+                        (result 0)
+                      )
+                    )
+                    (write
+                      (slot "edge")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "edge")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "output")
+                (value
+                  (array-new
+                    (size
+                      (mul
+                        (left
+                          (read
+                            (slot "kept")
+                          )
+                        )
+                        (right 4)
+                      )
+                    )
+                    (value 0)
+                  )
+                )
+              )
+              (write
+                (slot "output-indices")
+                (value
+                  (array-new
+                    (size
+                      (mul
+                        (left
+                          (read
+                            (slot "kept")
+                          )
+                        )
+                        (right 2)
+                      )
+                    )
+                    (value 0)
+                  )
+                )
+              )
+              (write
+                (slot "output-edges")
+                (value
+                  (array-new
+                    (size
+                      (read
+                        (slot "kept")
+                      )
+                    )
+                    (value 0)
+                  )
+                )
+              )
+              (write
+                (slot "output-numerators")
+                (value
+                  (array-new
+                    (size
+                      (mul
+                        (left
+                          (read
+                            (slot "kept")
+                          )
+                        )
+                        (right 2)
+                      )
+                    )
+                    (value 0)
+                  )
+                )
+              )
+              (write
+                (slot "output-denominators")
+                (value
+                  (array-new
+                    (size
+                      (mul
+                        (left
+                          (read
+                            (slot "kept")
+                          )
+                        )
+                        (right 2)
+                      )
+                    )
+                    (value 0)
+                  )
+                )
+              )
+              (write
+                (slot "i")
+                (value 0)
+              )
+              (while
+                (<
+                  (left
+                    (read
+                      (slot "i")
+                    )
+                  )
+                  (right
+                    (mul
+                      (left
+                        (read
+                          (slot "kept")
+                        )
+                      )
+                      (right 4)
+                    )
+                  )
+                )
+                (body
+                  (do
+                    (array-set
+                      (slot "output")
+                      (index
+                        (read
+                          (slot "i")
+                        )
+                      )
+                      (value
+                        (array-get
+                          (slot "pending")
+                          (index
+                            (read
+                              (slot "i")
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "i")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "i")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "i")
+                (value 0)
+              )
+              (while
+                (<
+                  (left
+                    (read
+                      (slot "i")
+                    )
+                  )
+                  (right
+                    (mul
+                      (left
+                        (read
+                          (slot "kept")
+                        )
+                      )
+                      (right 2)
+                    )
+                  )
+                )
+                (body
+                  (do
+                    (array-set
+                      (slot "output-indices")
+                      (index
+                        (read
+                          (slot "i")
+                        )
+                      )
+                      (value
+                        (read
+                          (slot "i")
+                        )
+                      )
+                    )
+                    (array-set
+                      (slot "output-numerators")
+                      (index
+                        (read
+                          (slot "i")
+                        )
+                      )
+                      (value
+                        (array-get
+                          (slot "pending-numerators")
+                          (index
+                            (read
+                              (slot "i")
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (array-set
+                      (slot "output-denominators")
+                      (index
+                        (read
+                          (slot "i")
+                        )
+                      )
+                      (value
+                        (array-get
+                          (slot "pending-denominators")
+                          (index
+                            (read
+                              (slot "i")
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "i")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "i")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "i")
+                (value 0)
+              )
+              (while
+                (<
+                  (left
+                    (read
+                      (slot "i")
+                    )
+                  )
+                  (right
+                    (read
+                      (slot "kept")
+                    )
+                  )
+                )
+                (body
+                  (do
+                    (array-set
+                      (slot "output-edges")
+                      (index
+                        (read
+                          (slot "i")
+                        )
+                      )
+                      (value
+                        (array-get
+                          (slot "pending-edges")
+                          (index
+                            (read
+                              (slot "i")
+                            )
+                          )
+                        )
+                      )
+                    )
+                    (write
+                      (slot "i")
+                      (value
+                        (add
+                          (left
+                            (read
+                              (slot "i")
+                            )
+                          )
+                          (right 1)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (write
+                (slot "result")
+                (value
+                  (read
+                    (slot "output")
+                  )
+                )
+              )
+              (write
+                (slot "vertices")
+                (value
+                  (read
+                    (slot "output")
+                  )
+                )
+              )
+              (write
+                (slot "segments")
+                (value
+                  (read
+                    (slot "output-indices")
+                  )
+                )
+              )
+              (write
+                (slot "source-indices")
+                (value
+                  (read
+                    (slot "output-indices")
+                  )
+                )
+              )
+              (write
+                (slot "result-vertex-count")
+                (value
+                  (mul
+                    (left
+                      (read
+                        (slot "kept")
+                      )
+                    )
+                    (right 2)
+                  )
+                )
+              )
+              (write
+                (slot "result-source-count")
+                (value
+                  (mul
+                    (left
+                      (read
+                        (slot "kept")
+                      )
+                    )
+                    (right 2)
+                  )
+                )
+              )
+              (write
+                (slot "vertex-count")
+                (value
+                  (mul
+                    (left
+                      (read
+                        (slot "kept")
+                      )
+                    )
+                    (right 2)
+                  )
+                )
+              )
+              (write
+                (slot "edge-indices")
+                (value
+                  (read
+                    (slot "output-edges")
+                  )
+                )
+              )
+              (write
+                (slot "parameter-numerators")
+                (value
+                  (read
+                    (slot "output-numerators")
+                  )
+                )
+              )
+              (write
+                (slot "parameter-denominators")
+                (value
+                  (read
+                    (slot "output-denominators")
+                  )
+                )
+              )
+              (write
+                (slot "accepted-segments")
+                (value
+                  (read
+                    (slot "kept")
+                  )
+                )
+              )
+              (result true)
+            )
+          )
+        )
+      )
+    )
+  )
+)

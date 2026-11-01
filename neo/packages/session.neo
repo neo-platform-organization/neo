@@ -1,0 +1,667 @@
+// Scheduled transport lifecycle policy; no received update is automatically accepted.
+(package
+  (manifest
+    (schema 1)
+    (id "neo.network.session")
+    (version (major 0) (minor 7) (patch 0))
+    (dependencies)
+    (exports (session (path "contents/session") (mode "copy") (rights 9)))
+    (imports)
+    (bindings))
+  (contents
+    (session
+      (role "publisher")
+      (require-authentication false)
+      (peer-identity "")
+      (heartbeat-interval 32)
+      (heartbeat-remaining 0)
+      (idle-limit 0)
+      (idle-remaining 0)
+      (last-activity 0)
+      (liveness-expired false)
+      (remote-closed false)
+      (finish-limit 0)
+      (finish-remaining 0)
+      (connection-limit 0)
+      (connection-remaining 0)
+      (phase "stopped")
+      (error "")
+      (dirty true)
+      (retry-delay 2)
+      (remaining 0)
+      (automatic-retry false)
+      (handlers
+        (heartbeats-enabled
+          (body
+            (if
+              (has-child (target (connection (target (self)) (name "service"))) (name "heartbeats"))
+              (then
+                (inspect
+                  (target
+                    (child
+                      (target (connection (target (self)) (name "service")))
+                      (name "heartbeats")))))
+              (else (result false)))))
+        (start-liveness
+          (body
+            (do
+              (write (slot "liveness-expired") (value false))
+              (write (slot "idle-remaining") (value (read (slot "idle-limit"))))
+              (write (slot "heartbeat-remaining") (value (read (slot "heartbeat-interval"))))
+              (if
+                (call (selector "heartbeats-enabled"))
+                (then
+                  (write
+                    (slot "last-activity")
+                    (value
+                      (inspect
+                        (target
+                          (child
+                            (target (connection (target (self)) (name "service")))
+                            (name "activity")))))))
+                (else (result 0)))
+              (result true))))
+        (idle-step
+          (body
+            (do
+              (if
+                (!=
+                  (left (read (slot "last-activity")))
+                  (right
+                    (inspect
+                      (target
+                        (child
+                          (target (connection (target (self)) (name "service")))
+                          (name "activity"))))))
+                (then
+                  (do
+                    (write
+                      (slot "last-activity")
+                      (value
+                        (inspect
+                          (target
+                            (child
+                              (target (connection (target (self)) (name "service")))
+                              (name "activity"))))))
+                    (write (slot "idle-remaining") (value (read (slot "idle-limit"))))))
+                (else
+                  (if
+                    (> (left (read (slot "idle-limit"))) (right 0))
+                    (then
+                      (do
+                        (write
+                          (slot "idle-remaining")
+                          (value (sub (left (read (slot "idle-remaining"))) (right 1))))
+                        (if
+                          (<= (left (read (slot "idle-remaining"))) (right 0))
+                          (then
+                            (do
+                              (write (slot "liveness-expired") (value true))
+                              (call (selector "cleanup"))
+                              (fail)))
+                          (else (result 0)))))
+                    (else (result 0)))))
+              (result 0))))
+        (probe-step
+          (body
+            (do
+              (if
+                (> (left (read (slot "heartbeat-remaining"))) (right 0))
+                (then
+                  (write
+                    (slot "heartbeat-remaining")
+                    (value (sub (left (read (slot "heartbeat-remaining"))) (right 1)))))
+                (else (result 0)))
+              (if
+                (== (left (read (slot "heartbeat-remaining"))) (right 0))
+                (then
+                  (if
+                    (inspect
+                      (target
+                        (child
+                          (target (connection (target (self)) (name "service")))
+                          (name "pending"))))
+                    (then (result 0))
+                    (else
+                      (if
+                        (inspect
+                          (target
+                            (child
+                              (target (connection (target (self)) (name "service")))
+                              (name "probe-pending"))))
+                        (then (result 0))
+                        (else
+                          (if
+                            (==
+                              (left
+                                (inspect
+                                  (target
+                                    (child
+                                      (target (connection (target (self)) (name "service")))
+                                      (name "awaiting-probe")))))
+                              (right 0))
+                            (then
+                              (do
+                                (invoke
+                                  (target (connection (target (self)) (name "service")))
+                                  (selector "probe"))
+                                (write
+                                  (slot "heartbeat-remaining")
+                                  (value (read (slot "heartbeat-interval"))))))
+                            (else (result 0))))))))
+                (else (result 0)))
+              (result 0))))
+        (liveness
+          (body
+            (do
+              (if
+                (call (selector "heartbeats-enabled"))
+                (then
+                  (do
+                    (call (selector "idle-step"))
+                    (if
+                      (== (left (read (slot "role"))) (right "publisher"))
+                      (then (call (selector "probe-step")))
+                      (else (result 0)))))
+                (else (result 0)))
+              (result 0))))
+        (transfer
+          (body
+            (if
+              (== (left (read (slot "role"))) (right "publisher"))
+              (then
+                (if
+                  (call (selector "replies-enabled"))
+                  (then
+                    (if
+                      (inspect
+                        (target
+                          (child
+                            (target (connection (target (self)) (name "service")))
+                            (name "pending"))))
+                      (then
+                        (do
+                          (invoke
+                            (target (connection (target (self)) (name "service")))
+                            (selector "send"))
+                          (work 1)))
+                      (else
+                        (if
+                          (call (selector "heartbeats-enabled"))
+                          (then
+                            (if
+                              (inspect
+                                (target
+                                  (child
+                                    (target (connection (target (self)) (name "service")))
+                                    (name "probe-pending"))))
+                              (then
+                                (do
+                                  (invoke
+                                    (target (connection (target (self)) (name "service")))
+                                    (selector "send-probe"))
+                                  (work 1)))
+                              (else (call (selector "poll-replies")))))
+                          (else (call (selector "poll-replies")))))))
+                  (else
+                    (if
+                      (inspect
+                        (target
+                          (child
+                            (target (connection (target (self)) (name "service")))
+                            (name "pending"))))
+                      (then
+                        (do
+                          (invoke
+                            (target (connection (target (self)) (name "service")))
+                            (selector "send"))
+                          (work 1)))
+                      (else
+                        (if
+                          (read (slot "dirty"))
+                          (then
+                            (do
+                              (if
+                                (inspect
+                                  (target
+                                    (child
+                                      (target (connection (target (self)) (name "service")))
+                                      (name "enabled"))))
+                                (then
+                                  (invoke
+                                    (target (connection (target (self)) (name "service")))
+                                    (selector "publish")))
+                                (else
+                                  (invoke
+                                    (target (connection (target (self)) (name "service")))
+                                    (selector "withdraw"))))
+                              (write (slot "dirty") (value false))
+                              (work 1)))
+                          (else (result 0))))))))
+              (else
+                (if
+                  (call (selector "replies-enabled"))
+                  (then
+                    (if
+                      (invoke
+                        (target (connection (target (self)) (name "service")))
+                        (selector "reply-busy"))
+                      (then
+                        (do
+                          (invoke
+                            (target (connection (target (self)) (name "service")))
+                            (selector "send-reply"))
+                          (work 1)))
+                      (else
+                        (if
+                          (call (selector "heartbeats-enabled"))
+                          (then
+                            (do
+                              (invoke
+                                (target (connection (target (self)) (name "service")))
+                                (selector "receive-live"))
+                              (if
+                                (replica-ended (target (child (target (self)) (name "channel"))))
+                                (then
+                                  (do
+                                    (write (slot "remote-closed") (value true))
+                                    (call (selector "finish"))))
+                                (else (result 0)))
+                              (work 1)))
+                          (else (call (selector "subscriber-step")))))))
+                  (else (call (selector "subscriber-step"))))))))
+        (poll-replies
+          (body
+            (do
+              (invoke
+                (target (connection (target (self)) (name "service")))
+                (selector "receive-reply"))
+              (if
+                (replica-ended (target (child (target (self)) (name "channel"))))
+                (then (do (write (slot "remote-closed") (value true)) (call (selector "finish"))))
+                (else (result 0)))
+              (if
+                (== (left (read (slot "phase"))) (right "active"))
+                (then
+                  (if
+                    (==
+                      (left
+                        (inspect
+                          (target
+                            (child
+                              (target (connection (target (self)) (name "service")))
+                              (name "awaiting-revision")))))
+                      (right 0))
+                    (then
+                      (if
+                        (read (slot "dirty"))
+                        (then
+                          (do
+                            (if
+                              (inspect
+                                (target
+                                  (child
+                                    (target (connection (target (self)) (name "service")))
+                                    (name "enabled"))))
+                              (then
+                                (invoke
+                                  (target (connection (target (self)) (name "service")))
+                                  (selector "publish")))
+                              (else
+                                (invoke
+                                  (target (connection (target (self)) (name "service")))
+                                  (selector "withdraw"))))
+                            (write (slot "dirty") (value false))))
+                        (else (result 0))))
+                    (else (result 0))))
+                (else (result 0)))
+              (work 1))))
+        (replies-enabled
+          (body
+            (if
+              (has-child
+                (target (connection (target (self)) (name "service")))
+                (name "acknowledgements"))
+              (then
+                (inspect
+                  (target
+                    (child
+                      (target (connection (target (self)) (name "service")))
+                      (name "acknowledgements")))))
+              (else (result false)))))
+        (subscriber-step
+          (body
+            (if
+              (has-child
+                (target
+                  (child (target (connection (target (self)) (name "service"))) (name "inbox")))
+                (name "candidate"))
+              (then (result 0))
+              (else
+                (do
+                  (invoke
+                    (target (connection (target (self)) (name "service")))
+                    (selector "receive"))
+                  (if
+                    (replica-ended (target (child (target (self)) (name "channel"))))
+                    (then
+                      (do (write (slot "remote-closed") (value true)) (call (selector "finish"))))
+                    (else (result 0)))
+                  (work 1))))))
+        (close-wait
+          (body
+            (do
+              (if
+                (> (left (read (slot "finish-limit"))) (right 0))
+                (then
+                  (do
+                    (write
+                      (slot "finish-remaining")
+                      (value (sub (left (read (slot "finish-remaining"))) (right 1))))
+                    (if
+                      (<= (left (read (slot "finish-remaining"))) (right 0))
+                      (then (do (call (selector "cleanup")) (fail)))
+                      (else (result 0)))))
+                (else (result 0)))
+              (work 1))))
+        (close-notify
+          (body
+            (if
+              (network-finish (target (child (target (self)) (name "peer"))))
+              (then
+                (do (call (selector "cleanup")) (write (slot "phase") (value "stopped")) (work 1)))
+              (else (call (selector "close-wait"))))))
+        (finish
+          (body
+            (do
+              (if
+                (not (value (== (left (read (slot "phase"))) (right "active"))))
+                (then (fail))
+                (else))
+              (if (< (left (read (slot "finish-limit"))) (right 0)) (then (fail)) (else))
+              (write (slot "finish-remaining") (value (read (slot "finish-limit"))))
+              (write (slot "phase") (value "closing"))
+              (result true))))
+        (authenticate
+          (body
+            (do
+              (attempt
+                (body
+                  (write
+                    (slot "peer-identity")
+                    (value (authenticated-peer (target (child (target (self)) (name "peer")))))))
+                (recover
+                  (if
+                    (== (left (failure (field "status"))) (right "unavailable"))
+                    (then (write (slot "peer-identity") (value "")))
+                    (else (rethrow)))))
+              (if
+                (read (slot "require-authentication"))
+                (then
+                  (if (== (left (read (slot "peer-identity"))) (right "")) (then (fail)) (else)))
+                (else (result 0))))))
+        (configuration
+          (body
+            (do
+              (if
+                (not
+                  (value
+                    (or
+                      (left (== (left (read (slot "role"))) (right "publisher")))
+                      (right (== (left (read (slot "role"))) (right "subscriber"))))))
+                (then (fail))
+                (else))
+              (if (< (left (read (slot "retry-delay"))) (right 1)) (then (fail)) (else))
+              (if (< (left (read (slot "connection-limit"))) (right 0)) (then (fail)) (else))
+              (if (< (left (read (slot "finish-limit"))) (right 0)) (then (fail)) (else))
+              (if (< (left (read (slot "heartbeat-interval"))) (right 1)) (then (fail)) (else))
+              (if (< (left (read (slot "idle-limit"))) (right 0)) (then (fail)) (else))
+              (if
+                (call (selector "heartbeats-enabled"))
+                (then (if (not (value (call (selector "replies-enabled")))) (then (fail)) (else)))
+                (else (result 0))))))
+        (cleanup
+          (body
+            (do
+              (attempt
+                (body
+                  (disconnect
+                    (target (connection (target (self)) (name "service")))
+                    (name "channel")))
+                (recover
+                  (if
+                    (== (left (failure (field "status"))) (right "unavailable"))
+                    (then (result 0))
+                    (else (rethrow)))))
+              (if
+                (call (selector "replies-enabled"))
+                (then
+                  (invoke
+                    (target (connection (target (self)) (name "service")))
+                    (selector "reset-replies")))
+                (else (result 0)))
+              (write (slot "peer-identity") (value ""))
+              (if
+                (has-child (target (self)) (name "channel"))
+                (then (object-delete (target (child (target (self)) (name "channel")))))
+                (else))
+              (if
+                (has-child (target (self)) (name "peer"))
+                (then (object-delete (target (child (target (self)) (name "peer")))))
+                (else))
+              (network-close (target "network"))
+              (if
+                (== (left (read (slot "role"))) (right "publisher"))
+                (then
+                  (object-write
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "service")))
+                        (name "pending")))
+                    (value false)))
+                (else (result 0)))
+              (result 0))))
+        (start
+          (body
+            (do
+              (call (selector "configuration"))
+              (call (selector "cleanup"))
+              (write (slot "remote-closed") (value false))
+              (write (slot "phase") (value "closed"))
+              (write (slot "error") (value ""))
+              (result true))))
+        (stop
+          (body
+            (do (call (selector "cleanup")) (write (slot "phase") (value "stopped")) (result true))))
+        (retry
+          (body
+            (do
+              (call (selector "configuration"))
+              (call (selector "cleanup"))
+              (write (slot "remote-closed") (value false))
+              (write (slot "remaining") (value (read (slot "retry-delay"))))
+              (write (slot "phase") (value "backoff"))
+              (result true))))
+        (resync
+          (body
+            (do
+              (if
+                (not (value (== (left (read (slot "role"))) (right "publisher"))))
+                (then (fail))
+                (else))
+              (write (slot "dirty") (value true)))))
+        (advance
+          (body
+            (if
+              (== (left (read (slot "phase"))) (right "stopped"))
+              (then (result 0))
+              (else
+                (if
+                  (== (left (read (slot "phase"))) (right "failed"))
+                  (then
+                    (if
+                      (read (slot "automatic-retry"))
+                      (then (do (call (selector "retry")) (result 0)))
+                      (else (result 0))))
+                  (else
+                    (if
+                      (== (left (read (slot "phase"))) (right "backoff"))
+                      (then
+                        (if
+                          (> (left (read (slot "remaining"))) (right 0))
+                          (then
+                            (do
+                              (write
+                                (slot "remaining")
+                                (value (sub (left (read (slot "remaining"))) (right 1))))
+                              (result 0)))
+                          (else (do (write (slot "phase") (value "closed")) (result 0)))))
+                      (else
+                        (if
+                          (== (left (read (slot "phase"))) (right "closed"))
+                          (then
+                            (do
+                              (network-open (target "network"))
+                              (write
+                                (slot "connection-remaining")
+                                (value (read (slot "connection-limit"))))
+                              (write (slot "phase") (value "connecting"))
+                              (work 1)))
+                          (else
+                            (if
+                              (== (left (read (slot "phase"))) (right "connecting"))
+                              (then
+                                (if
+                                  (network-stream (target "network") (name "peer"))
+                                  (then
+                                    (do
+                                      (call (selector "authenticate"))
+                                      (call (selector "start-liveness"))
+                                      (replica-channel
+                                        (target (child (target (self)) (name "peer")))
+                                        (destination (self))
+                                        (name "channel"))
+                                      (connect
+                                        (target (connection (target (self)) (name "service")))
+                                        (name "channel")
+                                        (value (child (target (self)) (name "channel")))
+                                        (rights 65))
+                                      (write (slot "dirty") (value true))
+                                      (write (slot "phase") (value "active"))
+                                      (write (slot "error") (value ""))
+                                      (work 1)))
+                                  (else
+                                    (if
+                                      (> (left (read (slot "connection-limit"))) (right 0))
+                                      (then
+                                        (do
+                                          (write
+                                            (slot "connection-remaining")
+                                            (value
+                                              (sub
+                                                (left (read (slot "connection-remaining")))
+                                                (right 1))))
+                                          (if
+                                            (<=
+                                              (left (read (slot "connection-remaining")))
+                                              (right 0))
+                                            (then (do (call (selector "cleanup")) (fail)))
+                                            (else (work 1)))))
+                                      (else (work 1))))))
+                              (else
+                                (if
+                                  (== (left (read (slot "phase"))) (right "active"))
+                                  (then
+                                    (do
+                                      (call (selector "transfer"))
+                                      (if
+                                        (== (left (read (slot "phase"))) (right "active"))
+                                        (then (call (selector "liveness")))
+                                        (else (result 0)))
+                                      (work 1)))
+                                  (else
+                                    (if
+                                      (== (left (read (slot "phase"))) (right "closing"))
+                                      (then
+                                        (if
+                                          (== (left (read (slot "role"))) (right "publisher"))
+                                          (then
+                                            (if
+                                              (inspect
+                                                (target
+                                                  (child
+                                                    (target
+                                                      (connection (target (self)) (name "service")))
+                                                    (name "pending"))))
+                                              (then
+                                                (do
+                                                  (invoke
+                                                    (target
+                                                      (connection (target (self)) (name "service")))
+                                                    (selector "send"))
+                                                  (if
+                                                    (inspect
+                                                      (target
+                                                        (child
+                                                          (target
+                                                            (connection
+                                                              (target (self))
+                                                              (name "service")))
+                                                          (name "pending"))))
+                                                    (then (call (selector "close-wait")))
+                                                    (else (work 1)))))
+                                              (else
+                                                (if
+                                                  (call (selector "heartbeats-enabled"))
+                                                  (then
+                                                    (if
+                                                      (inspect
+                                                        (target
+                                                          (child
+                                                            (target
+                                                              (connection
+                                                                (target (self))
+                                                                (name "service")))
+                                                            (name "probe-pending"))))
+                                                      (then
+                                                        (do
+                                                          (invoke
+                                                            (target
+                                                              (connection
+                                                                (target (self))
+                                                                (name "service")))
+                                                            (selector "send-probe"))
+                                                          (call (selector "close-wait"))))
+                                                      (else (call (selector "close-notify")))))
+                                                  (else (call (selector "close-notify")))))))
+                                          (else
+                                            (if
+                                              (call (selector "replies-enabled"))
+                                              (then
+                                                (if
+                                                  (invoke
+                                                    (target
+                                                      (connection (target (self)) (name "service")))
+                                                    (selector "reply-busy"))
+                                                  (then
+                                                    (do
+                                                      (invoke
+                                                        (target
+                                                          (connection
+                                                            (target (self))
+                                                            (name "service")))
+                                                        (selector "send-reply"))
+                                                      (call (selector "close-wait"))))
+                                                  (else (call (selector "close-notify")))))
+                                              (else (call (selector "close-notify")))))))
+                                      (else (fail)))))))))))))))))
+        (tick
+          (body
+            (attempt
+              (body
+                (invoke (target (connection (target (self)) (name "runtime"))) (selector "advance")))
+              (recover
+                (do
+                  (write (slot "error") (value (failure (field "status"))))
+                  (write (slot "phase") (value "failed"))
+                  (result 0))))))))))

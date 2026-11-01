@@ -1,0 +1,23 @@
+// Transport fixture; host must explicitly supply --connect ADDRESS PORT.
+(image
+  (offset 0) (transferred 0)
+  (handlers
+    (main
+      (body
+        (do
+          (network-open (target "network"))
+          (while (not (value (network-ready (target "network")))) (body))
+          (while (not (value (network-stream (target "network") (name "peer")))) (body))
+          (connect (target (self)) (name "wire")
+            (value (child (target (self)) (name "peer"))) (rights 3))
+          (while (< (left (read (slot "offset"))) (right 13))
+            (body
+              (do
+                (write (slot "transferred")
+                  (value (stream-write (target "wire") (value "neo transport")
+                    (offset (read (slot "offset"))))))
+                (if (== (left (read (slot "transferred"))) (right "would-block"))
+                  (then)
+                  (else (write (slot "offset")
+                    (value (add (left (read (slot "offset")))
+                      (right (read (slot "transferred"))))))))))))))))

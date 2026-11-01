@@ -1,0 +1,450 @@
+// Homogeneous perspective views with explicit denominator and vertex clipping policy.
+(package
+  (manifest
+    (schema 1)
+    (id "neo.spatial.perspective")
+    (version (major 0) (minor 1) (patch 0))
+    (dependencies (geometry (id "neo.spatial.geometry") (version (major 0) (minor 1) (patch 0))))
+    (exports (view (path "contents/view") (mode "copy") (rights 9)))
+    (imports)
+    (bindings))
+  (contents
+    (view
+      (dimension 0)
+      (vertex-count 0)
+      (view-dimension 0)
+      (homogeneous-dimension 0)
+      (i 0)
+      (j 0)
+      (k 0)
+      (row 0)
+      (sum 0)
+      (quotient 0)
+      (remainder 0)
+      (numerator 0)
+      (denominator 0)
+      (coordinate 0)
+      (code 0)
+      (visible-count 0)
+      (far 0)
+      (result-dimension 0)
+      (result-vertex-count 0)
+      (result-source-count 0)
+      (near 1)
+      (clip-volume true)
+      (map [])
+      (offset [])
+      (vertices [])
+      (pending-homogeneous [])
+      (pending-mask [])
+      (pending-codes [])
+      (pending-denominators [])
+      (pending-map [])
+      (pending [])
+      (result [])
+      (homogeneous [])
+      (denominators [])
+      (visibility [])
+      (clip-codes [])
+      (source-indices [])
+      (handlers
+        (check-source
+          (body
+            (do
+              (write
+                (slot "dimension")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "source")))
+                        (name "dimension"))))))
+              (write
+                (slot "vertex-count")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "source")))
+                        (name "vertex-count"))))))
+              (do
+                (if (< (left (read (slot "dimension"))) (right 0)) (then (fail)) (else (result 0)))
+                (if
+                  (< (left (read (slot "vertex-count"))) (right 0))
+                  (then (fail))
+                  (else (result 0)))
+                (if
+                  (< (left (read (slot "view-dimension"))) (right 0))
+                  (then (fail))
+                  (else (result 0))))
+              (write
+                (slot "vertices")
+                (value
+                  (inspect
+                    (target
+                      (child
+                        (target (connection (target (self)) (name "source")))
+                        (name "vertices"))))))
+              (if
+                (!=
+                  (left (array-size (slot "vertices")))
+                  (right
+                    (mul (left (read (slot "dimension"))) (right (read (slot "vertex-count"))))))
+                (then (fail))
+                (else (result 0)))
+              (write
+                (slot "homogeneous-dimension")
+                (value (add (left (read (slot "view-dimension"))) (right 1)))))))
+        (check-map
+          (body
+            (do
+              (call (selector "check-source"))
+              (if
+                (!=
+                  (left (array-size (slot "map")))
+                  (right
+                    (mul
+                      (left (read (slot "homogeneous-dimension")))
+                      (right (read (slot "dimension"))))))
+                (then (fail))
+                (else (result 0)))
+              (if
+                (!=
+                  (left (array-size (slot "offset")))
+                  (right (read (slot "homogeneous-dimension"))))
+                (then (fail))
+                (else (result 0)))
+              (if (<= (left (read (slot "near"))) (right 0)) (then (fail)) (else (result 0)))
+              (do (if (< (left (read (slot "far"))) (right 0)) (then (fail)) (else (result 0))))
+              (if
+                (!= (left (read (slot "far"))) (right 0))
+                (then
+                  (if
+                    (< (left (read (slot "far"))) (right (read (slot "near"))))
+                    (then (fail))
+                    (else (result 0))))
+                (else (result 0))))))
+        (initialize
+          (body
+            (do
+              (call (selector "check-source"))
+              (write
+                (slot "map")
+                (value
+                  (array-new
+                    (size
+                      (mul
+                        (left (read (slot "homogeneous-dimension")))
+                        (right (read (slot "dimension")))))
+                    (value 0))))
+              (write
+                (slot "offset")
+                (value (array-new (size (read (slot "homogeneous-dimension"))) (value 0))))
+              (array-set (slot "offset") (index (read (slot "view-dimension"))) (value 1000000))
+              (result true))))
+        (round
+          (body
+            (do
+              (write (slot "quotient") (value (div (left (read (slot "sum"))) (right 1000000))))
+              (write (slot "remainder") (value (rem (left (read (slot "sum"))) (right 1000000))))
+              (if
+                (>= (left (read (slot "remainder"))) (right 500000))
+                (then
+                  (write (slot "quotient") (value (add (left (read (slot "quotient"))) (right 1)))))
+                (else (result 0)))
+              (if
+                (<= (left (read (slot "remainder"))) (right -500000))
+                (then
+                  (write (slot "quotient") (value (sub (left (read (slot "quotient"))) (right 1)))))
+                (else (result 0)))
+              (read (slot "quotient")))))
+        (divide
+          (body
+            (do
+              (write
+                (slot "quotient")
+                (value (div (left (read (slot "numerator"))) (right (read (slot "denominator"))))))
+              (write
+                (slot "remainder")
+                (value (rem (left (read (slot "numerator"))) (right (read (slot "denominator"))))))
+              (if
+                (>=
+                  (left (mul (left (read (slot "remainder"))) (right 2)))
+                  (right (read (slot "denominator"))))
+                (then
+                  (write (slot "quotient") (value (add (left (read (slot "quotient"))) (right 1)))))
+                (else (result 0)))
+              (if
+                (<=
+                  (left (mul (left (read (slot "remainder"))) (right 2)))
+                  (right (sub (left 0) (right (read (slot "denominator"))))))
+                (then
+                  (write (slot "quotient") (value (sub (left (read (slot "quotient"))) (right 1)))))
+                (else (result 0)))
+              (read (slot "quotient")))))
+        (project
+          (body
+            (do
+              (call (selector "check-map"))
+              (write
+                (slot "pending-homogeneous")
+                (value
+                  (array-new
+                    (size
+                      (mul
+                        (left (read (slot "vertex-count")))
+                        (right (read (slot "homogeneous-dimension")))))
+                    (value 0))))
+              (write
+                (slot "pending-mask")
+                (value (array-new (size (read (slot "vertex-count"))) (value 0))))
+              (write
+                (slot "pending-codes")
+                (value (array-new (size (read (slot "vertex-count"))) (value 0))))
+              (write
+                (slot "pending-denominators")
+                (value (array-new (size (read (slot "vertex-count"))) (value 0))))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "vertex-count"))))
+                  (body
+                    (do
+                      (do
+                        (write (slot "j") (value 0))
+                        (while
+                          (< (left (read (slot "j"))) (right (read (slot "homogeneous-dimension"))))
+                          (body
+                            (do
+                              (do
+                                (write (slot "sum") (value 0))
+                                (do
+                                  (write (slot "k") (value 0))
+                                  (while
+                                    (< (left (read (slot "k"))) (right (read (slot "dimension"))))
+                                    (body
+                                      (do
+                                        (write
+                                          (slot "sum")
+                                          (value
+                                            (add
+                                              (left (read (slot "sum")))
+                                              (right
+                                                (mul
+                                                  (left
+                                                    (array-get
+                                                      (slot "map")
+                                                      (index
+                                                        (add
+                                                          (left
+                                                            (mul
+                                                              (left (read (slot "j")))
+                                                              (right (read (slot "dimension")))))
+                                                          (right (read (slot "k")))))))
+                                                  (right
+                                                    (array-get
+                                                      (slot "vertices")
+                                                      (index
+                                                        (add
+                                                          (left
+                                                            (mul
+                                                              (left (read (slot "i")))
+                                                              (right (read (slot "dimension")))))
+                                                          (right (read (slot "k"))))))))))))
+                                        (write
+                                          (slot "k")
+                                          (value (add (left (read (slot "k"))) (right 1))))))))
+                                (array-set
+                                  (slot "pending-homogeneous")
+                                  (index
+                                    (add
+                                      (left
+                                        (mul
+                                          (left (read (slot "i")))
+                                          (right (read (slot "homogeneous-dimension")))))
+                                      (right (read (slot "j")))))
+                                  (value
+                                    (add
+                                      (left (call (selector "round")))
+                                      (right (array-get (slot "offset") (index (read (slot "j")))))))))
+                              (write (slot "j") (value (add (left (read (slot "j"))) (right 1))))))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (write (slot "visible-count") (value 0))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "vertex-count"))))
+                  (body
+                    (do
+                      (do
+                        (write
+                          (slot "denominator")
+                          (value
+                            (array-get
+                              (slot "pending-homogeneous")
+                              (index
+                                (add
+                                  (left
+                                    (mul
+                                      (left (read (slot "i")))
+                                      (right (read (slot "homogeneous-dimension")))))
+                                  (right (read (slot "view-dimension"))))))))
+                        (array-set
+                          (slot "pending-denominators")
+                          (index (read (slot "i")))
+                          (value (read (slot "denominator"))))
+                        (write (slot "code") (value 0))
+                        (if
+                          (< (left (read (slot "denominator"))) (right (read (slot "near"))))
+                          (then (write (slot "code") (value 1)))
+                          (else
+                            (if
+                              (!= (left (read (slot "far"))) (right 0))
+                              (then
+                                (if
+                                  (> (left (read (slot "denominator"))) (right (read (slot "far"))))
+                                  (then (write (slot "code") (value 2)))
+                                  (else (result 0))))
+                              (else (result 0)))))
+                        (if
+                          (== (left (read (slot "code"))) (right 0))
+                          (then
+                            (if
+                              (read (slot "clip-volume"))
+                              (then
+                                (do
+                                  (write (slot "j") (value 0))
+                                  (while
+                                    (<
+                                      (left (read (slot "j")))
+                                      (right (read (slot "view-dimension"))))
+                                    (body
+                                      (do
+                                        (do
+                                          (write
+                                            (slot "coordinate")
+                                            (value
+                                              (array-get
+                                                (slot "pending-homogeneous")
+                                                (index
+                                                  (add
+                                                    (left
+                                                      (mul
+                                                        (left (read (slot "i")))
+                                                        (right
+                                                          (read (slot "homogeneous-dimension")))))
+                                                    (right (read (slot "j"))))))))
+                                          (if
+                                            (<
+                                              (left (read (slot "coordinate")))
+                                              (right
+                                                (sub (left 0) (right (read (slot "denominator"))))))
+                                            (then (write (slot "code") (value 3)))
+                                            (else (result 0)))
+                                          (if
+                                            (>
+                                              (left (read (slot "coordinate")))
+                                              (right (read (slot "denominator"))))
+                                            (then (write (slot "code") (value 3)))
+                                            (else (result 0))))
+                                        (write
+                                          (slot "j")
+                                          (value (add (left (read (slot "j"))) (right 1)))))))))
+                              (else (result 0))))
+                          (else (result 0)))
+                        (array-set
+                          (slot "pending-codes")
+                          (index (read (slot "i")))
+                          (value (read (slot "code"))))
+                        (if
+                          (== (left (read (slot "code"))) (right 0))
+                          (then
+                            (do
+                              (array-set (slot "pending-mask") (index (read (slot "i"))) (value 1))
+                              (write
+                                (slot "visible-count")
+                                (value (add (left (read (slot "visible-count"))) (right 1))))))
+                          (else (result 0))))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (write
+                (slot "pending-map")
+                (value (array-new (size (read (slot "visible-count"))) (value 0))))
+              (write
+                (slot "pending")
+                (value
+                  (array-new
+                    (size
+                      (mul
+                        (left (read (slot "visible-count")))
+                        (right (read (slot "view-dimension")))))
+                    (value 0))))
+              (write (slot "row") (value 0))
+              (do
+                (write (slot "i") (value 0))
+                (while
+                  (< (left (read (slot "i"))) (right (read (slot "vertex-count"))))
+                  (body
+                    (do
+                      (if
+                        (==
+                          (left (array-get (slot "pending-mask") (index (read (slot "i")))))
+                          (right 1))
+                        (then
+                          (do
+                            (write
+                              (slot "denominator")
+                              (value
+                                (array-get (slot "pending-denominators") (index (read (slot "i"))))))
+                            (array-set
+                              (slot "pending-map")
+                              (index (read (slot "row")))
+                              (value (read (slot "i"))))
+                            (do
+                              (write (slot "j") (value 0))
+                              (while
+                                (< (left (read (slot "j"))) (right (read (slot "view-dimension"))))
+                                (body
+                                  (do
+                                    (do
+                                      (write
+                                        (slot "numerator")
+                                        (value
+                                          (mul
+                                            (left
+                                              (array-get
+                                                (slot "pending-homogeneous")
+                                                (index
+                                                  (add
+                                                    (left
+                                                      (mul
+                                                        (left (read (slot "i")))
+                                                        (right
+                                                          (read (slot "homogeneous-dimension")))))
+                                                    (right (read (slot "j")))))))
+                                            (right 1000000))))
+                                      (array-set
+                                        (slot "pending")
+                                        (index
+                                          (add
+                                            (left
+                                              (mul
+                                                (left (read (slot "row")))
+                                                (right (read (slot "view-dimension")))))
+                                            (right (read (slot "j")))))
+                                        (value (call (selector "divide")))))
+                                    (write
+                                      (slot "j")
+                                      (value (add (left (read (slot "j"))) (right 1))))))))
+                            (write (slot "row") (value (add (left (read (slot "row"))) (right 1))))))
+                        (else (result 0)))
+                      (write (slot "i") (value (add (left (read (slot "i"))) (right 1))))))))
+              (write (slot "result") (value (read (slot "pending"))))
+              (write (slot "result-dimension") (value (read (slot "view-dimension"))))
+              (write (slot "result-vertex-count") (value (read (slot "visible-count"))))
+              (write (slot "result-source-count") (value (read (slot "vertex-count"))))
+              (write (slot "homogeneous") (value (read (slot "pending-homogeneous"))))
+              (write (slot "denominators") (value (read (slot "pending-denominators"))))
+              (write (slot "visibility") (value (read (slot "pending-mask"))))
+              (write (slot "clip-codes") (value (read (slot "pending-codes"))))
+              (write (slot "source-indices") (value (read (slot "pending-map"))))
+              (read (slot "result")))))))))

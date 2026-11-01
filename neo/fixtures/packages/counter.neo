@@ -1,0 +1,23 @@
+// Explicit package fixture; never loaded or activated by the OS boot image.
+(package
+  (manifest
+    (schema 1)
+    (id "local.counter")
+    (version (major 1) (minor 0) (patch 0))
+    (dependencies
+      (clock-package (id "local.clock") (version (major 1) (minor 0) (patch 0))))
+    (exports
+      (counter (path "contents/counter") (mode "copy") (rights 9)))
+    (imports
+      (clock (dependency "clock-package") (export "clock") (rights 65)))
+    (bindings
+      (counter-clock (import "clock") (path "contents/counter") (name "clock"))))
+  (contents
+    (counter #counter
+      @identity #counter 1
+      (value 0)
+      (handlers
+        (tick
+          (body
+            (write (slot "value")
+              (value (add (left (read (slot "value"))) (right 1))))))))))

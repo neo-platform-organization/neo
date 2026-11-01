@@ -1,0 +1,282 @@
+// Fixed-point vectors, scale 1,000,000. Dimension-driven image policy.
+(package
+  (manifest
+    (schema 1)
+    (id "neo.maths.vector")
+    (version (major 0) (minor 2) (patch 0))
+    (dependencies)
+    (exports (vector (path "contents/vector") (mode "copy") (rights 9)))
+    (imports)
+    (bindings))
+  (contents
+    (vector
+      (dimension 0)
+      (factor 1000000)
+      (length 0)
+      (left [])
+      (right [])
+      (result [])
+      (pending [])
+      (index 0)
+      (sum 0)
+      (quotient 0)
+      (remainder 0)
+      (half 0)
+      (lower 0)
+      (upper 0)
+      (middle 0)
+      (root 0)
+      (denominator 1000000)
+      (normalizer-scale 1)
+      (handlers
+        (next-index
+          (body (write (slot "index") (value (add (left (read (slot "index"))) (right 1))))))
+        (prepare
+          (body
+            (do
+              (write
+                (slot "pending")
+                (value (array-new (size (read (slot "dimension"))) (value 0))))
+              (write (slot "index") (value 0)))))
+        (initialize
+          (body
+            (do
+              (call (selector "prepare"))
+              (write (slot "left") (value (read (slot "pending"))))
+              (write (slot "right") (value (read (slot "pending"))))
+              (write (slot "result") (value (read (slot "pending"))))
+              (write (slot "length") (value 0))
+              (read (slot "dimension")))))
+        (check-left
+          (body
+            (do
+              (if (< (left (read (slot "dimension"))) (right 0)) (then (fail)) (else (result 0)))
+              (if
+                (!= (left (array-size (slot "left"))) (right (read (slot "dimension"))))
+                (then (fail))
+                (else (result 0))))))
+        (check
+          (body
+            (do
+              (call (selector "check-left"))
+              (if
+                (!= (left (array-size (slot "right"))) (right (read (slot "dimension"))))
+                (then (fail))
+                (else (result 0))))))
+        (round-div
+          (body
+            (do
+              (if (<= (left (read (slot "denominator"))) (right 0)) (then (fail)) (else (result 0)))
+              (write
+                (slot "quotient")
+                (value (div (left (read (slot "sum"))) (right (read (slot "denominator"))))))
+              (write
+                (slot "remainder")
+                (value (rem (left (read (slot "sum"))) (right (read (slot "denominator"))))))
+              (write
+                (slot "half")
+                (value
+                  (add
+                    (left (div (left (read (slot "denominator"))) (right 2)))
+                    (right (rem (left (read (slot "denominator"))) (right 2))))))
+              (if
+                (>= (left (read (slot "remainder"))) (right (read (slot "half"))))
+                (then
+                  (write (slot "quotient") (value (add (left (read (slot "quotient"))) (right 1)))))
+                (else (result 0)))
+              (if
+                (<=
+                  (left (read (slot "remainder")))
+                  (right (sub (left 0) (right (read (slot "half"))))))
+                (then
+                  (write (slot "quotient") (value (sub (left (read (slot "quotient"))) (right 1)))))
+                (else (result 0)))
+              (read (slot "quotient")))))
+        (round
+          (body (do (write (slot "denominator") (value 1000000)) (call (selector "round-div")))))
+        (add
+          (body
+            (do
+              (call (selector "check"))
+              (call (selector "prepare"))
+              (while
+                (< (left (read (slot "index"))) (right (read (slot "dimension"))))
+                (body
+                  (do
+                    (array-set
+                      (slot "pending")
+                      (index (read (slot "index")))
+                      (value
+                        (add
+                          (left (array-get (slot "left") (index (read (slot "index")))))
+                          (right (array-get (slot "right") (index (read (slot "index"))))))))
+                    (call (selector "next-index")))))
+              (do (write (slot "result") (value (read (slot "pending")))) (read (slot "result"))))))
+        (subtract
+          (body
+            (do
+              (call (selector "check"))
+              (call (selector "prepare"))
+              (while
+                (< (left (read (slot "index"))) (right (read (slot "dimension"))))
+                (body
+                  (do
+                    (array-set
+                      (slot "pending")
+                      (index (read (slot "index")))
+                      (value
+                        (sub
+                          (left (array-get (slot "left") (index (read (slot "index")))))
+                          (right (array-get (slot "right") (index (read (slot "index"))))))))
+                    (call (selector "next-index")))))
+              (do (write (slot "result") (value (read (slot "pending")))) (read (slot "result"))))))
+        (dot
+          (body
+            (do
+              (call (selector "check"))
+              (write (slot "index") (value 0))
+              (write (slot "sum") (value 0))
+              (while
+                (< (left (read (slot "index"))) (right (read (slot "dimension"))))
+                (body
+                  (do
+                    (write
+                      (slot "sum")
+                      (value
+                        (add
+                          (left (read (slot "sum")))
+                          (right
+                            (mul
+                              (left (array-get (slot "left") (index (read (slot "index")))))
+                              (right (array-get (slot "right") (index (read (slot "index"))))))))))
+                    (call (selector "next-index")))))
+              (call (selector "round")))))
+        (scale
+          (body
+            (do
+              (call (selector "check-left"))
+              (write (slot "sum") (value (add (left (read (slot "factor"))) (right 0))))
+              (call (selector "prepare"))
+              (while
+                (< (left (read (slot "index"))) (right (read (slot "dimension"))))
+                (body
+                  (do
+                    (do
+                      (write
+                        (slot "sum")
+                        (value
+                          (mul
+                            (left (array-get (slot "left") (index (read (slot "index")))))
+                            (right (read (slot "factor"))))))
+                      (array-set
+                        (slot "pending")
+                        (index (read (slot "index")))
+                        (value (call (selector "round")))))
+                    (call (selector "next-index")))))
+              (do (write (slot "result") (value (read (slot "pending")))) (read (slot "result"))))))
+        (squares
+          (body
+            (do
+              (call (selector "check-left"))
+              (write (slot "index") (value 0))
+              (write (slot "sum") (value 0))
+              (while
+                (< (left (read (slot "index"))) (right (read (slot "dimension"))))
+                (body
+                  (do
+                    (write
+                      (slot "sum")
+                      (value
+                        (add
+                          (left (read (slot "sum")))
+                          (right
+                            (mul
+                              (left (array-get (slot "left") (index (read (slot "index")))))
+                              (right (array-get (slot "left") (index (read (slot "index"))))))))))
+                    (call (selector "next-index")))))
+              (read (slot "sum")))))
+        (root-floor
+          (body
+            (do
+              (if (< (left (read (slot "sum"))) (right 0)) (then (fail)) (else (result 0)))
+              (write (slot "lower") (value 0))
+              (write (slot "upper") (value (read (slot "sum"))))
+              (while
+                (< (left (read (slot "lower"))) (right (read (slot "upper"))))
+                (body
+                  (do
+                    (write
+                      (slot "middle")
+                      (value
+                        (add
+                          (left
+                            (add
+                              (left (read (slot "lower")))
+                              (right
+                                (div
+                                  (left
+                                    (sub (left (read (slot "upper"))) (right (read (slot "lower")))))
+                                  (right 2)))))
+                          (right 1))))
+                    (if
+                      (<=
+                        (left (read (slot "middle")))
+                        (right (div (left (read (slot "sum"))) (right (read (slot "middle"))))))
+                      (then (write (slot "lower") (value (read (slot "middle")))))
+                      (else
+                        (write (slot "upper") (value (sub (left (read (slot "middle"))) (right 1)))))))))
+              (write (slot "root") (value (read (slot "lower"))))
+              (read (slot "root")))))
+        (magnitude
+          (body
+            (do
+              (call (selector "squares"))
+              (call (selector "root-floor"))
+              (if
+                (>
+                  (left
+                    (sub
+                      (left (read (slot "sum")))
+                      (right (mul (left (read (slot "root"))) (right (read (slot "root")))))))
+                  (right (read (slot "root"))))
+                (then (write (slot "root") (value (add (left (read (slot "root"))) (right 1)))))
+                (else (result 0)))
+              (write (slot "length") (value (read (slot "root"))))
+              (read (slot "length")))))
+        (normalize
+          (body
+            (do
+              (call (selector "squares"))
+              (if (== (left (read (slot "sum"))) (right 0)) (then (fail)) (else (result 0)))
+              (write (slot "normalizer-scale") (value 1))
+              (while
+                (<= (left (read (slot "sum"))) (right 2305843009213693951))
+                (body
+                  (do
+                    (write (slot "sum") (value (mul (left (read (slot "sum"))) (right 4))))
+                    (write
+                      (slot "normalizer-scale")
+                      (value (mul (left (read (slot "normalizer-scale"))) (right 2)))))))
+              (call (selector "root-floor"))
+              (write (slot "denominator") (value (read (slot "root"))))
+              (call (selector "prepare"))
+              (while
+                (< (left (read (slot "index"))) (right (read (slot "dimension"))))
+                (body
+                  (do
+                    (do
+                      (write
+                        (slot "sum")
+                        (value
+                          (mul
+                            (left
+                              (mul
+                                (left (array-get (slot "left") (index (read (slot "index")))))
+                                (right (read (slot "normalizer-scale")))))
+                            (right 1000000))))
+                      (array-set
+                        (slot "pending")
+                        (index (read (slot "index")))
+                        (value (call (selector "round-div")))))
+                    (call (selector "next-index")))))
+              (do (write (slot "result") (value (read (slot "pending")))) (read (slot "result"))))))))))

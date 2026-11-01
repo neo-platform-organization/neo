@@ -1,0 +1,14 @@
+// Explicit snapshot transport fixture; not part of the OS seed.
+(image
+  (quarantine)
+  (handlers (main (body (do
+    (network-open (target "network"))
+    (stream-write (target "stdout") (value "READY\n"))
+    (while (not (value (network-stream (target "network") (name "peer")))) (body))
+    (replica-channel (target (child (target (self)) (name "peer"))) (destination (self)) (name "channel"))
+    (while (not (value (replica-receive (target (child (target (self)) (name "channel")))))) (body))
+    (replica-import (target (child (target (self)) (name "channel"))) (destination (child (target (self)) (name "quarantine"))) (name "replica"))
+    (if (!= (left (inspect (target (child (target (child (target (child (target (self)) (name "quarantine"))) (name "replica"))) (name "value"))))) (right 42)) (then (fail)) (else))
+    (if (has-child (target (child (target (child (target (self)) (name "quarantine"))) (name "replica"))) (name "private")) (then (fail)) (else))
+    (stream-write (target "stdout") (value "RECEIVED\n"))
+  )))))

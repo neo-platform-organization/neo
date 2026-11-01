@@ -33,9 +33,11 @@ static void neo_x11_destroy(void *context) {
 
 static void neo_x11_enqueue(neo_x11_window *window, neo_input_event event) {
     if (window->count == 64 || window->lost != 0) {
+        if (window->lost == 0) { neo_window_input_reset(&window->state); }
         if (window->lost != UINT64_MAX) { ++window->lost; }
         return;
     }
+    event.epoch = window->state.input_epoch;
     window->events[(window->first + window->count) % 64] = event;
     ++window->count;
 }
@@ -48,7 +50,7 @@ static neo_status neo_x11_next_event(void *context, neo_input_event *out) {
         window->first = (window->first + 1) % 64;
         --window->count;
     } else if (window->lost != 0) {
-        *out = (neo_input_event){.kind = NEO_INPUT_OVERFLOW, .lost = window->lost};
+        *out = (neo_input_event){.kind = NEO_INPUT_OVERFLOW, .lost = window->lost, .epoch = window->state.input_epoch};
         window->lost = 0;
     }
     return NEO_OK;
@@ -67,6 +69,10 @@ static void neo_x11_key(XKeyEvent *event, char *out) {
         case XK_BackSpace: name = "backspace"; break;
         case XK_Delete: name = "delete"; break;
         case XK_space: name = "space"; break;
+        case XK_F5: name = "f5"; break;
+        case XK_F1: name = "f1"; break;
+        case XK_F2: name = "f2"; break;
+        case XK_F3: name = "f3"; break;
         case XK_Left: name = "left"; break;
         case XK_Right: name = "right"; break;
         case XK_Up: name = "up"; break;
@@ -89,11 +95,13 @@ static neo_status neo_x11_poll(void *context, neo_window_state *out) {
         neo_input_event input = {0};
         if (event.type == ClientMessage && event.xclient.message_type == window->protocols &&
             event.xclient.format == 32 && (Atom)event.xclient.data.l[0] == window->delete_window) {
-            window->state.closed = true;
+            if (!window->state.closed) { neo_window_input_reset(&window->state); }
+            window->state.closed = true; window->state.focused = false;
             input.kind = NEO_INPUT_CLOSE;
         } else if (event.type == DestroyNotify) {
             window->window = None;
-            window->state.closed = true;
+            if (!window->state.closed) { neo_window_input_reset(&window->state); }
+            window->state.closed = true; window->state.focused = false;
             input.kind = NEO_INPUT_CLOSE;
         } else if (event.type == ConfigureNotify) {
             window->state.width = (size_t)event.xconfigure.width;
@@ -105,6 +113,8 @@ static neo_status neo_x11_poll(void *context, neo_window_state *out) {
             window->state.redraw = true;
             input.kind = NEO_INPUT_EXPOSE;
         } else if (event.type == FocusIn || event.type == FocusOut) {
+            if (event.type == FocusOut && window->state.focused) { neo_window_input_reset(&window->state); }
+            window->state.focused = event.type == FocusIn;
             input = (neo_input_event){.kind = NEO_INPUT_FOCUS, .pressed = event.type == FocusIn};
         } else if (event.type == MotionNotify) {
             input = (neo_input_event){.kind = NEO_INPUT_POINTER, .x = event.xmotion.x, .y = event.xmotion.y};
@@ -198,7 +208,7 @@ neo_status neo_window_x11_create(neo_vm *vm, const neo_capability *parent, const
     XStoreName(window->display, window->window, title);
     XSelectInput(window->display, window->window, ExposureMask | StructureNotifyMask | FocusChangeMask |
         PointerMotionMask | ButtonPressMask | ButtonReleaseMask | KeyPressMask | KeyReleaseMask);
-    const neo_window_backend backend = {neo_x11_present, neo_x11_poll, neo_x11_destroy, neo_x11_next_event};
+    const neo_window_backend backend = {neo_x11_present, neo_x11_poll, neo_x11_destroy, neo_x11_next_event, NULL};
     neo_status status = neo_window_create(vm, parent, name, &backend, window, out);
     if (status != NEO_OK) { neo_x11_destroy(window); return status; }
     XMapWindow(window->display, window->window);

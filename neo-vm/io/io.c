@@ -63,3 +63,14 @@ neo_status neo_stream_write(neo_vm *vm, const neo_capability *stream, const uint
                             size_t count, neo_io_result *out) {
     return neo_stream_transfer(vm, stream, NULL, bytes, count, true, out);
 }
+
+neo_status neo_stream_context(neo_vm *vm, const neo_capability *cap, unsigned rights,
+                              void (*destroy)(void *), void **out) {
+    *out = NULL;
+    neo_object *object = NULL;
+    neo_status status = neo_resolve(vm, cap, rights, &object);
+    if (status != NEO_OK) { return status; }
+    if (object->stream == NULL || object->stream->backend.destroy != destroy) { return NEO_WRONG_KIND; }
+    *out = object->stream->context;
+    return NEO_OK;
+}

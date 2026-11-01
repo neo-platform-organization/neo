@@ -9,23 +9,6 @@ struct neo_context {
     struct neo_context *next;
 };
 
-typedef struct neo_message_grant_entry {
-    neo_object_id actor;
-    unsigned rights;
-    struct neo_message_grant_entry *next;
-} neo_message_grant_entry;
-
-struct neo_message {
-    neo_object_id object;
-    neo_object_id sender;
-    neo_object_id receiver;
-    neo_message_state state;
-    uint64_t submission;
-    neo_message_grant_entry *grants;
-    struct neo_message *queue_next;
-    struct neo_message *next;
-};
-
 static neo_status neo_context_resolve(neo_vm *vm, const neo_context *context,
                                       neo_object **out_actor) {
     if (vm == NULL || context == NULL) {
@@ -80,7 +63,7 @@ static neo_status neo_message_access(neo_vm *vm, const neo_context *context,
         allowed |= NEO_MESSAGE_ALL;
     }
     if ((*out_actor)->id == message->receiver) {
-        allowed |= NEO_MESSAGE_READ | NEO_MESSAGE_INSPECT;
+        allowed |= NEO_MESSAGE_READ | NEO_MESSAGE_INSPECT | NEO_MESSAGE_RELEASE;
     }
     for (neo_message_grant_entry *grant = message->grants; grant != NULL; grant = grant->next) {
         if (grant->actor == (*out_actor)->id) {
@@ -297,7 +280,8 @@ neo_status neo_message_inspect(neo_vm *vm, const neo_context *context,
                                           &actor, &known);
     if (status == NEO_OK) {
         *out_info = (neo_message_info){known->object, known->sender, known->receiver,
-            known->state, known->submission, neo_lookup(vm, known->receiver) != NULL};
+            known->state, known->submission, neo_lookup(vm, known->receiver) != NULL,
+            neo_lookup(vm, known->sender) != NULL};
     }
     return status;
 }
@@ -494,6 +478,34 @@ bool neo_actor_has_messages(neo_vm *vm, neo_object_id id) {
     return false;
 }
 
+neo_status neo_message_release(neo_vm *vm, const neo_context *context,
+                               const neo_message *message) {
+    neo_object *actor = NULL;
+    neo_message *known = NULL;
+    neo_status status = neo_message_access(vm, context, message, NEO_MESSAGE_RELEASE, &actor, &known);
+    if (status != NEO_OK) { return status; }
+    bool receiver_gone = neo_lookup(vm, known->receiver) == NULL;
+    if (known->state != NEO_MESSAGE_CREATED && known->state != NEO_MESSAGE_PROCESSED && !receiver_gone) {
+        return NEO_BUSY;
+    }
+    /* Only the maker or a specialized cleanup grantee may abandon created
+     * payloads; being the future recipient does not authorize that decision. */
+    if (known->state == NEO_MESSAGE_CREATED && actor->id == known->receiver && actor->id != known->sender) {
+        bool granted = false;
+        for (neo_message_grant_entry *entry = known->grants; entry != NULL; entry = entry->next) {
+            if (entry->actor == actor->id && (entry->rights & NEO_MESSAGE_RELEASE) != 0) { granted = true; }
+        }
+        if (!granted) { return NEO_DENIED; }
+    }
+    neo_delete_region(vm, known->object);
+    while (known->grants != NULL) {
+        neo_message_grant_entry *next = known->grants->next;
+        neo_free(vm, known->grants);
+        known->grants = next;
+    }
+    return NEO_OK;
+}
+
 void neo_messages_destroy(neo_vm *vm) {
     while (vm->messages != NULL) {
         neo_message *next = vm->messages->next;
@@ -561,4 +573,93 @@ neo_status neo_message_retry(neo_vm *vm, const neo_context *context) {
     }
     receiver->active_message = NULL;
     return NEO_OK;
+}
+
+/* Evaluator bridge: reachability is not message authority. Never route a
+ * message reference through ordinary payload resolution. */
+neo_status neo_message_from_reference(neo_vm *vm, const neo_capability *reference,
+                                       const neo_message **out) {
+    if (out == NULL || vm == NULL) { return NEO_INVALID; }
+    *out = NULL;
+    const neo_capability *known = neo_capability_known(vm,reference);
+    if (known == NULL) { return NEO_DENIED; }
+    neo_object *node = neo_lookup(vm, known->target);
+    if (node == NULL) { return NEO_UNAVAILABLE; }
+    if (node->message == NULL) { return NEO_WRONG_KIND; }
+    *out = node->message;
+    return NEO_OK;
+}
+
+neo_status neo_message_reference(neo_vm *vm, const neo_message *message,
+                                  const neo_capability **out) {
+    if (out == NULL) { return NEO_INVALID; }
+    *out = NULL;
+    neo_message *known = NULL;
+    neo_status status = neo_message_resolve(vm, message, &known);
+    if (status == NEO_OK) { status = neo_issue(vm, known->object, 0, out); }
+    return status;
+}
+
+neo_status neo_message_link(neo_vm *vm, const neo_context *context,
+                             const neo_capability *owner, const char *name,
+                             const neo_message *message) {
+    if (name == NULL || *name == '\0') { return NEO_INVALID; }
+    neo_object *actor = NULL, *target = NULL;
+    neo_message *known = NULL;
+    neo_status status = neo_message_access(vm, context, message, NEO_MESSAGE_INSPECT, &actor, &known);
+    if (status == NEO_OK) { status = neo_resolve(vm, owner, NEO_WRITE, &target); }
+    if (status != NEO_OK) { return status; }
+    if (target->id != actor->id) { return NEO_DENIED; }
+    for (neo_edge *edge = target->edges; edge != NULL; edge = edge->next) {
+        if (strcmp(edge->name, name) == 0) { return NEO_CONFLICT; }
+    }
+    neo_edge *edge = neo_alloc(vm, sizeof(*edge));
+    if (edge == NULL) { return NEO_OUT_OF_MEMORY; }
+    edge->name = neo_string(vm, name);
+    if (edge->name == NULL) { neo_free(vm, edge); return NEO_OUT_OF_MEMORY; }
+    edge->target = known->object;
+    edge->rights = 0;
+    edge->next = target->edges;
+    target->edges = edge;
+    return NEO_OK;
+}
+
+neo_status neo_message_pending(neo_vm *vm, const neo_context *context,
+                                const neo_capability *ether, const neo_message **out) {
+    if (out == NULL) { return NEO_INVALID; }
+    *out = NULL;
+    neo_object *actor = NULL, *environment = NULL;
+    neo_status status = neo_context_resolve(vm, context, &actor);
+    if (status == NEO_OK) { status = neo_resolve(vm, ether, NEO_READ, &environment); }
+    if (status != NEO_OK) { return status; }
+    if (!environment->ether) { return NEO_WRONG_KIND; }
+    if (environment->image != actor->image) { return NEO_WRONG_IMAGE; }
+    for (neo_message *message = vm->messages; message != NULL; message = message->next) {
+        neo_object *node = neo_lookup(vm, message->object);
+        if (node != NULL && node->parent == environment->id && message->receiver == actor->id &&
+            message->state == NEO_MESSAGE_PENDING &&
+            (*out == NULL || message->submission < (*out)->submission)) { *out = message; }
+    }
+    return *out == NULL ? NEO_UNAVAILABLE : NEO_OK;
+}
+
+neo_status neo_message_active(neo_vm *vm, const neo_context *context, const neo_message **out) {
+    if (out == NULL) { return NEO_INVALID; }
+    *out = NULL;
+    neo_object *actor = NULL;
+    neo_status status = neo_context_resolve(vm, context, &actor);
+    if (status != NEO_OK) { return status; }
+    *out = actor->active_message;
+    return *out == NULL ? NEO_UNAVAILABLE : NEO_OK;
+}
+
+const char *neo_message_state_name(neo_message_state state) {
+    switch (state) {
+        case NEO_MESSAGE_CREATED: return "created";
+        case NEO_MESSAGE_PENDING: return "pending";
+        case NEO_MESSAGE_ACCEPTED: return "accepted";
+        case NEO_MESSAGE_PROCESSING: return "processing";
+        case NEO_MESSAGE_PROCESSED: return "processed";
+    }
+    return "unknown";
 }
