@@ -1,107 +1,78 @@
 # neo
 
-neo is a live object environment built around one object graph. Objects hold data
-and behavior, connect through explicit capabilities, and communicate by messages.
-A C17 VM handles execution, memory, permissions and host devices. The image holds
-the desktop, apps, package manager and system policy.
+neo is a live programming platform built around Warp, a mutable object graph.
+Weft presents object behavior in a readable form; Knight provides pure
+calculations. The long-term aim is an OS and game engine whose tools and
+applications live in the image.
 
-The Windows image has a desktop, source browser, text editor, Sketch and Task
-Manager. You can run several instances of an app, inspect its handlers, edit code
-while it is running, and publish package changes for future instances. Spatial
-packages work with arbitrary dimensions. Windows networking supports TCP, pinned
-mutual TLS and selected-state replication. Linux networking is still a stub.
+This release is the foundation snapshot before OS development. It includes
+the native JIT, scoped package services, hosted platform backends, a standalone
+x86_64 boot profile, and an image lifecycle exercise. It is not a finished OS.
 
-This is a working prototype. Fonts are basic, documents are kept in memory, and
-there is no filesystem-backed document workflow, JIT or GPU renderer yet.
+## Build and test
 
-## Build and run on Windows
-
-Install MSYS2 UCRT64 GCC and add its bin directory to PATH. From PowerShell in the
-repository directory:
-
-```powershell
-./build-windows.ps1 -Optimize
-./build-gui-image.ps1
-./build/x86_64/Windows/neo.exe --gui build/x86_64/Windows/image.neo
-```
-
-The names stay `neo.exe` and `image.neo`. Close a running executable before
-replacing it. The image builder installs the bundled GUI packages into one image;
-launching it does not load separate source files.
-
-Apps in the top-left menu creates a new instance. A top-bar button takes you to
-an existing window. X closes the app and releases its state and resources. Drag a
-window title to move it, use the middle mouse button to pan, and scroll over the
-background to zoom. Scrolling over an editor scrolls its text. Ctrl+wheel zooms
-the desktop.
-
-In Browser, select a package or app and a handler to read its source. OPEN IN
-EDITOR enables the embedded editor. TEXT EDITOR opens the same document in a
-separate window. Ctrl+Enter applies code; invalid or stale edits keep the old
-code. PUBLISH updates the package for future instances. KEEP retains a document
-in the current session, not on disk.
-
-See the [desktop guide](neo/packages/desktop.md),
-[text editor](neo/packages/text-editor.md) and
-[Windows build notes](documentation/development/build.md#windows-x86-64).
-
-## Linux
-
-Install a C17 compiler, Make, pkg-config and Xlib development headers:
-
-```sh
-make
-make test
-./build/x86_64/Linux/neo help
-./build/x86_64/Linux/neo live neo/neo-os/image.neo
-```
-
-Use `make WITH_X11=0` for a build without X11. `make targets` lists platform
-choices. Windows and Linux x86-64 have implementations; other targets are stubs.
-Windows is the current desktop development target.
-
-## Images and the command line
+GNU Make is the single build entry point. On Windows, use MSYS2 UCRT64 GCC
+and `mingw32-make` in place of `make`.
 
 ```text
-neo [--cli] [--gui] IMAGE [ACTOR [HANDLER]]
-neo live IMAGE
-neo selftest [gui]
+make test TARGET=x86_64/Windows
+make test TARGET=x86_64/Linux
+make test TARGET=x86_64 BOOT_MODE=surface
+make test TARGET=x86_64 BOOT_MODE=cli
 ```
 
-`neo main.neo` uses the image's entry point. An explicit actor and handler are
-optional debugging arguments. One process owns one VM and one loaded image graph.
-The `live` command opens an interactive terminal session for inspecting, editing,
-invoking and saving that graph. Native resources cannot be saved in an image.
+Windows builds Linux and standalone targets through WSL. See the
+[build guide](documentation/development/build.md) for dependencies and limits.
+Release archives contain source, not generated binaries or a build directory.
 
-## Tests
+| Target | Output |
+| --- | --- |
+| x86_64/Windows | build/x86_64/Windows/neo.exe |
+| x86_64/Linux | build/x86_64/Linux/neo |
+| x86_64/x86_64 | build/x86_64/x86_64/neo.bin and neo.iso |
 
-```powershell
-./build/x86_64/Windows/neo.exe selftest
-./build/x86_64/Windows/neo.exe selftest gui
+The canonical image is always `neo/neo-os/image.neo`. Builds never place a
+loose copy of it in the build directory. The standalone build embeds it.
+
+## Run the exercise
+
+From the repository root, create a directory for persistent exercise data:
+
+```text
+mkdir exercise-data
+.\build\x86_64\Windows\neo.exe exercise .\neo\neo-os\image.neo lifecycle-exercise .\exercise-data
 ```
 
-The full suite covers permissions, object lifetime, allocation failures, messages,
-image save/reload, scheduling, packages, networking, spatial operations and the
-headless desktop/editor workflow. Networking tests use local sockets and temporary
-TLS certificates. Optional Python scripts in `neo/packages/tests` compare spatial
-results with independent calculations. Python is not part of the runtime or GUI
-build.
+Click or type to change the value. F2 saves, F3 restores, Escape closes.
+Closing does not save. Green indicates saved state; orange indicates changes.
+On Linux, use `./build/x86_64/Linux/neo` with the same arguments.
 
-The Windows suite passes. The latest editor checks use headless input and pixels;
-physical input and native clipboard behavior still need an interactive check.
+The exercise tests input, scoped access, timers, failed edits, durable scalar
+saves, snapshot reopening, and shutdown. The regression suite verifies saved
+state across separate processes. See [the exercise guide](documentation/development/image-exercise.md).
 
-## Source layout
+## Boundaries and limits
 
-- `neo-vm/`: C runtime, platform adapters and command-line tools.
-- `neo/neo-os/image.neo`: OS seed image.
-- `neo/packages/`: package sources, guides and spatial test scripts.
-- `neo/fixtures/`: test images.
-- `documentation/`: VM and platform documentation.
-- `neo/documentation/`: language and image documentation.
-- `build/ARCH/OS/`: generated executables and prepared images, excluded from Git.
+C provides graph memory and validation, JIT execution, capability checks,
+resource lifetime, and platform mechanisms. The image owns exercise behavior,
+state, arithmetic definitions, drawing, and save/restore choices. The hosted
+exercise harness supplies a narrow scalar persistence bridge.
 
-Start with the [documentation index](documentation/README.md),
-[syntax guide](documentation/reference/syntax-cheat-sheet.md) or
-[runtime format](neo/documentation/runtime-format.md).
+Windows and Linux provide software/OpenGL framebuffer presentation, managed
+byte storage, loopback TCP/UDP, PCM audio, and clipboard mechanisms. The
+standalone x86_64 UEFI profile provides framebuffer output, timers, PS/2 input,
+serial CLI, and trusted integer JIT execution. It lacks hosted worker isolation,
+binary64, persistent disk storage, networking, USB, and audio drivers.
+The ISO is boot media, not an installer. Physical hardware is unverified.
 
-Licensed under [GPLv3](LICENSE).
+General asynchronous graph I/O and atomic whole-image checkpointing remain
+unfinished. Collections, values, native activations, and event queues have
+fixed limits. This snapshot establishes a tested starting point for the OS,
+not a promise that the remaining language or OS work is complete.
+
+- [Runtime and image syntax](neo/documentation/runtime-format.md)
+- [Platform services](documentation/reference/platform-services.md)
+- [Foundation acceptance](documentation/development/foundation-acceptance.md)
+- [Source tour](documentation/learning/code-tour.md)
+- [Whitepaper](neo/documentation/whitepaper.md), preserved design reference
+- [Release notes](documentation/releases/v0.1.0-foundation.md)

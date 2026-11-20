@@ -1,6 +1,0 @@
-(image
-  (entry "hello")
-  (hello
-    (handlers
-      (main
-        (body (stream-write (target "stdout") (value "Hello, World!\n")))))))

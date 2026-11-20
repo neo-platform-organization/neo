@@ -1,19 +1,16 @@
 # Contributing
 
-Keep changes readable and explain what they do. Use plain language in code
-comments, documentation, commit messages and pull requests. Avoid marketing copy,
-stock AI phrases and em dashes. Write about the software rather than the chat that
-led to a change. State what works, how it was checked and what is still missing.
+The language name is `neo`. Use plain language in code and documentation.
+Follow the [C conventions](documentation/development/c-conventions.md).
+Keep application behavior, layout, and system policy in the image. C provides
+execution, protection, resource lifetime, and platform mechanisms.
 
-The language name is `neo`. Follow the
-[C conventions](documentation/development/c-conventions.md) and keep GUI behavior
-and system policy in the image. The C runtime provides execution, protection and
-host mechanisms.
+The canonical image is `neo/neo-os/image.neo`, never a build-directory copy.
+Windows outputs use `build/x86_64/Windows/neo.exe`; Linux uses
+`build/x86_64/Linux/neo`; standalone x86_64 uses `build/x86_64/x86_64/`.
+The root Makefile is the only build entry point. The whitepaper is preserved.
 
-Keep the normal Windows outputs named `neo.exe` and `image.neo`. Build artifacts
-belong under `build/ARCH/OS/` and do not go in Git. The whitepaper is a preserved
-reference; do not rewrite it.
-
-Run checks that fit the change. Use `neo selftest` for runtime changes and
-`neo selftest gui` for the desktop and editor. See the
-[build guide](documentation/development/build.md) for setup and test limits.
+Run `make test` for the affected target. Runtime changes shared with the
+standalone backend also require its QEMU boot tests. See the
+[build guide](documentation/development/build.md) for dependencies and limits.
+Do not commit binaries, generated docs, caches, test stores, or credentials.

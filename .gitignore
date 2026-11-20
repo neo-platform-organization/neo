@@ -1,5 +1,8 @@
-# Build outputs
+# Generated builds, release staging, and runtime data
 /build/
+/.release/
+/exercise-data/
+/generated-docs/
 *.o
 *.obj
 *.a
@@ -12,31 +15,34 @@
 *.pdb
 *.dSYM/
 
-# Generated compilation database and tooling caches
+# Compiler, package, and editor caches
 /compile_commands.json
-/.cache/
-/.clangd/
+.cache/
+.clangd/
+node_modules/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.vscode/
+.idea/
 
-# Coverage and profiling output
+# Profiling, coverage, logs, and temporary files
 *.gcda
 *.gcno
 *.gcov
 *.profraw
 *.profdata
 gmon.out
-
-# Editor temporary files
+*.log
+*.tmp
 *.swp
 *.swo
 *~
 
-# OS metadata
+# Local secrets and operating-system metadata
+.env
+.env.*
+!.env.example
 .DS_Store
 Thumbs.db
-
-# Specific files
-/neo/if.neo
-/neo/inspector.neo
-
-# Generated documentation
-/generated-docs/
+Desktop.ini
