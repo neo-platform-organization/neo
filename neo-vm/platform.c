@@ -6,10 +6,10 @@ const char *neo_depth_validate(const neo_depth_plugin *plugin) {
     if (!plugin->name || !*plugin->name || !plugin->allocate || !plugin->malloc_bytes || !plugin->calloc_bytes ||
         !plugin->realloc_bytes || !plugin->free_bytes || !plugin->execute || !plugin->worker || !plugin->begin ||
         !plugin->end || !plugin->worker_id || !plugin->events || !plugin->services || !plugin->selftest ||
-        !plugin->console_open || !plugin->console_close || !plugin->read_line || !plugin->run) {
+        !plugin->console_open || !plugin->console_close || !plugin->read_line) {
         return "incomplete depth plugin interface";
     }
-    return neo_language_validate(plugin->language);
+    return NULL;
 }
 const char *neo_depth_install(const neo_depth_plugin *plugin) {
     const char *failure=neo_depth_validate(plugin);
@@ -18,14 +18,7 @@ const char *neo_depth_install(const neo_depth_plugin *plugin) {
     neo_depth_active=plugin; return NULL;
 }
 static const neo_depth_plugin *neo_depth_current(void) {
-    if (!neo_depth_active) {
-        const neo_depth_plugin *plugin=neo_depth_provider();
-        if (neo_depth_install(plugin)) { return NULL; }
-    }
     return neo_depth_active;
-}
-const neo_language_plugin *neo_depth_language(void) {
-    const neo_depth_plugin *plugin=neo_depth_current(); return plugin ? plugin->language : NULL;
 }
 void *neo_platform_allocate(size_t bytes, size_t alignment) {
     const neo_depth_plugin *p=neo_depth_current(); return p ? p->allocate(bytes,alignment) : NULL;

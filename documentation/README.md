@@ -1,6 +1,7 @@
 # neo documentation
 
 Start with [the three-repository boundary](development/three-repositories.md).
+The current inclusion mechanism is [VM plugin selection](development/plugin-selection.md).
 
 These guides describe the current foundation snapshot. Guides for retired
 runtimes have been removed; Git history preserves earlier implementations.

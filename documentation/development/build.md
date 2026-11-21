@@ -135,3 +135,13 @@ The actual implementations are in ../depth and the live image is in
 Use DEPTH_DIR and IMAGE_DIR to override the sibling roots. A matching component
 revision pair is recorded in components.json. No submodules or nested Git
 repositories are used.
+
+## VM build configuration
+
+The first build now asks whether this VM should include depth components and,
+if so, which plugins from input/plugins/catalog.json. Reconfigure with
+make configure, or list available entries with make plugins. No selects a
+bootstrap-only VM, not a complete language runtime. See
+[plugin selection](plugin-selection.md) for noninteractive profiles and the
+standard inert bundle format. Existing make test commands run the suite for
+the selected profile; a bootstrap-only profile runs its own smoke checks.

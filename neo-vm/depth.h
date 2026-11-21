@@ -6,7 +6,7 @@
 /* Native, trusted plugin ABI. No allocator, page, clock, OS or device SDK
    implementation belongs in the surface VM. Structures must stay valid for
    the entire process; hot replacement while resources exist is unsupported. */
-enum { NEO_DEPTH_ABI=1 };
+enum { NEO_DEPTH_ABI=2 };
 typedef struct {
     uint32_t abi;
     size_t bytes;
@@ -27,14 +27,12 @@ typedef struct {
     neo_status (*console_open)(neo_console **);
     void (*console_close)(neo_console *);
     const char *(*read_line)(neo_console *, char *, size_t, bool *, neo_platform_idle *, void *);
-    int (*run)(int, char **);
-    const neo_language_plugin *language;
 } neo_depth_plugin;
 
-/* Selected by the depth repository at link time, including standalone boot.
-   A dynamic loader can provide this later without changing language semantics. */
+/* Optional platform component selected by the VM build configuration. */
 const neo_depth_plugin *neo_depth_provider(void);
 const char *neo_depth_validate(const neo_depth_plugin *);
 const char *neo_depth_install(const neo_depth_plugin *);
 const neo_language_plugin *neo_depth_language(void);
+const char *neo_language_install(const neo_language_plugin *);
 #endif

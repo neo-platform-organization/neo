@@ -31,15 +31,26 @@ Outputs remain in build/x86_64/Windows, build/x86_64/Linux, or
 build/x86_64/x86_64. Executable names remain neo.exe, neo, and neo.bin.
 The sole canonical image is ../neo-image/neo-os/image.neo.
 
+## Choose what goes into the VM
+
+On its first build, make asks whether to include depth components. If Yes,
+choose parts from the input/plugin list; dependencies are displayed and saved.
+No builds a bootstrap-only VM without the language or preOS. Reconfigure with
+make configure. See [plugin selection](documentation/development/plugin-selection.md).
+
+Depth is passive source/data, not a manager. The VM builder owns inclusion.
+The standard neo.plugin/1 format describes each selectable component.
+
 ## Surface and depth
 
 The surface owns the public language and execution contract and validates the
 language/depth interfaces. The graph engine, compiler, platform code, and
 preOS machinery are supplied by trusted depth plugins.
 
-Depth owns OS/hardware SDK code and replaceable native mechanisms. Its first
-provider is linked at build time so the same interface works during standalone
-boot. Dynamic library loading and hot replacement are not implemented.
+Depth stores OS/hardware and language implementation material. The VM builder
+includes only selected components through standard manifests. This currently
+happens at source build time; dynamic library loading and hot replacement are
+not implemented.
 Depth is trusted code; plugins are not an additional security sandbox.
 
 This split reduces the surface but does not make the parser or JIT trivial.

@@ -1,4 +1,12 @@
 #include "depth.h"
+static const neo_language_plugin *neo_active_language;
+const neo_language_plugin *neo_depth_language(void) { return neo_active_language; }
+const char *neo_language_install(const neo_language_plugin *plugin) {
+    const char *failure=neo_language_validate(plugin);
+    if (failure) { return failure; }
+    if (neo_active_language && neo_active_language!=plugin) { return "language plugin already installed"; }
+    neo_active_language=plugin; return NULL;
+}
 const char *neo_language_validate(const neo_language_plugin *p) {
     if (!p || p->abi!=NEO_LANGUAGE_ABI || p->bytes<sizeof(*p)) { return "incompatible language plugin ABI"; }
     if (!p->neo_run) { return "incomplete language plugin interface"; }

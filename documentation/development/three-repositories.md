@@ -76,3 +76,13 @@ behavior and test fixtures that a version number alone cannot describe.
 
 The original foundation snapshot repository remains archived and untouched.
 The three development repositories continue independently.
+
+## Build-time inclusion replaces the combined provider
+
+The current design is [VM plugin selection](plugin-selection.md). Depth is
+passive material, not an active kernel manager. The VM builder asks whether to
+include depth and which entries from its general input/plugin inventory to
+select. Platform, language, and preOS entries are independent build components
+with explicit dependencies. The previous description of one mandatory provider
+is superseded. The VM's no-depth host configuration requires neither sibling
+implementation repository.
