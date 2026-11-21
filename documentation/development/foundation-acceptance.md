@@ -20,7 +20,7 @@ make test TARGET=x86_64/Windows
 ```
 
 Output is `build/x86_64/Windows/neo.exe`. The canonical image remains
-`neo/neo-os/image.neo`. Acceptance fixtures are temporary test data;
+`../neo-image/neo-os/image.neo`. Acceptance fixtures are temporary test data;
 the build does not publish additional images.
 
 ## Integrated proof

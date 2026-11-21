@@ -6,8 +6,10 @@
 
 enum { NEO_DEFERRED_LIMIT=8, NEO_DEFERRED_WORDS=1+NEO_DEFERRED_LIMIT*8,
        NEO_NATIVE_CODE_LIMIT=65536, NEO_TRACE_LIMIT=512, NEO_MAX_ARGUMENTS=4, NEO_GRAPH_CELLS=2048,
-       NEO_TEXT_WORDS=80, NEO_TEXT_FRAMES=48, NEO_NATIVE_SLOTS=NEO_GRAPH_CELLS+4+NEO_MAX_ARGUMENTS+
-           2*NEO_TRACE_LIMIT+(NEO_GRAPH_CELLS+NEO_TEXT_FRAMES*(NEO_MAX_ARGUMENTS+1)+1)*NEO_TEXT_WORDS+NEO_DEFERRED_WORDS };
+       NEO_TEXT_WORDS=80, NEO_TEXT_FRAMES=48, NEO_PROGRAM_ARGUMENTS=16,
+       NEO_NATIVE_SLOTS=NEO_GRAPH_CELLS+4+NEO_MAX_ARGUMENTS+
+           2*NEO_TRACE_LIMIT+(NEO_GRAPH_CELLS+NEO_TEXT_FRAMES*(NEO_MAX_ARGUMENTS+1)+1+
+           NEO_DEFERRED_LIMIT+NEO_PROGRAM_ARGUMENTS)*NEO_TEXT_WORDS+NEO_DEFERRED_WORDS };
 typedef struct {
     const char *(*execute)(const unsigned char *, size_t, int32_t *, int64_t *);
 } neo_code_platform;
@@ -17,6 +19,32 @@ const char *neo_roundtrip(const char *source, const neo_code_platform *platform,
 const char *neo_snapshot(const char *source, const neo_code_platform *platform,
                          char *output, size_t capacity);
 typedef struct neo_session neo_session;
+/* Inert launcher metadata, read from ordinary slots on a program object.
+   This describes intent; it neither executes code nor grants resources. */
+typedef enum { NEO_PRESENT_INTERNAL, NEO_PRESENT_HOST, NEO_PRESENT_HEADLESS } neo_program_presentation;
+typedef struct {
+    char object[64], package[64], selector[64];
+    neo_program_presentation presentation;
+    bool multiple_instances;
+} neo_program_config;
+const char *neo_session_program_config(const neo_session *, const char *, neo_program_config *);
+void neo_session_entry(const neo_session *, char [64], char [64]);
+/* Export the selected package into a minimal image with the declared entry.
+   No dependency closure or host authority is silently imported. */
+const char *neo_session_package_image(const neo_session *, const char *, char *, size_t);
+/* Launch arguments are inert quoted text tokens. They are visible only to the
+   named package, never serialized, and borrowed only during this call. */
+const char *neo_session_arguments(neo_session *, const char *, const char *const *, size_t);
+typedef struct {
+    const char *package, *channel, *object, *selector;
+    bool write;
+    size_t length;
+    unsigned char bytes[64];
+} neo_io_message;
+/* Accept the whole request batch without doing external I/O, or change nothing.
+   Requests/payloads are borrowed. No callback may reenter the session. */
+typedef const char *neo_io_sink(void *, uint64_t, const neo_io_message *, size_t);
+void neo_session_io(neo_session *, neo_io_sink *, void *);
 typedef struct {
     const char *object, *selector;
     uint32_t delay_ms;
@@ -64,6 +92,9 @@ const char *neo_session_receive_sequence(neo_session *session, const char *objec
 const char *neo_session_send_text(neo_session *session, const char *object, const char *selector,
                                   const char *literal, const neo_code_platform *platform,
                                   int32_t *result);
+/* First argument is a text or byte literal; up to three integer arguments follow. */
+const char *neo_session_send_sequence_args(neo_session *, const char *, const char *, const char *,
+    const int32_t *, size_t, const neo_code_platform *, int32_t *);
 typedef enum { NEO_TRACE_SEND, NEO_TRACE_KNIGHT, NEO_TRACE_WRITE, NEO_TRACE_LIMIT_REACHED } neo_trace_kind;
 typedef struct {
     neo_trace_kind kind;

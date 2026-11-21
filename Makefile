@@ -1,3 +1,10 @@
+# One build file for all targets. Component repositories are independent siblings.
+DEPTH_DIR ?= ../depth
+IMAGE_DIR ?= ../neo-image
+ifeq ($(wildcard $(DEPTH_DIR)/provider.c),)
+$(error Depth plugins missing at $(DEPTH_DIR). See README.md for the sibling checkout)
+endif
+
 .DEFAULT_GOAL := all
 .DELETE_ON_ERROR:
 
@@ -28,11 +35,12 @@ WSL_DISTRO ?= Debian
 OPT ?= -O3
 WARNINGS := -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow -Wstrict-prototypes
 CFLAGS ?= -std=c17 $(OPT) $(WARNINGS)
+CPPFLAGS += -Ineo-vm -I$(DEPTH_DIR) -I$(DEPTH_DIR)/common -I$(DEPTH_DIR)/language
 OUT := build/$(TARGET)
 EXE := $(OUT)/neo$(if $(filter %/Windows,$(TARGET)),.exe,$(if $(filter x86_64/x86_64 arm/arm arm64/arm64,$(TARGET)),.bin,))
-IMAGE := neo/neo-os/image.neo
-COMMON := neo-vm/jit.c neo-vm/hosted.c neo-vm/weft.c neo-vm/lattice.c neo-vm/events.c neo-vm/services.c neo-vm/services_test.c neo-vm/presentation.c neo-vm/console.c neo-vm/exercise.c
-HEADERS := $(wildcard neo-vm/*.h)
+IMAGE ?= $(IMAGE_DIR)/neo-os/image.neo
+COMMON := neo-vm/main.c neo-vm/platform.c $(DEPTH_DIR)/provider.c neo-vm/language.c $(DEPTH_DIR)/language/jit.c $(DEPTH_DIR)/language/provider.c $(DEPTH_DIR)/common/hosted.c $(DEPTH_DIR)/language/weft.c $(DEPTH_DIR)/common/lattice.c $(DEPTH_DIR)/common/events.c $(DEPTH_DIR)/common/services.c $(DEPTH_DIR)/common/services_test.c $(DEPTH_DIR)/common/presentation.c $(DEPTH_DIR)/common/console.c $(DEPTH_DIR)/common/exercise.c $(DEPTH_DIR)/common/launch.c $(DEPTH_DIR)/common/ports.c $(DEPTH_DIR)/common/ports_test.c
+HEADERS := $(wildcard neo-vm/*.h $(DEPTH_DIR)/common/*.h $(DEPTH_DIR)/*.h $(DEPTH_DIR)/language/*.h)
 
 .PHONY: all test run path targets clean x86_64 $(TARGETS)
 all: $(EXE)
@@ -46,18 +54,18 @@ $(TARGETS):
 	$(MAKE) TARGET=$@ all
 
 ifeq ($(TARGET),x86_64/Windows)
-$(EXE): $(COMMON) neo-vm/platform/windows.c neo-vm/platform/services_windows.c $(HEADERS) Makefile
+$(EXE): $(COMMON) $(DEPTH_DIR)/plugins/windows.c $(DEPTH_DIR)/plugins/services_windows.c $(HEADERS) Makefile
 ifeq ($(OS),Windows_NT)
 	@if not exist "$(OUT)" mkdir "$(OUT)"
 else
 	mkdir -p "$(OUT)"
 endif
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(COMMON) neo-vm/platform/windows.c neo-vm/platform/services_windows.c $(LDFLAGS) -luserenv -lws2_32 -lbcrypt -lgdi32 -lopengl32 -lwinmm $(LDLIBS) -o "$@"
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(COMMON) $(DEPTH_DIR)/plugins/windows.c $(DEPTH_DIR)/plugins/services_windows.c $(LDFLAGS) -luserenv -lws2_32 -lbcrypt -lgdi32 -lopengl32 -lwinmm $(LDLIBS) -o "$@"
 ifeq ($(OS),Windows_NT)
 	icacls "$@" /grant "*S-1-15-2-1:(RX)"
 endif
 test: all
-	$(NODE) tools/regression.mjs "$(EXE)" "$(IMAGE)"
+	$(NODE) $(DEPTH_DIR)/tools/regression.mjs "$(EXE)" "$(IMAGE)"
 run: all
 	"$(EXE)" run "$(IMAGE)"
 else ifeq ($(TARGET),x86_64/Linux)
@@ -68,11 +76,11 @@ $(EXE):
 test run:
 	wsl.exe -d $(WSL_DISTRO) --cd "$(subst /,\,$(CURDIR))" --exec make TARGET=$(TARGET) $@
 else
-$(EXE): $(COMMON) neo-vm/platform/linux.c neo-vm/platform/services_linux.c $(HEADERS) Makefile
+$(EXE): $(COMMON) $(DEPTH_DIR)/plugins/linux.c $(DEPTH_DIR)/plugins/services_linux.c $(HEADERS) Makefile
 	mkdir -p "$(OUT)"
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(COMMON) neo-vm/platform/linux.c neo-vm/platform/services_linux.c $(LDFLAGS) -lseccomp -lX11 -lGL -lasound -pthread -lm $(LDLIBS) -o "$@"
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(COMMON) $(DEPTH_DIR)/plugins/linux.c $(DEPTH_DIR)/plugins/services_linux.c $(LDFLAGS) -lseccomp -lX11 -lGL -lasound -pthread -lm $(LDLIBS) -o "$@"
 test: all
-	$(NODE) tools/regression.mjs "$(EXE)" "$(IMAGE)"
+	$(NODE) $(DEPTH_DIR)/tools/regression.mjs "$(EXE)" "$(IMAGE)"
 run: all
 	"$(EXE)" run "$(IMAGE)"
 endif
@@ -86,19 +94,24 @@ $(EXE):
 test run:
 	wsl.exe -d $(WSL_DISTRO) --cd "$(subst /,\,$(CURDIR))" --exec make TARGET=$(TARGET) BOOT_MODE=$(BOOT_MODE) SURFACE_OBJECT=$(SURFACE_OBJECT) $@
 else
-EFI_FLAGS := -std=c17 -O2 -Wall -Wextra -Werror -Wno-unused-function -ffreestanding -fno-builtin -fno-tree-loop-distribute-patterns -fno-stack-protector -fpic -fshort-wchar -mno-red-zone -ffunction-sections -fdata-sections -DEFI_FUNCTION_WRAPPER -DNEO_FREESTANDING -DNEO_INTEGER_PROFILE -I/usr/include/efi -I/usr/include/efi/x86_64 -I$(OUT)
-EFI_SOURCES := neo-vm/jit.c neo-vm/hosted.c neo-vm/weft.c neo-vm/lattice.c neo-vm/events.c neo-vm/services.c neo-vm/presentation.c neo-vm/console.c neo-vm/platform/x86_64/libc.c neo-vm/platform/x86_64/boot.c neo-vm/platform/x86_64/interrupts.c
-EFI_OBJECTS := $(patsubst %.c,$(OUT)/obj/%.o,$(EFI_SOURCES)) $(OUT)/entry.o
+EFI_FLAGS := -std=c17 -O2 -Wall -Wextra -Werror -Wno-unused-function -ffreestanding -fno-builtin -fno-tree-loop-distribute-patterns -fno-stack-protector -fpic -fshort-wchar -mno-red-zone -ffunction-sections -fdata-sections -DEFI_FUNCTION_WRAPPER -DNEO_FREESTANDING -DNEO_INTEGER_PROFILE -I/usr/include/efi -I/usr/include/efi/x86_64 -I$(OUT) -Ineo-vm -I$(DEPTH_DIR) -I$(DEPTH_DIR)/common -I$(DEPTH_DIR)/language
+EFI_SOURCES := neo-vm/main.c neo-vm/platform.c $(DEPTH_DIR)/provider.c neo-vm/language.c $(DEPTH_DIR)/language/jit.c $(DEPTH_DIR)/language/provider.c $(DEPTH_DIR)/common/hosted.c $(DEPTH_DIR)/language/weft.c $(DEPTH_DIR)/common/lattice.c $(DEPTH_DIR)/common/events.c $(DEPTH_DIR)/common/services.c $(DEPTH_DIR)/common/presentation.c $(DEPTH_DIR)/common/console.c $(DEPTH_DIR)/common/ports.c $(DEPTH_DIR)/plugins/x86_64/libc.c $(DEPTH_DIR)/plugins/x86_64/boot.c $(DEPTH_DIR)/plugins/x86_64/interrupts.c
+EFI_CORE := $(filter neo-vm/%,$(EFI_SOURCES))
+EFI_DEPTH := $(filter $(DEPTH_DIR)/%,$(EFI_SOURCES))
+EFI_OBJECTS := $(patsubst %.c,$(OUT)/obj/%.o,$(EFI_CORE)) $(patsubst $(DEPTH_DIR)/%.c,$(OUT)/obj/depth/%.o,$(EFI_DEPTH)) $(OUT)/entry.o
 .PHONY: bundle
 all: $(OUT)/neo.iso
 bundle:
 	mkdir -p "$(OUT)"
-	$(NODE) tools/embed-image.mjs "$(IMAGE)" "$(OUT)/image.inc" "$(SURFACE_OBJECT)" "$(BOOT_MODE)"
-$(OUT)/obj/neo-vm/platform/x86_64/boot.o: bundle
-$(OUT)/obj/%.o: %.c $(HEADERS) neo-vm/platform/x86_64/x86_64.h Makefile
+	$(NODE) $(DEPTH_DIR)/tools/embed-image.mjs "$(IMAGE)" "$(OUT)/image.inc" "$(SURFACE_OBJECT)" "$(BOOT_MODE)"
+$(OUT)/obj/depth/plugins/x86_64/boot.o: bundle
+$(OUT)/obj/depth/%.o: $(DEPTH_DIR)/%.c $(HEADERS) $(DEPTH_DIR)/plugins/x86_64/x86_64.h Makefile
 	mkdir -p "$(@D)"
 	$(CC) $(EFI_FLAGS) $(if $(findstring interrupts.c,$<),-mgeneral-regs-only,) -c "$<" -o "$@"
-$(OUT)/entry.o: neo-vm/platform/x86_64/entry.S
+$(OUT)/obj/%.o: %.c $(HEADERS) $(DEPTH_DIR)/plugins/x86_64/x86_64.h Makefile
+	mkdir -p "$(@D)"
+	$(CC) $(EFI_FLAGS) $(if $(findstring interrupts.c,$<),-mgeneral-regs-only,) -c "$<" -o "$@"
+$(OUT)/entry.o: $(DEPTH_DIR)/plugins/x86_64/entry.S
 	mkdir -p "$(@D)"
 	$(CC) -fpic -mno-red-zone -c "$<" -o "$@"
 $(OUT)/neo.elf: $(EFI_OBJECTS) Makefile
@@ -113,7 +126,7 @@ $(OUT)/neo.iso: $(EXE)
 	mcopy -i "$(OUT)/iso-root/boot.img" "$(EXE)" ::/EFI/BOOT/BOOTX64.EFI
 	xorriso -as mkisofs -quiet -R -J -V NEO -e boot.img -no-emul-boot -o "$@" "$(OUT)/iso-root"
 test: all
-	$(NODE) tools/test-boot.mjs "$(OUT)" "$(BOOT_MODE)"
+	$(NODE) $(DEPTH_DIR)/tools/test-boot.mjs "$(OUT)" "$(BOOT_MODE)"
 run: all
 	qemu-system-x86_64 -machine q35 -m 512 -bios /usr/share/OVMF/OVMF_CODE_4M.fd -cdrom "$(OUT)/neo.iso" -serial stdio
 endif

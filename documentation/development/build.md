@@ -72,13 +72,13 @@ there is no unrestricted execution fallback.
 `make test` runs the native selftests and the migrated regression suite,
 including live editing, rich values, object lifecycle, package grants,
 event delivery, idle input, source views, and snapshot reopening.
-Test data is under tools/regression-data.json. Temporary source files
+Test data is under ../depth/tools/regression-data.json. Temporary source files
 are created in a unique temporary directory and removed afterwards.
 
 `make clean` removes only the selected target executable. It does not
 recursively delete the build tree, images, or unrelated files.
 
-The sole canonical image remains neo/neo-os/image.neo. Builds never copy
+The sole canonical image remains ../neo-image/neo-os/image.neo. Builds never copy
 it to build/. Existing binaries or ISOs from earlier runtimes do not
 represent supported targets in this rebuild.
 
@@ -89,7 +89,7 @@ presentation, managed byte storage, loopback networking, ALSA PCM audio,
 and UTF-8 clipboard. Windows provides software/OpenGL surfaces, WinMM PCM
 audio, and clipboard mechanisms. Drag/drop and hotplug remain open.
 
-The standalone backend is neo-vm/platform/x86_64/, alongside architecture
+The standalone backend is ../depth/plugins/x86_64/, alongside architecture
 names such as arm64. Output is build/x86_64/x86_64/neo.bin and neo.iso.
 neo.bin is a UEFI PE/COFF executable, not a flat raw kernel. The ISO boots
 through UEFI and is not an installer. The canonical image is embedded as
@@ -113,3 +113,25 @@ Debian; WSL_DISTRO selects another distribution. Linux requires GCC, Make,
 Node.js, libseccomp, X11, OpenGL, and ALSA development packages. Standalone
 builds also require GNU-EFI, binutils, mtools, dosfstools, and xorriso.
 Boot tests use QEMU x86 and OVMF. GNU-EFI notices accompany build artifacts.
+
+## Current launch milestone
+
+The [launch and language milestones](launch-milestones.md) track the next phase.
+M1 adds inert launch metadata and package export, plus a text-tool deployment
+diagnostic. Run these with the selected target's neo executable:
+
+```text
+neo launch-info ../neo-image/neo-os/image.neo text-tool
+neo program-check ../neo-image/neo-os/image.neo text-tool
+```
+
+The diagnostic is not the finished script or GUI launcher. Its checks are part
+of make test. Image behavior stays in neo; orchestration is implemented in C.
+
+## Sibling repository build
+
+The actual implementations are in ../depth and the live image is in
+../neo-image/neo-os/image.neo. The root Makefile remains the only build file.
+Use DEPTH_DIR and IMAGE_DIR to override the sibling roots. A matching component
+revision pair is recorded in components.json. No submodules or nested Git
+repositories are used.

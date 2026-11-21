@@ -1,6 +1,6 @@
 # Image lifecycle exercise
 
-The canonical `neo/neo-os/image.neo` contains `lifecycle-exercise`.
+The canonical `../neo-image/neo-os/image.neo` contains `lifecycle-exercise`.
 This is an acceptance exercise, not a desktop. Its handlers own editing,
 save/restore choices, dirty state, drawing, and timer behavior. Knight
 functions perform arithmetic. `exercise-outsider` tests denied access.
@@ -12,7 +12,7 @@ From the repository root, create a directory for the granted byte store:
 
 ```text
 mkdir exercise-data
-.\build\x86_64\Windows\neo.exe exercise .\neo\neo-os\image.neo lifecycle-exercise .\exercise-data
+.\build\x86_64\Windows\neo.exe exercise ..\neo-image\neo-os\image.neo lifecycle-exercise .\exercise-data
 ```
 
 On Linux, use `./build/x86_64/Linux/neo` with the same arguments.
@@ -59,7 +59,7 @@ second restores five and saves ten. The checks cover:
 For a manual test directory:
 
 ```text
-neo exercise-test neo/neo-os/image.neo lifecycle-exercise exercise-data
+neo exercise-test ../neo-image/neo-os/image.neo lifecycle-exercise exercise-data
 neo exercise-snapshot exercise-data
 ```
 

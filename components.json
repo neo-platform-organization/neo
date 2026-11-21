@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "depth_abi": 1,
+  "language_abi": 1,
+  "depth": {
+    "path": "../depth",
+    "repository": "https://github.com/neo-platform-organization/neo-depth.git",
+    "commit": "a6be0ce52f3ecdf34738da8cacb84f9bcc9237f5"
+  },
+  "image": {
+    "path": "../neo-image",
+    "repository": "https://github.com/neo-platform-organization/neo-image.git",
+    "commit": "9ff9a73e826b026db549da107881006a5e48dbd9"
+  }
+}

@@ -1,24 +1,22 @@
-# Source tour
+# Current source tour
 
-The repository contains one native VM and one canonical source image.
+The three repositories are siblings. Start with the surface's small C entry and
+ABI forwarding layer, then inspect the relevant depth implementation.
 
-| Source | Responsibility |
+| Location | Responsibility |
 | --- | --- |
-| neo-vm/jit.c and jit.h | Warp parsing, graph validation, native code generation, transactional sends, source views, and grants |
-| neo-vm/weft.c and weft.h | Readable source projection and lowering |
-| neo-vm/lattice.c and lattice.h | Dimensional placement and projection support |
-| neo-vm/literal.h | Shared literal limits and encoding |
-| neo-vm/events.c and events.h | Bounded scheduled messages and asynchronous read bridge |
-| neo-vm/services.c and services.h | Opaque resource handles, requests, buffers, managed storage, and headless implementation |
-| neo-vm/presentation.c and presentation.h | Framebuffer transport and normalized input dispatch |
-| neo-vm/exercise.c and exercise.h | Hosted lifecycle acceptance harness and scalar persistence bridge |
-| neo-vm/hosted.c | CLI entry point, live session commands, and native acceptance tests |
-| neo-vm/console.c | Common console line reader and idle pumping |
-| neo-vm/platform/ | Host SDK and architecture adapters |
-| neo/neo-os/image.neo | Image-owned exercise behavior, state, drawing, and arithmetic |
-| tools/regression.mjs and regression-data.json | Cross-process regression checks and inert fixtures |
-| tools/embed-image.mjs and test-boot.mjs | Standalone image embedding and QEMU/OVMF boot checks |
+| neo/neo-vm/main.c | Validate/install a trusted provider and enter the preOS |
+| neo/neo-vm/depth.h and platform.c | Versioned platform interface and forwarding |
+| neo/neo-vm/language.h and language.c | Versioned language interface and forwarding |
+| neo/neo-vm/jit.h and weft.h | Public graph, execution, source-view, and translation contracts |
+| neo/neo-vm/services.h and events.h | Shared resource and event interface types |
+| depth/provider.c and bindings.h | Register the selected linked provider |
+| depth/language/ | Graph engine, JIT, Weft implementation, and language registration |
+| depth/plugins/ | OS SDK calls and standalone x86_64 hardware mechanisms |
+| depth/common/ | Resources, ports, events, CLI/REPL, launcher, and transport |
+| depth/tools/ | Regression driver/fixtures, embedding, and boot checks |
+| neo-image/neo-os/image.neo | Canonical live source and program behavior |
 
-Start with [the exercise guide](../development/image-exercise.md), then follow
-its graph handlers into the JIT and the explicitly granted service callbacks.
-The C runtime must not acquire application or desktop policy as OS work grows.
+Build only from the surface root Makefile. See the
+[architecture](../development/three-repositories.md) and
+[milestones](../development/launch-milestones.md) for scope and unfinished work.

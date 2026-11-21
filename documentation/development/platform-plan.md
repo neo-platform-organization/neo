@@ -271,7 +271,7 @@ build/x86_64/x86_64/neo.bin
 ```
 
 ARM and ARM64 remain explicit stubs. The canonical source remains
-neo/neo-os/image.neo and is never copied into build/. Metal bundles may
+../neo-image/neo-os/image.neo and is never copied into build/. Metal bundles may
 embed a built representation without creating another source image.
 
 For each stage: implement its contract and first adapter together, add

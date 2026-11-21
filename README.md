@@ -1,78 +1,76 @@
-# neo
+# neo: three repositories
 
-neo is a live programming platform built around Warp, a mutable object graph.
-Weft presents object behavior in a readable form; Knight provides pure
-calculations. The long-term aim is an OS and game engine whose tools and
-applications live in the image.
+neo is split into three independent repositories. They are checked out beside
+each other, not nested or embedded as submodules:
 
-This release is the foundation snapshot before OS development. It includes
-the native JIT, scoped package services, hosted platform backends, a standalone
-x86_64 boot profile, and an image lifecycle exercise. It is not a finished OS.
-
-## Build and test
-
-GNU Make is the single build entry point. On Windows, use MSYS2 UCRT64 GCC
-and `mingw32-make` in place of `make`.
+| Repository | Local directory | Responsibility |
+| --- | --- | --- |
+| [neo](https://github.com/neo-platform-organization/neo) | neo/ | Surface VM: public language contract, minimal entry, and validated plugin ABIs |
+| [neo-depth](https://github.com/neo-platform-organization/neo-depth) | depth/ | Trusted compiler/graph engine, platform plugins, resources, preOS, launcher, and tests |
+| [neo-image](https://github.com/neo-platform-organization/neo-image) | neo-image/ | Live image, programs, application state, and image-side behavior |
 
 ```text
+git clone https://github.com/neo-platform-organization/neo.git neo
+git clone https://github.com/neo-platform-organization/neo-depth.git depth
+git clone https://github.com/neo-platform-organization/neo-image.git neo-image
+cd neo
 make test TARGET=x86_64/Windows
+```
+
+Use mingw32-make with the MSYS2 UCRT64 toolchain on Windows. One Make entry
+coordinates all three repositories. DEPTH_DIR and IMAGE_DIR can override the
+sibling paths. Compatible component commits are recorded in components.json.
+
+```text
 make test TARGET=x86_64/Linux
 make test TARGET=x86_64 BOOT_MODE=surface
 make test TARGET=x86_64 BOOT_MODE=cli
 ```
 
-Windows builds Linux and standalone targets through WSL. See the
-[build guide](documentation/development/build.md) for dependencies and limits.
-Release archives contain source, not generated binaries or a build directory.
+Outputs remain in build/x86_64/Windows, build/x86_64/Linux, or
+build/x86_64/x86_64. Executable names remain neo.exe, neo, and neo.bin.
+The sole canonical image is ../neo-image/neo-os/image.neo.
 
-| Target | Output |
-| --- | --- |
-| x86_64/Windows | build/x86_64/Windows/neo.exe |
-| x86_64/Linux | build/x86_64/Linux/neo |
-| x86_64/x86_64 | build/x86_64/x86_64/neo.bin and neo.iso |
+## Surface and depth
 
-The canonical image is always `neo/neo-os/image.neo`. Builds never place a
-loose copy of it in the build directory. The standalone build embeds it.
+The surface owns the public language and execution contract and validates the
+language/depth interfaces. The graph engine, compiler, platform code, and
+preOS machinery are supplied by trusted depth plugins.
 
-## Run the exercise
+Depth owns OS/hardware SDK code and replaceable native mechanisms. Its first
+provider is linked at build time so the same interface works during standalone
+boot. Dynamic library loading and hot replacement are not implemented.
+Depth is trusted code; plugins are not an additional security sandbox.
 
-From the repository root, create a directory for persistent exercise data:
+This split reduces the surface but does not make the parser or JIT trivial.
+Further simplification must preserve language rules and tests rather than hide
+semantic complexity behind arbitrary plugin calls.
+
+## Current execution
+
+Programs run within an image. The same package can be exported to a minimal
+image or kept in a full live environment. Host windows will present the same
+application instance; window placement is not image or application instantiation.
+Internal presentation remains the developer-default unless overridden.
 
 ```text
-mkdir exercise-data
-.\build\x86_64\Windows\neo.exe exercise .\neo\neo-os\image.neo lifecycle-exercise .\exercise-data
+.\build\x86_64\Windows\neo.exe script ..\neo-image\neo-os\image.neo --program text-tool --print-result -- "hello world"
+.\build\x86_64\Windows\neo.exe script ..\neo-image\neo-os\image.neo --program text-tool --repl -- hello
 ```
 
-Click or type to change the value. F2 saves, F3 restores, Escape closes.
-Closing does not save. Green indicates saved state; orange indicates changes.
-On Linux, use `./build/x86_64/Linux/neo` with the same arguments.
+The sample counts UTF-8 bytes. The second command enters the REPL on that same
+running image and instance. Script streams/arguments are explicitly granted;
+REPL command input is reserved while attached. Async byte I/O and cleanup have
+acceptance checks. General filesystem/network constructors, remote REPL attach,
+complete language specifications, and the launcher GUI remain unfinished.
 
-The exercise tests input, scoped access, timers, failed edits, durable scalar
-saves, snapshot reopening, and shutdown. The regression suite verifies saved
-state across separate processes. See [the exercise guide](documentation/development/image-exercise.md).
-
-## Boundaries and limits
-
-C provides graph memory and validation, JIT execution, capability checks,
-resource lifetime, and platform mechanisms. The image owns exercise behavior,
-state, arithmetic definitions, drawing, and save/restore choices. The hosted
-exercise harness supplies a narrow scalar persistence bridge.
-
-Windows and Linux provide software/OpenGL framebuffer presentation, managed
-byte storage, loopback TCP/UDP, PCM audio, and clipboard mechanisms. The
-standalone x86_64 UEFI profile provides framebuffer output, timers, PS/2 input,
+The standalone x86_64 profile boots through UEFI with framebuffer, timer, PS/2,
 serial CLI, and trusted integer JIT execution. It lacks hosted worker isolation,
-binary64, persistent disk storage, networking, USB, and audio drivers.
-The ISO is boot media, not an installer. Physical hardware is unverified.
+binary64, persistent storage, networking, USB, and audio drivers. The ISO is boot
+media, not an installer. Physical hardware remains unverified.
 
-General asynchronous graph I/O and atomic whole-image checkpointing remain
-unfinished. Collections, values, native activations, and event queues have
-fixed limits. This snapshot establishes a tested starting point for the OS,
-not a promise that the remaining language or OS work is complete.
-
-- [Runtime and image syntax](neo/documentation/runtime-format.md)
-- [Platform services](documentation/reference/platform-services.md)
-- [Foundation acceptance](documentation/development/foundation-acceptance.md)
-- [Source tour](documentation/learning/code-tour.md)
-- [Whitepaper](neo/documentation/whitepaper.md), preserved design reference
-- [Release notes](documentation/releases/v0.1.0-foundation.md)
+See [architecture](documentation/development/three-repositories.md),
+[build](documentation/development/build.md), and
+[milestones](documentation/development/launch-milestones.md).
+The [foundation snapshot](https://github.com/neo-platform-organization/neo-foundation-snapshot)
+is archived and unchanged.
